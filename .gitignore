@@ -1,0 +1,36 @@
+# === Gradle build folders ===
+.gradle/
+build/
+*/build/
+
+# === Local configuration ===
+local.properties
+
+# === IDE (Android Studio) ===
+.idea/
+*.iml
+
+# === OS/system ===
+.DS_Store
+Thumbs.db
+
+# === APKs and build outputs ===
+*.apk
+*.ap_
+output.json
+
+# === Native builds and tools ===
+.cxx/
+.externalNativeBuild/
+
+# === Room / Dagger / Generated ===
+**/AppDatabase*_Impl*
+**/UserProfileDao*_Impl*
+**/NetworkMonitor_Factory
+
+# === Misc ===
+*.log
+*.swp
+*.swo
+captures/
+
