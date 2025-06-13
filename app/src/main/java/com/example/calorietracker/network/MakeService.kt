@@ -185,35 +185,35 @@ interface MakeService {
     }
 
     @Headers("Content-Type: application/json")
-    @POST("webhook/{webhookId}/analyze-food")
+    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
     suspend fun analyzeFood(
         @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: FoodAnalysisRequest
     ): FoodAnalysisResponse
 
     @Headers("Content-Type: application/json")
-    @POST("webhook/{webhookId}/analyze-image")
+    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
     suspend fun analyzeFoodImage(
         @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: ImageAnalysisRequest
     ): FoodAnalysisResponse
 
     @Headers("Content-Type: application/json")
-    @POST("webhook/{webhookId}/plan-meal")
+    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
     suspend fun planMealWeek(
         @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: MealPlanRequest
     ): MealPlanResponse
 
     @Headers("Content-Type: application/json")
-    @POST("webhook/{webhookId}/nutrition-analysis")
+    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
     suspend fun analyzeNutrition(
         @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: NutritionRequest
     ): NutritionResponse
 
     @Headers("Content-Type: application/json")
-    @POST("webhook/{webhookId}/recommendations")
+    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
     suspend fun getRecommendations(
         @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: RecommendationRequest
@@ -227,7 +227,7 @@ interface MakeService {
         @Body request: AiChatRequest
     ): AiChatResponse
 
-    @GET("webhook/{webhookId}/health")
+    @GET("653st2c10rmg92nlltf3y0m8sggxaac6")
     suspend fun checkHealth(
         @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6"
     ): HealthResponse

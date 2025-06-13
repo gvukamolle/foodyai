@@ -16,7 +16,6 @@ import com.example.calorietracker.utils.getOrCreateUserId
 import kotlinx.coroutines.launch
 import kotlin.math.round
 import android.util.Log
-import android.graphics.Bitmap
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 
