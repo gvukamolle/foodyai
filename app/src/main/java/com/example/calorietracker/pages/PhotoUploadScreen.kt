@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.network.NetworkModule
 import com.example.calorietracker.network.UserProfileData
+import com.example.calorietracker.network.MakeService
 import com.example.calorietracker.network.safeApiCall
 import com.example.calorietracker.utils.calculateAge
 import kotlinx.coroutines.launch
@@ -107,18 +108,14 @@ fun PhotoUploadScreen(
                             val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
                             val part = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
 
-                            val result = safeApiCall {
+                            val response = safeApiCall {
                                 NetworkModule.makeService.analyzeFoodPhoto(
-                                    webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
+                                    webhookId = MakeService.WEBHOOK_ID,
                                     photo = part,
                                     userProfile = profile
                                 )
                             }
-                            resultText = if (result.isSuccess) {
-                                result.getOrNull()?.food?.name ?: "Успешно"
-                            } else {
-                                "Ошибка отправки"
-                            }
+                            resultText = response.getOrNull()?.food?.name ?: "Ошибка отправки"
                             tempFile.delete()
                             isSending = false
                         }

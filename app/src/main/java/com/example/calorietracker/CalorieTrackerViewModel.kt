@@ -245,13 +245,14 @@ class CalorieTrackerViewModel(
             
             // Отправляем запрос на Make.com
             val response = safeApiCall {
-                NetworkModule.makeService.analyzeFoodImage(
+                val analyzeFoodImage = NetworkModule.makeService.analyzeFoodImage(
                     webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
                     request = ImageAnalysisRequest(
                         imageBase64 = base64Image,
                         userProfile = profileData
                     )
                 )
+                analyzeFoodImage
             }
             
             if (response.isSuccess) {

@@ -201,7 +201,8 @@ interface MakeService {
     @Headers("Content-Type: application/json")
     @POST(WEBHOOK_ID)
     suspend fun analyzeFoodImage(
-        @Body request: ImageAnalysisRequest
+        @Body request: ImageAnalysisRequest,
+        webhookId: String
     ): FoodAnalysisResponse
 
     @Headers("Content-Type: application/json")
