@@ -25,6 +25,7 @@ import com.example.calorietracker.pages.SetupScreen
 import com.example.calorietracker.pages.SettingsScreen
 import com.example.calorietracker.pages.UpdatedMainScreen
 import com.example.calorietracker.pages.ManualFoodInputDialog
+import com.example.calorietracker.pages.PhotoUploadScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -124,21 +125,20 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
             )
         }
 
+        viewModel.showPhotoUploadScreen -> {
+            PhotoUploadScreen(
+                viewModel = viewModel,
+                onBack = { viewModel.showPhotoUploadScreen = false }
+            )
+        }
+
         else -> {
             Log.d("CalorieTracker", "Показывается главный экран")
             UpdatedMainScreen(
                 viewModel = viewModel,
                 onPhotoClick = {
                     if (viewModel.isOnline) {
-                        when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)) {
-                            PackageManager.PERMISSION_GRANTED -> {
-                                val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                                photoLauncher.launch(intent)
-                            }
-                            else -> {
-                                permissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        }
+                        viewModel.showPhotoUploadScreen = true
                     } else {
                         Toast.makeText(
                             context,

@@ -15,6 +15,7 @@ data class ImageAnalysisRequest(
     val userProfile: UserProfileData
 )
 
+// Запрос при отправке ссылки на изображение
 data class ImageUrlAnalysisRequest(
     val imageUrl: String,
     val userProfile: UserProfileData
@@ -188,50 +189,38 @@ data class HealthResponse(
 interface MakeService {
     companion object {
         const val BASE_URL = "https://hook.us2.make.com/"
+        const val WEBHOOK_ID = "653st2c10rmg92nlltf3y0m8sggxaac6"
     }
 
     @Headers("Content-Type: application/json")
-    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
+    @POST(WEBHOOK_ID)
     suspend fun analyzeFood(
-        @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: FoodAnalysisRequest
     ): FoodAnalysisResponse
 
     @Headers("Content-Type: application/json")
-    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
+    @POST(WEBHOOK_ID)
     suspend fun analyzeFoodImage(
-        @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: ImageAnalysisRequest
     ): FoodAnalysisResponse
 
     @Headers("Content-Type: application/json")
-    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
+    @POST(WEBHOOK_ID)
     suspend fun planMealWeek(
-        @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: MealPlanRequest
     ): MealPlanResponse
 
     @Headers("Content-Type: application/json")
-    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
+    @POST(WEBHOOK_ID)
     suspend fun analyzeNutrition(
-        @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: NutritionRequest
     ): NutritionResponse
 
     @Headers("Content-Type: application/json")
-    @POST("653st2c10rmg92nlltf3y0m8sggxaac6")
+    @POST(WEBHOOK_ID)
     suspend fun getRecommendations(
-        @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6",
         @Body request: RecommendationRequest
     ): RecommendationResponse
-
-    // --- Новый метод для AI чата ---
-    @Headers("Content-Type: application/json")
-    @POST("{webhookId}")
-    suspend fun askAiDietitian(
-        @Path("webhookId") webhookId: String,
-        @Body request: AiChatRequest
-    ): AiChatResponse
 
     // Загрузка реального файла изображения
     @Multipart
@@ -250,19 +239,25 @@ interface MakeService {
         @Body request: ImageUrlAnalysisRequest
     ): FoodAnalysisResponse
 
-    @GET("653st2c10rmg92nlltf3y0m8sggxaac6")
-    suspend fun checkHealth(
-        @Path("webhookId") webhookId: String = "653st2c10rmg92nlltf3y0m8sggxaac6"
-    ): HealthResponse
-}
 
-// Extension for safe API calls
-suspend fun <T> safeApiCall(
-    apiCall: suspend () -> T
-): Result<T> {
-    return try {
-        Result.success(apiCall())
-    } catch (e: Exception) {
-        Result.failure(e)
+    // --- Новый метод для AI чата ---
+    @Headers("Content-Type: application/json")
+    @POST("{webhookId}")
+    suspend fun askAiDietitian(
+        @Path("webhookId") webhookId: String,
+        @Body request: AiChatRequest
+    ): AiChatResponse
+
+    @GET(WEBHOOK_ID)
+    suspend fun checkHealth(): HealthResponse
+
+    suspend fun <T> safeApiCall(
+        apiCall: suspend () -> T
+    ): Result<T> {
+        return try {
+            Result.success(apiCall())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

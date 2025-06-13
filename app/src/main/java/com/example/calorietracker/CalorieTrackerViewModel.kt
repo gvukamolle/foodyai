@@ -69,6 +69,7 @@ class CalorieTrackerViewModel(
     private val foodAnalyzer = FoodAnalyzer()
     var isOnline by mutableStateOf(false)
     var showManualInputDialog by mutableStateOf(false)
+    var showPhotoUploadScreen by mutableStateOf(false)
 
     init {
         loadUserData()
