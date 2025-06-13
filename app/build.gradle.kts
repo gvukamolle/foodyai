@@ -6,7 +6,6 @@ plugins {
 
 android {
     namespace = "com.example.calorietracker"
-    // compileSdk 35 requires an updated SDK; using 34 for compatibility
     compileSdk = 34
 
     defaultConfig {

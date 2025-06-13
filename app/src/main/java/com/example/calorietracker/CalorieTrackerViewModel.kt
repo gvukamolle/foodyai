@@ -16,6 +16,9 @@ import com.example.calorietracker.utils.getOrCreateUserId
 import kotlinx.coroutines.launch
 import kotlin.math.round
 import android.util.Log
+import android.graphics.Bitmap
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 
 data class ChatMessage(
     val type: MessageType,
@@ -212,33 +215,113 @@ class CalorieTrackerViewModel(
         )
     }
 
-    // Анализ фото (оставлено без изменений — если используешь свой AI)
     suspend fun analyzePhotoWithAI(bitmap: Bitmap) {
-        isAnalyzing = true
-        messages = messages + ChatMessage(MessageType.USER, "Фото загружено")
-        checkInternetConnection()
-        if (!isOnline) {
-            messages = messages + ChatMessage(
-                MessageType.AI,
-                "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
-            )
-            isAnalyzing = false
-            showManualInputDialog = true
-            return
-        }
+    isAnalyzing = true
+    messages = messages + ChatMessage(MessageType.USER, "Фото загружено")
+    
+    checkInternetConnection()
+    if (!isOnline) {
         messages = messages + ChatMessage(
             MessageType.AI,
-            "Анализирую фото..."
+            "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
         )
-        // Вызов анализатора (оставь свою реализацию)
-        // ...
         isAnalyzing = false
+        showManualInputDialog = true
+        return
     }
+    
+    messages = messages + ChatMessage(
+        MessageType.AI,
+        "Анализирую фото..."
+    )
+    
+    viewModelScope.launch {
+        try {
+            // Конвертируем Bitmap в Base64
+            val base64Image = bitmapToBase64(bitmap)
+            
+            // Подготавливаем данные профиля
+            val profileData = userProfile.toNetworkProfile()
+            
+            // Отправляем запрос на Make.com
+            val response = safeApiCall {
+                NetworkModule.makeService.analyzeFoodImage(
+                    webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
+                    request = ImageAnalysisRequest(
+                        imageBase64 = base64Image,
+                        userProfile = profileData
+                    )
+                )
+            }
+            
+            if (response.isSuccess) {
+                val foodData = response.getOrNull()?.food
+                if (foodData != null) {
+                    // Создаем FoodItem из ответа
+                    pendingFood = FoodItem(
+                        name = foodData.name,
+                        calories = foodData.calories.toInt(),
+                        proteins = foodData.proteins.toInt(),
+                        fats = foodData.fats.toInt(),
+                        carbs = foodData.carbs.toInt(),
+                        weight = foodData.weight
+                    )
+                    
+                    messages = messages + ChatMessage(
+                        MessageType.AI,
+                        "Распознал: ${foodData.name}. Проверьте данные и выберите прием пищи."
+                    )
+                    
+                    // Показываем рекомендации если есть
+                    response.getOrNull()?.recommendations?.forEach { rec ->
+                        messages = messages + ChatMessage(
+                            MessageType.AI,
+                            "💡 $rec"
+                        )
+                    }
+                } else {
+                    messages = messages + ChatMessage(
+                        MessageType.AI,
+                        "Не удалось распознать продукт. Попробуйте сделать фото еще раз или введите данные вручную."
+                    )
+                    showManualInputDialog = true
+                }
+            } else {
+                messages = messages + ChatMessage(
+                    MessageType.AI,
+                    "Ошибка при анализе фото. Попробуйте еще раз или введите данные вручную."
+                )
+                showManualInputDialog = true
+            }
+        } catch (e: Exception) {
+            Log.e("CalorieTracker", "Ошибка анализа фото", e)
+            messages = messages + ChatMessage(
+                MessageType.AI,
+                "Произошла ошибка: ${e.message}. Введите данные вручную."
+            )
+            showManualInputDialog = true
+        } finally {
+            isAnalyzing = false
+        }
+    }
+}
 
-    // Старый метод для совместимости
-    suspend fun analyzePhoto(bitmap: Bitmap) {
-        analyzePhotoWithAI(bitmap)
-    }
+    private fun bitmapToBase64(bitmap: Bitmap): String {
+    val outputStream = ByteArrayOutputStream()
+    // Сжимаем до разумного размера
+    val scaledBitmap = scaleBitmap(bitmap, 800) // макс ширина 800px
+    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+    val byteArray = outputStream.toByteArray()
+    return Base64.encodeToString(byteArray, Base64.NO_WRAP)
+}
+
+private fun scaleBitmap(bitmap: Bitmap, maxWidth: Int): Bitmap {
+    if (bitmap.width <= maxWidth) return bitmap
+    
+    val aspectRatio = bitmap.height.toFloat() / bitmap.width.toFloat()
+    val newHeight = (maxWidth * aspectRatio).toInt()
+    return Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
+}
 
     // Остальное без изменений (ручной ввод еды, подтверждение, советы и т.д.)
     // ...
