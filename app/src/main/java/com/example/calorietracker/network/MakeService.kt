@@ -1,5 +1,6 @@
 package com.example.calorietracker.network
 
+import okhttp3.MultipartBody
 import retrofit2.http.*
 
 // Data classes for requests
@@ -11,6 +12,11 @@ data class FoodAnalysisRequest(
 
 data class ImageAnalysisRequest(
     val imageBase64: String,
+    val userProfile: UserProfileData
+)
+
+data class ImageUrlAnalysisRequest(
+    val imageUrl: String,
     val userProfile: UserProfileData
 )
 
@@ -226,6 +232,23 @@ interface MakeService {
         @Path("webhookId") webhookId: String,
         @Body request: AiChatRequest
     ): AiChatResponse
+
+    // Загрузка реального файла изображения
+    @Multipart
+    @POST("{webhookId}")
+    suspend fun analyzeFoodPhoto(
+        @Path("webhookId") webhookId: String,
+        @Part photo: MultipartBody.Part,
+        @Part("userProfile") userProfile: UserProfileData
+    ): FoodAnalysisResponse
+
+    // Анализ по URL на изображение
+    @Headers("Content-Type: application/json")
+    @POST("{webhookId}")
+    suspend fun analyzeFoodImageByUrl(
+        @Path("webhookId") webhookId: String,
+        @Body request: ImageUrlAnalysisRequest
+    ): FoodAnalysisResponse
 
     @GET("653st2c10rmg92nlltf3y0m8sggxaac6")
     suspend fun checkHealth(
