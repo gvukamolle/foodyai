@@ -229,7 +229,8 @@ interface MakeService {
     suspend fun analyzeFoodPhoto(
         @Path("webhookId") webhookId: String,
         @Part photo: MultipartBody.Part,
-        @Part("userProfile") userProfile: UserProfileData
+        @Part("userProfile") userProfile: UserProfileData,
+        @Part("userId") userId: String
     ): FoodAnalysisResponse
 
     // Анализ по URL на изображение
@@ -239,7 +240,6 @@ interface MakeService {
         @Path("webhookId") webhookId: String,
         @Body request: ImageUrlAnalysisRequest
     ): FoodAnalysisResponse
-
 
     // --- Новый метод для AI чата ---
     @Headers("Content-Type: application/json")

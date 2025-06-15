@@ -1,7 +1,7 @@
 package com.example.calorietracker.pages
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -27,6 +27,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,8 +35,8 @@ fun PhotoUploadScreen(
     viewModel: CalorieTrackerViewModel,
     onBack: () -> Unit
 ) {
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var previewBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var imageFile by remember { mutableStateOf<File?>(null) }
+    var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isSending by remember { mutableStateOf(false) }
     var resultText by remember { mutableStateOf<String?>(null) }
 
@@ -43,11 +44,30 @@ fun PhotoUploadScreen(
     val scope = rememberCoroutineScope()
 
     val pickLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        imageUri = uri
         previewBitmap = uri?.let {
             context.contentResolver.openInputStream(it)?.use { stream ->
                 BitmapFactory.decodeStream(stream)
             }
+        }
+        imageFile = uri?.let {
+            val temp = File.createTempFile("upload", ".jpg", context.cacheDir)
+            context.contentResolver.openInputStream(it)?.use { input ->
+                temp.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            temp
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
+        previewBitmap = bitmap
+        imageFile = bitmap?.let { bmp ->
+            val temp = File.createTempFile("camera", ".jpg", context.cacheDir)
+            FileOutputStream(temp).use { out ->
+                bmp.compress(Bitmap.CompressFormat.JPEG, 100, out)
+            }
+            temp
         }
     }
 
@@ -81,11 +101,16 @@ fun PhotoUploadScreen(
                 Text("Выберите изображение")
             }
 
-            Button(onClick = { pickLauncher.launch("image/*") }) {
-                Text("Выбрать фото")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { pickLauncher.launch("image/*") }) {
+                    Text("Выбрать фото")
+                }
+                OutlinedButton(onClick = { cameraLauncher.launch(null) }) {
+                    Text("Сделать фото")
+                }
             }
 
-            if (imageUri != null) {
+            if (imageFile != null) {
                 Button(
                     onClick = {
                         scope.launch {
@@ -99,24 +124,22 @@ fun PhotoUploadScreen(
                                 activityLevel = viewModel.userProfile.condition,
                                 goal = viewModel.userProfile.goal
                             )
-                            val tempFile = File.createTempFile("upload", ".jpg", context.cacheDir)
-                            context.contentResolver.openInputStream(imageUri!!)?.use { input ->
-                                tempFile.outputStream().use { output ->
-                                    input.copyTo(output)
-                                }
-                            }
-                            val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                            val part = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
+                            val file = imageFile!!
+                            val requestBody = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                            val part = MultipartBody.Part.createFormData("photo", file.name, requestBody)
+                            val userId = viewModel.userId
 
                             val response = safeApiCall {
                                 NetworkModule.makeService.analyzeFoodPhoto(
                                     webhookId = MakeService.WEBHOOK_ID,
                                     photo = part,
-                                    userProfile = profile
+                                    userProfile = profile,
+                                    userId = userId
                                 )
                             }
                             resultText = response.getOrNull()?.food?.name ?: "Ошибка отправки"
-                            tempFile.delete()
+                            file.delete()
+                            imageFile = null
                             isSending = false
                         }
                     },
