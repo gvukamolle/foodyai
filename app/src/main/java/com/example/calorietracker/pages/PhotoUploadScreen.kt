@@ -112,6 +112,7 @@ fun PhotoUploadScreen(
                             imageFile?.delete()
                             imageFile = null
                             isSending = false
+                            onBack()
                         }
                     },
                     enabled = !isSending

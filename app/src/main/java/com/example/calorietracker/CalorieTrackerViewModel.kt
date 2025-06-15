@@ -313,83 +313,88 @@ class CalorieTrackerViewModel(
             "Анализирую фото..."
         )
 
-        viewModelScope.launch {
-            try {
-                // Создаем временный файл
-                val tempFile = File.createTempFile("photo", ".jpg", context.cacheDir)
-                val outputStream = FileOutputStream(tempFile)
+        try {
+            // Создаем временный файл
+            val tempFile = File.createTempFile("photo", ".jpg", context.cacheDir)
+            val outputStream = FileOutputStream(tempFile)
 
-                // Сжимаем и сохраняем
-                val scaledBitmap = scaleBitmap(bitmap, 800)
-                scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
-                outputStream.close()
+            // Сжимаем и сохраняем
+            val scaledBitmap = scaleBitmap(bitmap, 800)
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+            outputStream.close()
 
-                // Подготавливаем данные
-                val profileData = userProfile.toNetworkProfile()
+            // Подготавливаем данные
+            val profileData = userProfile.toNetworkProfile()
 
-                // Создаем multipart parts
-                val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                val photoPart = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
+            // Создаем multipart parts
+            val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+            val photoPart = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
 
-                // Создаем JSON для userProfile
-                val gson = Gson()
-                val profileJson = gson.toJson(profileData)
-                val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
+            // Создаем JSON для userProfile
+            val gson = Gson()
+            val profileJson = gson.toJson(profileData)
+            val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
 
-                // userId как текст
-                val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
+            // userId как текст
+            val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
 
-                // Отправляем запрос
-                val response = safeApiCall {
-                    NetworkModule.makeService.analyzeFoodPhoto(
-                        webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
-                        photo = photoPart,
-                        userProfile = profileRequestBody,
-                        userId = userIdRequestBody
+            // Отправляем запрос
+            val response = safeApiCall {
+                NetworkModule.makeService.analyzeFoodPhoto(
+                    webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
+                    photo = photoPart,
+                    userProfile = profileRequestBody,
+                    userId = userIdRequestBody
+                )
+            }
+
+            // Удаляем временный файл
+            tempFile.delete()
+
+            if (response.isSuccess) {
+                val foodData = response.getOrNull()
+
+                if (foodData != null) {
+                    prefillFood = FoodItem(
+                        name = foodData.name,
+                        calories = foodData.calories.toInt(),
+                        proteins = foodData.proteins.toInt(),
+                        fats = foodData.fats.toInt(),
+                        carbs = foodData.carbs.toInt(),
+                        weight = foodData.weight
                     )
-                }
+                    showManualInputDialog = true
 
-                // Удаляем временный файл
-                tempFile.delete()
-
-                if (response.isSuccess) {
-                    val foodData = response.getOrNull()
-
-                    if (foodData != null) {
-                        prefillFood = FoodItem(
-                            name = foodData.name,
-                            calories = foodData.calories.toInt(),
-                            proteins = foodData.proteins.toInt(),
-                            fats = foodData.fats.toInt(),
-                            carbs = foodData.carbs.toInt(),
-                            weight = foodData.weight
-                        )
-                        showManualInputDialog = true
-
-                        if (foodData.food.equals("нет", ignoreCase = true)) {
-                            messages = messages + ChatMessage(
-                                MessageType.AI,
-                                "На фото не обнаружено еды. Проверьте распознанные данные."
-                            )
-                        }
-                    } else {
+                    if (foodData.food.equals("нет", ignoreCase = true)) {
                         messages = messages + ChatMessage(
                             MessageType.AI,
-                            "Сервер не вернул данные. Попробуйте еще раз."
+                            "На фото не обнаружено еды. Проверьте распознанные данные."
                         )
-                        showManualInputDialog = true
                     }
+                } else {
+                    messages = messages + ChatMessage(
+                        MessageType.AI,
+                        "Сервер не вернул данные. Попробуйте еще раз."
+                    )
+                    showManualInputDialog = true
                 }
-            } catch (e: Exception) {
-                Log.e("CalorieTracker", "Общая ошибка", e)
+            } else {
+                Log.e("CalorieTracker", "Ошибка API", response.exceptionOrNull())
                 messages = messages + ChatMessage(
                     MessageType.AI,
-                    "Произошла ошибка. Введите данные вручную."
+                    "Ошибка соединения. Проверьте интернет и попробуйте снова."
                 )
                 showManualInputDialog = true
-            } finally {
-                isAnalyzing = false
             }
+        } catch (e: Exception) {
+            Log.e("CalorieTracker", "Общая ошибка", e)
+            messages = messages + ChatMessage(
+                MessageType.AI,
+                "Произошла ошибка. Введите данные вручную."
+            )
+            showManualInputDialog = true
+        } finally {
+            isAnalyzing = false
         }
     }
 
