@@ -249,7 +249,8 @@ interface MakeService {
         @Part photo: MultipartBody.Part,
         @Part("userProfile") userProfile: RequestBody,
         @Part("userId") userId: RequestBody
-    ): FoodAnalysisResponse
+    ): FoodDataFromAnswer
+
 
     // Анализ по URL на изображение
     @Headers("Content-Type: application/json")

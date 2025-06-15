@@ -72,6 +72,7 @@ class CalorieTrackerViewModel(
     ))
     var inputMessage by mutableStateOf("")
     var pendingFood by mutableStateOf<FoodItem?>(null)
+    var prefillFood by mutableStateOf<FoodItem?>(null)
     var selectedMeal by mutableStateOf(MealType.BREAKFAST)
     var isAnalyzing by mutableStateOf(false)
 
@@ -352,41 +353,24 @@ class CalorieTrackerViewModel(
                 tempFile.delete()
 
                 if (response.isSuccess) {
-                    val result = response.getOrNull()
+                    val foodData = response.getOrNull()
 
-                    if (result?.answer != null) {
-                        try {
-                            // Парсим JSON из строки answer
-                            val foodData = gson.fromJson(result.answer, FoodDataFromAnswer::class.java)
+                    if (foodData != null) {
+                        prefillFood = FoodItem(
+                            name = foodData.name,
+                            calories = foodData.calories.toInt(),
+                            proteins = foodData.proteins.toInt(),
+                            fats = foodData.fats.toInt(),
+                            carbs = foodData.carbs.toInt(),
+                            weight = foodData.weight
+                        )
+                        showManualInputDialog = true
 
-                            if (foodData.food.equals("да", ignoreCase = true) && foodData.name.isNotEmpty()) {
-                                pendingFood = FoodItem(
-                                    name = foodData.name,
-                                    calories = foodData.calories.toInt(),
-                                    proteins = foodData.proteins.toInt(),
-                                    fats = foodData.fats.toInt(),
-                                    carbs = foodData.carbs.toInt(),
-                                    weight = foodData.weight
-                                )
-
-                                messages = messages + ChatMessage(
-                                    MessageType.AI,
-                                    "Распознал: ${foodData.name} (${foodData.calories} ккал). Выберите прием пищи и подтвердите."
-                                )
-                            } else {
-                                messages = messages + ChatMessage(
-                                    MessageType.AI,
-                                    "На фото не обнаружено еды. Попробуйте сделать более четкое фото или введите данные вручную."
-                                )
-                                showManualInputDialog = true
-                            }
-                        } catch (e: Exception) {
-                            Log.e("CalorieTracker", "Ошибка парсинга JSON", e)
+                        if (foodData.food.equals("нет", ignoreCase = true)) {
                             messages = messages + ChatMessage(
                                 MessageType.AI,
-                                "Не удалось обработать ответ. Введите данные вручную."
+                                "На фото не обнаружено еды. Проверьте распознанные данные."
                             )
-                            showManualInputDialog = true
                         }
                     } else {
                         messages = messages + ChatMessage(
@@ -395,13 +379,6 @@ class CalorieTrackerViewModel(
                         )
                         showManualInputDialog = true
                     }
-                } else {
-                    Log.e("CalorieTracker", "Ошибка API", response.exceptionOrNull())
-                    messages = messages + ChatMessage(
-                        MessageType.AI,
-                        "Ошибка соединения. Проверьте интернет и попробуйте снова."
-                    )
-                    showManualInputDialog = true
                 }
             } catch (e: Exception) {
                 Log.e("CalorieTracker", "Общая ошибка", e)
@@ -416,7 +393,7 @@ class CalorieTrackerViewModel(
         }
     }
 
-    private fun bitmapToBase64(bitmap: Bitmap): String {
+                    private fun bitmapToBase64(bitmap: Bitmap): String {
         val outputStream = ByteArrayOutputStream()
 
         // Сжимаем до разумного размера

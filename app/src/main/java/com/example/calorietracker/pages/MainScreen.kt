@@ -275,15 +275,21 @@ fun SetStatusBarColorToWhite() {
 // Диалог для ручного ввода продукта
 @Composable
 fun ManualFoodInputDialog(
+    initialFoodName: String = "",
+    initialCalories: String = "",
+    initialProteins: String = "",
+    initialFats: String = "",
+    initialCarbs: String = "",
+    initialWeight: String = "100",
     onDismiss: () -> Unit,
     onConfirm: (name: String, calories: String, proteins: String, fats: String, carbs: String, weight: String) -> Unit
 ) {
-    var foodName by remember { mutableStateOf("") }
-    var calories by remember { mutableStateOf("") }
-    var proteins by remember { mutableStateOf("") }
-    var fats by remember { mutableStateOf("") }
-    var carbs by remember { mutableStateOf("") }
-    var weight by remember { mutableStateOf("100") }
+    var foodName by remember { mutableStateOf(initialFoodName) }
+    var calories by remember { mutableStateOf(initialCalories) }
+    var proteins by remember { mutableStateOf(initialProteins) }
+    var fats by remember { mutableStateOf(initialFats) }
+    var carbs by remember { mutableStateOf(initialCarbs) }
+    var weight by remember { mutableStateOf(initialWeight) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

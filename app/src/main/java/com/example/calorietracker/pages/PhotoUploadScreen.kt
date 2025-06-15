@@ -147,9 +147,7 @@ fun PhotoUploadScreen(
                                     userId = userIdRequestBody
                                 )
                             }
-                            resultText = response.getOrNull()?.food?.name ?: "Ошибка отправки"
-                            file.delete()
-                            imageFile = null
+                            resultText = response.getOrNull()?.name ?: "Ошибка отправки"
                             isSending = false
                         }
                     },

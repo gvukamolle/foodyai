@@ -66,9 +66,19 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
     // Диалог ручного ввода
     if (viewModel.showManualInputDialog) {
         ManualFoodInputDialog(
-            onDismiss = { viewModel.showManualInputDialog = false },
+            initialFoodName = viewModel.prefillFood?.name ?: "",
+            initialCalories = viewModel.prefillFood?.calories?.toString() ?: "",
+            initialProteins = viewModel.prefillFood?.proteins?.toString() ?: "",
+            initialFats = viewModel.prefillFood?.fats?.toString() ?: "",
+            initialCarbs = viewModel.prefillFood?.carbs?.toString() ?: "",
+            initialWeight = viewModel.prefillFood?.weight?.toString() ?: "100",
+            onDismiss = {
+                viewModel.showManualInputDialog = false
+                viewModel.prefillFood = null
+            },
             onConfirm = { name, calories, proteins, fats, carbs, weight ->
                 viewModel.handleManualInput(name, calories, proteins, fats, carbs, weight)
+                viewModel.prefillFood = null
             }
         )
     }
