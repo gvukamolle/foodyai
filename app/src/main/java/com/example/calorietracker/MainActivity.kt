@@ -63,7 +63,7 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
     }
     val coroutineScope = rememberCoroutineScope()
 
-    // Диалог ручного ввода
+// Диалог ручного ввода
     if (viewModel.showManualInputDialog) {
         ManualFoodInputDialog(
             initialFoodName = viewModel.prefillFood?.name ?: "",

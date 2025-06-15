@@ -17,18 +17,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.calorietracker.CalorieTrackerViewModel
-import com.example.calorietracker.network.NetworkModule
-import com.example.calorietracker.network.UserProfileData
-import com.example.calorietracker.network.MakeService
-import com.example.calorietracker.network.safeApiCall
-import com.example.calorietracker.utils.calculateAge
-import com.google.gson.Gson
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
 
@@ -113,41 +102,15 @@ fun PhotoUploadScreen(
                 }
             }
 
-            if (imageFile != null) {
+            if (imageFile != null && previewBitmap != null) {
                 Button(
                     onClick = {
                         scope.launch {
                             isSending = true
-                            val age = calculateAge(viewModel.userProfile.birthday)
-                            val profile = UserProfileData(
-                                age = age,
-                                weight = viewModel.userProfile.weight,
-                                height = viewModel.userProfile.height,
-                                gender = viewModel.userProfile.gender,
-                                activityLevel = viewModel.userProfile.condition,
-                                goal = viewModel.userProfile.goal
-                            )
-                            val file = imageFile!!
-                            val requestBody = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                            val part = MultipartBody.Part.createFormData("photo", file.name, requestBody)
-
-                            // Конвертируем UserProfileData в JSON RequestBody
-                            val gson = Gson()
-                            val profileJson = gson.toJson(profile)
-                            val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
-
-                            // Конвертируем userId в RequestBody
-                            val userIdRequestBody = viewModel.userId.toRequestBody("text/plain".toMediaTypeOrNull())
-
-                            val response = safeApiCall {
-                                NetworkModule.makeService.analyzeFoodPhoto(
-                                    webhookId = MakeService.WEBHOOK_ID,
-                                    photo = part,
-                                    userProfile = profileRequestBody,
-                                    userId = userIdRequestBody
-                                )
-                            }
-                            resultText = response.getOrNull()?.name ?: "Ошибка отправки"
+                            viewModel.analyzePhotoWithAI(previewBitmap!!)
+                            resultText = viewModel.prefillFood?.name
+                            imageFile?.delete()
+                            imageFile = null
                             isSending = false
                         }
                     },
