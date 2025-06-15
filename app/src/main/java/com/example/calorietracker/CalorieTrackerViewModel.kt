@@ -355,21 +355,26 @@ class CalorieTrackerViewModel(
                 val foodData = response.getOrNull()
 
                 if (foodData != null) {
-                    prefillFood = FoodItem(
-                        name = foodData.name,
-                        calories = foodData.calories.toInt(),
-                        proteins = foodData.proteins.toInt(),
-                        fats = foodData.fats.toInt(),
-                        carbs = foodData.carbs.toInt(),
-                        weight = foodData.weight
-                    )
-                    showManualInputDialog = true
-
                     if (foodData.food.equals("нет", ignoreCase = true)) {
                         messages = messages + ChatMessage(
                             MessageType.AI,
-                            "На фото не обнаружено еды. Проверьте распознанные данные."
+                            "На фото не обнаружено еды."
                         )
+                        android.widget.Toast.makeText(
+                            context,
+                            "На фото не обнаружено еды",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        prefillFood = FoodItem(
+                            name = foodData.name,
+                            calories = foodData.calories.toInt(),
+                            proteins = foodData.proteins.toInt(),
+                            fats = foodData.fats.toInt(),
+                            carbs = foodData.carbs.toInt(),
+                            weight = foodData.weight
+                        )
+                        showManualInputDialog = true
                     }
                 } else {
                     messages = messages + ChatMessage(

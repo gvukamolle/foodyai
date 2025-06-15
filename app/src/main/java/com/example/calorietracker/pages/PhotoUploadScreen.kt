@@ -108,7 +108,7 @@ fun PhotoUploadScreen(
                         scope.launch {
                             isSending = true
                             viewModel.analyzePhotoWithAI(previewBitmap!!)
-                            resultText = viewModel.prefillFood?.name
+                            resultText = viewModel.prefillFood?.name ?: "Не еда"
                             imageFile?.delete()
                             imageFile = null
                             isSending = false
