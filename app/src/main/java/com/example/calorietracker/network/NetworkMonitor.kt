@@ -9,8 +9,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.util.Log
@@ -104,7 +102,10 @@ class NetworkMonitor @Inject constructor(
     private suspend fun checkMakeComAvailability() {
         try {
             withTimeout(5000) {
-                val response = makeService.checkHealth()
+                // Исправлено: добавлен параметр webhookId
+                val response = makeService.checkHealth(
+                    webhookId = MakeService.WEBHOOK_ID
+                )
                 val isAvailable = response.status == "ok"
 
                 _networkStatus.value = _networkStatus.value.copy(

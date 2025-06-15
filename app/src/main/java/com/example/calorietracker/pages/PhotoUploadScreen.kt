@@ -22,10 +22,13 @@ import com.example.calorietracker.network.UserProfileData
 import com.example.calorietracker.network.MakeService
 import com.example.calorietracker.network.safeApiCall
 import com.example.calorietracker.utils.calculateAge
+import com.google.gson.Gson
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
 
@@ -127,14 +130,21 @@ fun PhotoUploadScreen(
                             val file = imageFile!!
                             val requestBody = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
                             val part = MultipartBody.Part.createFormData("photo", file.name, requestBody)
-                            val userId = viewModel.userId
+
+                            // Конвертируем UserProfileData в JSON RequestBody
+                            val gson = Gson()
+                            val profileJson = gson.toJson(profile)
+                            val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
+
+                            // Конвертируем userId в RequestBody
+                            val userIdRequestBody = viewModel.userId.toRequestBody("text/plain".toMediaTypeOrNull())
 
                             val response = safeApiCall {
                                 NetworkModule.makeService.analyzeFoodPhoto(
                                     webhookId = MakeService.WEBHOOK_ID,
                                     photo = part,
-                                    userProfile = profile,
-                                    userId = userId
+                                    userProfile = profileRequestBody,
+                                    userId = userIdRequestBody
                                 )
                             }
                             resultText = response.getOrNull()?.food?.name ?: "Ошибка отправки"

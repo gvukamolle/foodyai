@@ -27,6 +27,9 @@ import com.example.calorietracker.pages.UpdatedMainScreen
 import com.example.calorietracker.pages.ManualFoodInputDialog
 import com.example.calorietracker.pages.PhotoUploadScreen
 import kotlinx.coroutines.launch
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.create
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,7 +73,7 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
         )
     }
 
-    // Лаунчер для камеры
+// Лаунчер для камеры
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->

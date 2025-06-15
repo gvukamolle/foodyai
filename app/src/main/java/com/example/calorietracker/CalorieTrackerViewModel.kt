@@ -2,6 +2,8 @@ package com.example.calorietracker
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Base64
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,11 +15,19 @@ import com.example.calorietracker.network.*
 import com.example.calorietracker.utils.NetworkUtils
 import com.example.calorietracker.utils.calculateAge
 import com.example.calorietracker.utils.getOrCreateUserId
+import com.google.gson.Gson
 import kotlinx.coroutines.launch
-import kotlin.math.round
-import android.util.Log
-import android.util.Base64
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.create
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import kotlin.math.round
+import okhttp3.RequestBody.Companion.toRequestBody
+import com.example.calorietracker.network.FoodDataFromAnswer
 
 data class ChatMessage(
     val type: MessageType,
@@ -200,7 +210,6 @@ class CalorieTrackerViewModel(
             }
         }
     }
-    // ----------
 
     // Преобразование UserProfile в UserProfileData для сети
     private fun UserProfile.toNetworkProfile(): UserProfileData {
@@ -215,106 +224,215 @@ class CalorieTrackerViewModel(
         )
     }
 
-    suspend fun analyzePhotoWithAI(bitmap: Bitmap) {
-    isAnalyzing = true
-    messages = messages + ChatMessage(MessageType.USER, "Фото загружено")
-    
-    checkInternetConnection()
-    if (!isOnline) {
-        messages = messages + ChatMessage(
-            MessageType.AI,
-            "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
-        )
-        isAnalyzing = false
-        showManualInputDialog = true
-        return
-    }
-    
-    messages = messages + ChatMessage(
-        MessageType.AI,
-        "Анализирую фото..."
-    )
-    
-    viewModelScope.launch {
-        try {
-            // Конвертируем Bitmap в Base64
-            val base64Image = bitmapToBase64(bitmap)
-            
-            // Подготавливаем данные профиля
-            val profileData = userProfile.toNetworkProfile()
-            
-            // Отправляем запрос на Make.com
-            val response = safeApiCall {
-                val analyzeFoodImage = NetworkModule.makeService.analyzeFoodImage(
-                    webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
-                    request = ImageAnalysisRequest(
-                        imageBase64 = base64Image,
-                        userProfile = profileData
-                    )
+    fun testWebhookConnection() {
+        viewModelScope.launch {
+            try {
+                messages = messages + ChatMessage(
+                    MessageType.AI,
+                    "Тестирую соединение с Make.com..."
                 )
-                analyzeFoodImage
-            }
-            
-            if (response.isSuccess) {
-                val foodData = response.getOrNull()?.food
-                if (foodData != null) {
-                    // Создаем FoodItem из ответа
-                    pendingFood = FoodItem(
-                        name = foodData.name,
-                        calories = foodData.calories.toInt(),
-                        proteins = foodData.proteins.toInt(),
-                        fats = foodData.fats.toInt(),
-                        carbs = foodData.carbs.toInt(),
-                        weight = foodData.weight
+
+                // Простой тест с минимальными данными
+                val testProfile = UserProfileData(
+                    age = 25,
+                    weight = 70,
+                    height = 175,
+                    gender = "male",
+                    activityLevel = "active",
+                    goal = "maintain"
+                )
+
+                val response = safeApiCall {
+                    NetworkModule.makeService.checkHealth(
+                        webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6"
                     )
-                    
+                }
+
+                if (response.isSuccess) {
                     messages = messages + ChatMessage(
                         MessageType.AI,
-                        "Распознал: ${foodData.name}. Проверьте данные и выберите прием пищи."
+                        "✅ Соединение с Make.com успешно установлено!"
                     )
-                    
-                    // Показываем рекомендации если есть
-                    response.getOrNull()?.recommendations?.forEach { rec ->
+
+                    // Тест отправки простого текста
+                    val chatResponse = safeApiCall {
+                        NetworkModule.makeService.askAiDietitian(
+                            webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
+                            request = AiChatRequest(
+                                message = "Тест",
+                                userProfile = testProfile,
+                                userId = userId
+                            )
+                        )
+                    }
+
+                    if (chatResponse.isSuccess) {
                         messages = messages + ChatMessage(
                             MessageType.AI,
-                            "💡 $rec"
+                            "✅ AI диетолог работает нормально"
+                        )
+                    } else {
+                        messages = messages + ChatMessage(
+                            MessageType.AI,
+                            "⚠️ Ошибка AI: ${chatResponse.exceptionOrNull()?.message}"
                         )
                     }
                 } else {
                     messages = messages + ChatMessage(
                         MessageType.AI,
-                        "Не удалось распознать продукт. Попробуйте сделать фото еще раз или введите данные вручную."
+                        "❌ Не удалось подключиться к Make.com: ${response.exceptionOrNull()?.message}"
+                    )
+                }
+            } catch (e: Exception) {
+                messages = messages + ChatMessage(
+                    MessageType.AI,
+                    "❌ Ошибка теста: ${e.message}"
+                )
+            }
+        }
+    }
+
+    suspend fun analyzePhotoWithAI(bitmap: Bitmap) {
+        isAnalyzing = true
+        messages = messages + ChatMessage(MessageType.USER, "Фото загружено")
+
+        checkInternetConnection()
+        if (!isOnline) {
+            messages = messages + ChatMessage(
+                MessageType.AI,
+                "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
+            )
+            isAnalyzing = false
+            showManualInputDialog = true
+            return
+        }
+
+        messages = messages + ChatMessage(
+            MessageType.AI,
+            "Анализирую фото..."
+        )
+
+        viewModelScope.launch {
+            try {
+                // Создаем временный файл
+                val tempFile = File.createTempFile("photo", ".jpg", context.cacheDir)
+                val outputStream = FileOutputStream(tempFile)
+
+                // Сжимаем и сохраняем
+                val scaledBitmap = scaleBitmap(bitmap, 800)
+                scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+                outputStream.close()
+
+                // Подготавливаем данные
+                val profileData = userProfile.toNetworkProfile()
+
+                // Создаем multipart parts
+                val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                val photoPart = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
+
+                // Создаем JSON для userProfile
+                val gson = Gson()
+                val profileJson = gson.toJson(profileData)
+                val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
+
+                // userId как текст
+                val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                // Отправляем запрос
+                val response = safeApiCall {
+                    NetworkModule.makeService.analyzeFoodPhoto(
+                        webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
+                        photo = photoPart,
+                        userProfile = profileRequestBody,
+                        userId = userIdRequestBody
+                    )
+                }
+
+                // Удаляем временный файл
+                tempFile.delete()
+
+                if (response.isSuccess) {
+                    val result = response.getOrNull()
+
+                    if (result?.answer != null) {
+                        try {
+                            // Парсим JSON из строки answer
+                            val foodData = gson.fromJson(result.answer, FoodDataFromAnswer::class.java)
+
+                            if (foodData.food.equals("да", ignoreCase = true) && foodData.name.isNotEmpty()) {
+                                pendingFood = FoodItem(
+                                    name = foodData.name,
+                                    calories = foodData.calories.toInt(),
+                                    proteins = foodData.proteins.toInt(),
+                                    fats = foodData.fats.toInt(),
+                                    carbs = foodData.carbs.toInt(),
+                                    weight = foodData.weight
+                                )
+
+                                messages = messages + ChatMessage(
+                                    MessageType.AI,
+                                    "Распознал: ${foodData.name} (${foodData.calories} ккал). Выберите прием пищи и подтвердите."
+                                )
+                            } else {
+                                messages = messages + ChatMessage(
+                                    MessageType.AI,
+                                    "На фото не обнаружено еды. Попробуйте сделать более четкое фото или введите данные вручную."
+                                )
+                                showManualInputDialog = true
+                            }
+                        } catch (e: Exception) {
+                            Log.e("CalorieTracker", "Ошибка парсинга JSON", e)
+                            messages = messages + ChatMessage(
+                                MessageType.AI,
+                                "Не удалось обработать ответ. Введите данные вручную."
+                            )
+                            showManualInputDialog = true
+                        }
+                    } else {
+                        messages = messages + ChatMessage(
+                            MessageType.AI,
+                            "Сервер не вернул данные. Попробуйте еще раз."
+                        )
+                        showManualInputDialog = true
+                    }
+                } else {
+                    Log.e("CalorieTracker", "Ошибка API", response.exceptionOrNull())
+                    messages = messages + ChatMessage(
+                        MessageType.AI,
+                        "Ошибка соединения. Проверьте интернет и попробуйте снова."
                     )
                     showManualInputDialog = true
                 }
-            } else {
+            } catch (e: Exception) {
+                Log.e("CalorieTracker", "Общая ошибка", e)
                 messages = messages + ChatMessage(
                     MessageType.AI,
-                    "Ошибка при анализе фото. Попробуйте еще раз или введите данные вручную."
+                    "Произошла ошибка. Введите данные вручную."
                 )
                 showManualInputDialog = true
+            } finally {
+                isAnalyzing = false
             }
-        } catch (e: Exception) {
-            Log.e("CalorieTracker", "Ошибка анализа фото", e)
-            messages = messages + ChatMessage(
-                MessageType.AI,
-                "Произошла ошибка: ${e.message}. Введите данные вручную."
-            )
-            showManualInputDialog = true
-        } finally {
-            isAnalyzing = false
         }
     }
-}
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
-    val outputStream = ByteArrayOutputStream()
-    // Сжимаем до разумного размера
-    val scaledBitmap = scaleBitmap(bitmap, 800) // макс ширина 800px
-    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
-    val byteArray = outputStream.toByteArray()
-    return Base64.encodeToString(byteArray, Base64.NO_WRAP)
-}
+        val outputStream = ByteArrayOutputStream()
+
+        // Сжимаем до разумного размера
+        val scaledBitmap = scaleBitmap(bitmap, 800) // макс ширина 800px
+        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+
+        val byteArray = outputStream.toByteArray()
+        val sizeInKB = byteArray.size / 1024
+        Log.d("CalorieTracker", "Размер изображения после сжатия: $sizeInKB KB")
+
+        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
+    }
+
+    fun String.toRequestBody(contentType: String): RequestBody {
+        return this.toRequestBody(contentType.toMediaTypeOrNull())
+    }
 
 private fun scaleBitmap(bitmap: Bitmap, maxWidth: Int): Bitmap {
     if (bitmap.width <= maxWidth) return bitmap

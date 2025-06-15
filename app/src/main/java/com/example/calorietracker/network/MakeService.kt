@@ -1,6 +1,7 @@
 package com.example.calorietracker.network
 
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.http.*
 
 // Data classes for requests
@@ -79,10 +80,23 @@ data class AiChatResponse(
 )
 
 // Response classes
+// Исправленный response для парсинга вложенного JSON как строки
 data class FoodAnalysisResponse(
     val status: String,
-    val food: EnhancedFoodData?,
-    val recommendations: List<String>?
+    val answer: String? = null, // Теперь это строка, которую нужно распарсить отдельно
+    val food: EnhancedFoodData? = null,
+    val recommendations: List<String>? = null
+)
+
+// Отдельный класс для парсинга содержимого answer
+data class FoodDataFromAnswer(
+    val food: String,
+    val name: String,
+    val calories: Double,
+    val proteins: Double,
+    val fats: Double,
+    val carbs: Double,
+    val weight: Int
 )
 
 data class EnhancedFoodData(
@@ -193,33 +207,37 @@ interface MakeService {
     }
 
     @Headers("Content-Type: application/json")
-    @POST(WEBHOOK_ID)
+    @POST("{webhookId}")
     suspend fun analyzeFood(
+        @Path("webhookId") webhookId: String,
         @Body request: FoodAnalysisRequest
     ): FoodAnalysisResponse
 
     @Headers("Content-Type: application/json")
-    @POST(WEBHOOK_ID)
+    @POST("{webhookId}")
     suspend fun analyzeFoodImage(
-        @Body request: ImageAnalysisRequest,
-        webhookId: String
+        @Path("webhookId") webhookId: String,
+        @Body request: ImageAnalysisRequest
     ): FoodAnalysisResponse
 
     @Headers("Content-Type: application/json")
-    @POST(WEBHOOK_ID)
+    @POST("{webhookId}")
     suspend fun planMealWeek(
+        @Path("webhookId") webhookId: String,
         @Body request: MealPlanRequest
     ): MealPlanResponse
 
     @Headers("Content-Type: application/json")
-    @POST(WEBHOOK_ID)
+    @POST("{webhookId}")
     suspend fun analyzeNutrition(
+        @Path("webhookId") webhookId: String,
         @Body request: NutritionRequest
     ): NutritionResponse
 
     @Headers("Content-Type: application/json")
-    @POST(WEBHOOK_ID)
+    @POST("{webhookId}")
     suspend fun getRecommendations(
+        @Path("webhookId") webhookId: String,
         @Body request: RecommendationRequest
     ): RecommendationResponse
 
@@ -229,8 +247,8 @@ interface MakeService {
     suspend fun analyzeFoodPhoto(
         @Path("webhookId") webhookId: String,
         @Part photo: MultipartBody.Part,
-        @Part("userProfile") userProfile: UserProfileData,
-        @Part("userId") userId: String
+        @Part("userProfile") userProfile: RequestBody,
+        @Part("userId") userId: RequestBody
     ): FoodAnalysisResponse
 
     // Анализ по URL на изображение
@@ -249,16 +267,8 @@ interface MakeService {
         @Body request: AiChatRequest
     ): AiChatResponse
 
-    @GET(WEBHOOK_ID)
-    suspend fun checkHealth(): HealthResponse
-
-    suspend fun <T> safeApiCall(
-        apiCall: suspend () -> T
-    ): Result<T> {
-        return try {
-            Result.success(apiCall())
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    @GET("{webhookId}")
+    suspend fun checkHealth(
+        @Path("webhookId") webhookId: String
+    ): HealthResponse
 }
