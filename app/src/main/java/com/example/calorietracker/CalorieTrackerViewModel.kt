@@ -352,27 +352,45 @@ class CalorieTrackerViewModel(
             tempFile.delete()
 
             if (response.isSuccess) {
-                val foodData = response.getOrNull()
+                val result = response.getOrNull()
 
-                if (foodData != null) {
-                    if (foodData.food.equals("нет", ignoreCase = true)) {
+                if (result?.answer != null) {
+                    try {
+                        val foodData = gson.fromJson(result.answer, FoodDataFromAnswer::class.java)
+
+                        val flag = foodData.food.trim().lowercase()
+                        if (flag == "нет") {
+                            messages = messages + ChatMessage(
+                                MessageType.AI,
+                                "На фото не обнаружено еды."
+                            )
+                            android.widget.Toast.makeText(
+                                context,
+                                "На фото не обнаружено еды",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        } else if (foodData.name.isNotBlank()) {
+                            prefillFood = FoodItem(
+                                name = foodData.name,
+                                calories = foodData.calories.toInt(),
+                                proteins = foodData.proteins.toInt(),
+                                fats = foodData.fats.toInt(),
+                                carbs = foodData.carbs.toInt(),
+                                weight = foodData.weight
+                            )
+                            showManualInputDialog = true
+                        } else {
+                            messages = messages + ChatMessage(
+                                MessageType.AI,
+                                "Сервер вернул пустые данные. Введите информацию вручную."
+                            )
+                            showManualInputDialog = true
+                        }
+                    } catch (e: Exception) {
+                        Log.e("CalorieTracker", "Ошибка парсинга JSON", e)
                         messages = messages + ChatMessage(
                             MessageType.AI,
-                            "На фото не обнаружено еды."
-                        )
-                        android.widget.Toast.makeText(
-                            context,
-                            "На фото не обнаружено еды",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
-                    } else {
-                        prefillFood = FoodItem(
-                            name = foodData.name,
-                            calories = foodData.calories.toInt(),
-                            proteins = foodData.proteins.toInt(),
-                            fats = foodData.fats.toInt(),
-                            carbs = foodData.carbs.toInt(),
-                            weight = foodData.weight
+                            "Не удалось обработать ответ. Введите данные вручную."
                         )
                         showManualInputDialog = true
                     }
@@ -381,7 +399,6 @@ class CalorieTrackerViewModel(
                         MessageType.AI,
                         "Сервер не вернул данные. Попробуйте еще раз."
                     )
-                    showManualInputDialog = true
                 }
             } else {
                 Log.e("CalorieTracker", "Ошибка API", response.exceptionOrNull())

@@ -249,7 +249,7 @@ interface MakeService {
         @Part photo: MultipartBody.Part,
         @Part("userProfile") userProfile: RequestBody,
         @Part("userId") userId: RequestBody
-    ): FoodDataFromAnswer
+    ): FoodAnalysisResponse
 
 
     // Анализ по URL на изображение

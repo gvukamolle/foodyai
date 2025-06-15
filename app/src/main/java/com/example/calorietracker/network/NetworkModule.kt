@@ -23,7 +23,7 @@ object NetworkModule {
                 Log.d("Network", "Отправка запроса: ${request.url}")
                 try {
                     val response = chain.proceed(request)
-                    Log.d("Network", "Получен ответ: ${response.code}")
+                    Log.d("Network", "Ответ: ${response.code}")
                     response
                 } catch (e: Exception) {
                     Log.e("Network", "Ошибка запроса: ${e.message}", e)
