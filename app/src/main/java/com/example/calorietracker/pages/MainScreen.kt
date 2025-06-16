@@ -36,7 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.Divider
-import androidx.compose.material3.SideEffect
+import androidx.compose.runtime.SideEffect
 import android.widget.Toast
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
