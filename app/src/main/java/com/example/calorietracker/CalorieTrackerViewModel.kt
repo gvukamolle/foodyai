@@ -28,6 +28,9 @@ import java.io.FileOutputStream
 import kotlin.math.round
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.example.calorietracker.network.FoodDataFromAnswer
+import android.widget.Toast
+
+var showPhotoDialog by mutableStateOf(false)
 
 data class ChatMessage(
     val type: MessageType,
@@ -67,9 +70,14 @@ class CalorieTrackerViewModel(
     var showSettings by mutableStateOf(false)
     var userProfile by mutableStateOf(UserProfile())
     var dailyIntake by mutableStateOf(DailyIntake())
-    var messages by mutableStateOf(listOf(
-        ChatMessage(MessageType.AI, "Привет! Я ваш персональный AI-диетолог. Готов помочь с анализом питания и дать советы по здоровому образу жизни.")
-    ))
+    var messages by mutableStateOf(
+        listOf(
+            ChatMessage(
+                MessageType.AI,
+                "Привет! Я ваш персональный AI-диетолог. Готов помочь с анализом питания и дать советы по здоровому образу жизни."
+            )
+        )
+    )
     var inputMessage by mutableStateOf("")
     var pendingFood by mutableStateOf<FoodItem?>(null)
     var prefillFood by mutableStateOf<FoodItem?>(null)
@@ -80,7 +88,7 @@ class CalorieTrackerViewModel(
     private val foodAnalyzer = FoodAnalyzer()
     var isOnline by mutableStateOf(false)
     var showManualInputDialog by mutableStateOf(false)
-    var showPhotoUploadScreen by mutableStateOf(false)
+    var showPhotoDialog by mutableStateOf(false)
 
     init {
         loadUserData()
@@ -211,7 +219,6 @@ class CalorieTrackerViewModel(
             }
         }
     }
-
     // Преобразование UserProfile в UserProfileData для сети
     private fun UserProfile.toNetworkProfile(): UserProfileData {
         val age = calculateAge(birthday)
@@ -293,6 +300,8 @@ class CalorieTrackerViewModel(
         }
     }
 
+    // В CalorieTrackerViewModel.kt - замените метод analyzePhotoWithAI на этот:
+
     suspend fun analyzePhotoWithAI(bitmap: Bitmap) {
         isAnalyzing = true
         messages = messages + ChatMessage(MessageType.USER, "Фото загружено")
@@ -312,6 +321,14 @@ class CalorieTrackerViewModel(
             MessageType.AI,
             "Анализирую фото..."
         )
+
+        fun scaleBitmap(bitmap: Bitmap, maxWidth: Int): Bitmap {
+            if (bitmap.width <= maxWidth) return bitmap
+
+            val aspectRatio = bitmap.height.toFloat() / bitmap.width.toFloat()
+            val newHeight = (maxWidth * aspectRatio).toInt()
+            return Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
+        }
 
         try {
             // Создаем временный файл
@@ -333,7 +350,8 @@ class CalorieTrackerViewModel(
             // Создаем JSON для userProfile
             val gson = Gson()
             val profileJson = gson.toJson(profileData)
-            val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
+            val profileRequestBody =
+                profileJson.toRequestBody("application/json".toMediaTypeOrNull())
 
             // userId как текст
             val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
@@ -359,17 +377,28 @@ class CalorieTrackerViewModel(
                         val foodData = gson.fromJson(result.answer, FoodDataFromAnswer::class.java)
 
                         val flag = foodData.food.trim().lowercase()
-                        if (flag == "нет") {
+
+                        // Проверяем, обнаружена ли еда
+                        if (flag == "нет" || flag == "no") {
                             messages = messages + ChatMessage(
                                 MessageType.AI,
-                                "На фото не обнаружено еды."
+                                "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
                             )
-                            android.widget.Toast.makeText(
+                            Toast.makeText(
                                 context,
                                 "На фото не обнаружено еды",
-                                android.widget.Toast.LENGTH_LONG
+                                Toast.LENGTH_LONG
                             ).show()
-                        } else if (foodData.name.isNotBlank()) {
+                            // Предлагаем переснять
+                            showPhotoDialog = true
+                        } else if (flag == "да" || flag == "yes") {
+                            // Если еда обнаружена, заполняем данные
+                            messages = messages + ChatMessage(
+                                MessageType.AI,
+                                "✅ Распознан продукт: ${foodData.name}"
+                            )
+
+                            // ВАЖНО: Устанавливаем prefillFood перед открытием диалога
                             prefillFood = FoodItem(
                                 name = foodData.name,
                                 calories = foodData.calories.toInt(),
@@ -378,11 +407,14 @@ class CalorieTrackerViewModel(
                                 carbs = foodData.carbs.toInt(),
                                 weight = foodData.weight
                             )
+
+                            // Открываем диалог с заполненными данными
                             showManualInputDialog = true
                         } else {
+                            // Если ответ непонятный
                             messages = messages + ChatMessage(
                                 MessageType.AI,
-                                "Сервер вернул пустые данные. Введите информацию вручную."
+                                "Не удалось определить тип продукта. Введите данные вручную."
                             )
                             showManualInputDialog = true
                         }
@@ -418,126 +450,118 @@ class CalorieTrackerViewModel(
         } finally {
             isAnalyzing = false
         }
-    }
 
-                    private fun bitmapToBase64(bitmap: Bitmap): String {
-        val outputStream = ByteArrayOutputStream()
+        fun bitmapToBase64(bitmap: Bitmap): String {
+            val outputStream = ByteArrayOutputStream()
 
-        // Сжимаем до разумного размера
-        val scaledBitmap = scaleBitmap(bitmap, 800) // макс ширина 800px
-        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+            // Сжимаем до разумного размера
+            val scaledBitmap = scaleBitmap(bitmap, 800) // макс ширина 800px
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
 
-        val byteArray = outputStream.toByteArray()
-        val sizeInKB = byteArray.size / 1024
-        Log.d("CalorieTracker", "Размер изображения после сжатия: $sizeInKB KB")
+            val byteArray = outputStream.toByteArray()
+            val sizeInKB = byteArray.size / 1024
+            Log.d("CalorieTracker", "Размер изображения после сжатия: $sizeInKB KB")
 
-        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
-    }
+            return Base64.encodeToString(byteArray, Base64.NO_WRAP)
+        }
 
-    fun String.toRequestBody(contentType: String): RequestBody {
-        return this.toRequestBody(contentType.toMediaTypeOrNull())
-    }
+        fun String.toRequestBody(contentType: String): RequestBody {
+            return this.toRequestBody(contentType.toMediaTypeOrNull())
+        }
 
-private fun scaleBitmap(bitmap: Bitmap, maxWidth: Int): Bitmap {
-    if (bitmap.width <= maxWidth) return bitmap
-    
-    val aspectRatio = bitmap.height.toFloat() / bitmap.width.toFloat()
-    val newHeight = (maxWidth * aspectRatio).toInt()
-    return Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
-}
+        // Остальное без изменений (ручной ввод еды, подтверждение, советы и т.д.)
+        // ...
 
-    // Остальное без изменений (ручной ввод еды, подтверждение, советы и т.д.)
-    // ...
-
-    fun handleManualInput(
-        name: String,
-        calories: String,
-        proteins: String,
-        fats: String,
-        carbs: String,
-        weight: String
-    ) {
-        pendingFood = FoodItem(
-            name = name,
-            calories = calories.toIntOrNull() ?: 0,
-            proteins = proteins.toIntOrNull() ?: 0,
-            fats = fats.toIntOrNull() ?: 0,
-            carbs = carbs.toIntOrNull() ?: 0,
-            weight = weight.toIntOrNull() ?: 100
-        )
-
-        messages = messages + ChatMessage(
-            MessageType.USER,
-            "Добавлен продукт: $name"
-        )
-
-        messages = messages + ChatMessage(
-            MessageType.AI,
-            "Записал данные о продукте. Выберите прием пищи и подтвердите."
-        )
-
-        showManualInputDialog = false
-    }
-
-    fun confirmFood() {
-        pendingFood?.let { food ->
-            dailyIntake = dailyIntake.copy(
-                calories = dailyIntake.calories + food.calories,
-                proteins = dailyIntake.proteins + food.proteins,
-                fats = dailyIntake.fats + food.fats,
-                carbs = dailyIntake.carbs + food.carbs
+        fun handleManualInput(
+            name: String,
+            calories: String,
+            proteins: String,
+            fats: String,
+            carbs: String,
+            weight: String
+        ) {
+            pendingFood = FoodItem(
+                name = name,
+                calories = calories.toIntOrNull() ?: 0,
+                proteins = proteins.toIntOrNull() ?: 0,
+                fats = fats.toIntOrNull() ?: 0,
+                carbs = carbs.toIntOrNull() ?: 0,
+                weight = weight.toIntOrNull() ?: 100
             )
 
-            val aiStatus = if (isOnline) "с помощью AI" else "вручную"
+            messages = messages + ChatMessage(
+                MessageType.USER,
+                "Добавлен продукт: $name"
+            )
+
             messages = messages + ChatMessage(
                 MessageType.AI,
-                "Отлично! Записал ${food.name} в ${selectedMeal.displayName.lowercase()} ($aiStatus). " +
-                        generateNutritionalAdvice(food)
+                "Записал данные о продукте. Выберите прием пищи и подтвердите."
             )
 
-            pendingFood = null
-            saveUserData()
+            showManualInputDialog = false
         }
-    }
 
-    private fun generateNutritionalAdvice(food: FoodItem): String {
-        val caloriePercent = (food.calories.toFloat() / userProfile.dailyCalories * 100).toInt()
-        val remainingCalories = userProfile.dailyCalories - dailyIntake.calories
+        fun confirmFood() {
+            pendingFood?.let { food ->
+                dailyIntake = dailyIntake.copy(
+                    calories = dailyIntake.calories + food.calories,
+                    proteins = dailyIntake.proteins + food.proteins,
+                    fats = dailyIntake.fats + food.fats,
+                    carbs = dailyIntake.carbs + food.carbs
+                )
 
-        return when {
-            caloriePercent > 30 -> "Это ${caloriePercent}% от дневной нормы. Планируйте остальные приемы пищи с учетом этого."
-            remainingCalories < 200 -> "У вас осталось всего $remainingCalories ккал на день. Выбирайте легкие продукты."
-            food.proteins > food.carbs -> "Отличный источник белка! Это поможет в достижении ваших целей."
-            food.carbs > 50 -> "Много углеводов - отлично для энергии. Не забудьте про физическую активность!"
-            else -> "Хороший выбор! Продолжайте в том же духе."
+                val aiStatus = if (isOnline) "с помощью AI" else "вручную"
+                messages = messages + ChatMessage(
+                    MessageType.AI,
+                    "Отлично! Записал ${food.name} в ${selectedMeal.displayName.lowercase()} ($aiStatus). " +
+                            generateNutritionalAdvice(food)
+                )
+
+                pendingFood = null
+                saveUserData()
+            }
         }
-    }
 
-    private fun getOfflineResponse(question: String): String {
-        return when {
-            question.contains("калори", ignoreCase = true) ->
-                "Ваша дневная норма: ${userProfile.dailyCalories} ккал. Сегодня вы употребили ${dailyIntake.calories} ккал. " +
-                        "Осталось: ${userProfile.dailyCalories - dailyIntake.calories} ккал."
+        fun generateNutritionalAdvice(food: FoodItem): String {
+            val caloriePercent = (food.calories.toFloat() / userProfile.dailyCalories * 100).toInt()
+            val remainingCalories = userProfile.dailyCalories - dailyIntake.calories
 
-            question.contains("белк", ignoreCase = true) ->
-                "Норма белка: ${userProfile.dailyProteins}г в день. Сегодня употреблено: ${dailyIntake.proteins}г. " +
-                        "Хорошие источники белка: куриная грудка (31г/100г), творог (18г/100г), яйца (13г/100г)."
+            return when {
+                caloriePercent > 30 -> "Это ${caloriePercent}% от дневной нормы. Планируйте остальные приемы пищи с учетом этого."
+                remainingCalories < 200 -> "У вас осталось всего $remainingCalories ккал на день. Выбирайте легкие продукты."
+                food.proteins > food.carbs -> "Отличный источник белка! Это поможет в достижении ваших целей."
+                food.carbs > 50 -> "Много углеводов - отлично для энергии. Не забудьте про физическую активность!"
+                else -> "Хороший выбор! Продолжайте в том же духе."
+            }
+        }
 
-            question.contains("вод", ignoreCase = true) ->
-                "Рекомендуется выпивать ${userProfile.weight * 30}мл воды в день. " +
-                        "Это примерно ${userProfile.weight * 30 / 250} стаканов."
+        fun getOfflineResponse(question: String): String {
+            return when {
+                question.contains("калори", ignoreCase = true) ->
+                    "Ваша дневная норма: ${userProfile.dailyCalories} ккал. Сегодня вы употребили ${dailyIntake.calories} ккал. " +
+                            "Осталось: ${userProfile.dailyCalories - dailyIntake.calories} ккал."
 
-            question.contains("похуде", ignoreCase = true) ->
-                "Для похудения важен дефицит калорий. Ваша норма для похудения: ${userProfile.dailyCalories} ккал. " +
-                        "Добавьте физическую активность и следите за размером порций."
+                question.contains("белк", ignoreCase = true) ->
+                    "Норма белка: ${userProfile.dailyProteins}г в день. Сегодня употреблено: ${dailyIntake.proteins}г. " +
+                            "Хорошие источники белка: куриная грудка (31г/100г), творог (18г/100г), яйца (13г/100г)."
 
-            question.contains("завтрак", ignoreCase = true) ->
-                "Идеальный завтрак должен содержать 25-30% дневной нормы калорий (${userProfile.dailyCalories * 0.25}-${userProfile.dailyCalories * 0.3} ккал). " +
-                        "Включите белки, сложные углеводы и полезные жиры."
+                question.contains("вод", ignoreCase = true) ->
+                    "Рекомендуется выпивать ${userProfile.weight * 30}мл воды в день. " +
+                            "Это примерно ${userProfile.weight * 30 / 250} стаканов."
 
-            else ->
-                "Для полноценных консультаций AI необходимо подключение к интернету. " +
-                        "Сейчас могу помочь с базовыми вопросами о калориях, белках, воде и похудении."
+                question.contains("похуде", ignoreCase = true) ->
+                    "Для похудения важен дефицит калорий. Ваша норма для похудения: ${userProfile.dailyCalories} ккал. " +
+                            "Добавьте физическую активность и следите за размером порций."
+
+                question.contains("завтрак", ignoreCase = true) ->
+                    "Идеальный завтрак должен содержать 25-30% дневной нормы калорий (${userProfile.dailyCalories * 0.25}-${userProfile.dailyCalories * 0.3} ккал). " +
+                            "Включите белки, сложные углеводы и полезные жиры."
+
+                else ->
+                    "Для полноценных консультаций AI необходимо подключение к интернету. " +
+                            "Сейчас могу помочь с базовыми вопросами о калориях, белках, воде и похудении."
+            }
         }
     }
 }

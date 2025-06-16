@@ -30,6 +30,19 @@ import android.os.Build
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material3.Divider
+import androidx.compose.material3.SideEffect
+import android.widget.Toast
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.HorizontalDivider
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -254,25 +267,6 @@ fun PendingFoodCard(
     }
 }
 
-// SetStatusBarColorToWhite - существующий компонент
-@Composable
-fun SetStatusBarColorToWhite() {
-    val context = LocalContext.current
-    val view = LocalView.current
-    SideEffect {
-        val window = (context as? Activity)?.window ?: return@SideEffect
-        window.statusBarColor = android.graphics.Color.WHITE
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val decorView = window.decorView
-            decorView.systemUiVisibility =
-                decorView.systemUiVisibility or android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        }
-    }
-}
-
-// НОВЫЕ КОМПОНЕНТЫ ДЛЯ AI
-
-// Диалог для ручного ввода продукта
 @Composable
 fun ManualFoodInputDialog(
     initialFoodName: String = "",
@@ -285,20 +279,34 @@ fun ManualFoodInputDialog(
     onConfirm: (name: String, calories: String, proteins: String, fats: String, carbs: String, weight: String) -> Unit
 ) {
     var foodName by remember { mutableStateOf(initialFoodName) }
-    var calories by remember { mutableStateOf(initialCalories) }
-    var proteins by remember { mutableStateOf(initialProteins) }
-    var fats by remember { mutableStateOf(initialFats) }
-    var carbs by remember { mutableStateOf(initialCarbs) }
+    var caloriesPer100g by remember { mutableStateOf(initialCalories) }
+    var proteinsPer100g by remember { mutableStateOf(initialProteins) }
+    var fatsPer100g by remember { mutableStateOf(initialFats) }
+    var carbsPer100g by remember { mutableStateOf(initialCarbs) }
     var weight by remember { mutableStateOf(initialWeight) }
+
+    // Расчет итоговых значений
+    val weightFloat = weight.toFloatOrNull() ?: 100f
+    val totalCalories = ((caloriesPer100g.toFloatOrNull() ?: 0f) * weightFloat / 100).toInt()
+    val totalProteins = ((proteinsPer100g.toFloatOrNull() ?: 0f) * weightFloat / 100).toInt()
+    val totalFats = ((fatsPer100g.toFloatOrNull() ?: 0f) * weightFloat / 100).toInt()
+    val totalCarbs = ((carbsPer100g.toFloatOrNull() ?: 0f) * weightFloat / 100).toInt()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Добавить продукт вручную") },
+        title = {
+            Text(
+                text = if (initialFoodName.isNotEmpty()) "Проверьте данные" else "Добавить продукт",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Название продукта
                 OutlinedTextField(
                     value = foodName,
                     onValueChange = { foodName = it },
@@ -307,22 +315,34 @@ fun ManualFoodInputDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Вес порции
                 OutlinedTextField(
                     value = weight,
                     onValueChange = { weight = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("Вес (г)") },
+                    label = { Text("Вес порции (г)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Заголовок для КБЖУ на 100г
+                Text(
+                    text = "Пищевая ценность на 100г:",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                )
+
+                // КБЖУ на 100г
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedTextField(
-                        value = calories,
-                        onValueChange = { calories = it.filter { ch -> ch.isDigit() } },
+                        value = caloriesPer100g,
+                        onValueChange = { caloriesPer100g = it.filter { ch -> ch.isDigit() } },
                         label = { Text("Ккал") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
@@ -330,8 +350,8 @@ fun ManualFoodInputDialog(
                     )
 
                     OutlinedTextField(
-                        value = proteins,
-                        onValueChange = { proteins = it.filter { ch -> ch.isDigit() } },
+                        value = proteinsPer100g,
+                        onValueChange = { proteinsPer100g = it.filter { ch -> ch.isDigit() } },
                         label = { Text("Белки") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
@@ -344,8 +364,8 @@ fun ManualFoodInputDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedTextField(
-                        value = fats,
-                        onValueChange = { fats = it.filter { ch -> ch.isDigit() } },
+                        value = fatsPer100g,
+                        onValueChange = { fatsPer100g = it.filter { ch -> ch.isDigit() } },
                         label = { Text("Жиры") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
@@ -353,8 +373,8 @@ fun ManualFoodInputDialog(
                     )
 
                     OutlinedTextField(
-                        value = carbs,
-                        onValueChange = { carbs = it.filter { ch -> ch.isDigit() } },
+                        value = carbsPer100g,
+                        onValueChange = { carbsPer100g = it.filter { ch -> ch.isDigit() } },
                         label = { Text("Углеводы") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
@@ -362,8 +382,36 @@ fun ManualFoodInputDialog(
                     )
                 }
 
+                // Итоговые значения
+                if (weight.isNotBlank() && weight != "100") {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFE8F5E9)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                text = "Итого на ${weight}г:",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Black
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Калории: $totalCalories ккал | Белки: ${totalProteins}г | Жиры: ${totalFats}г | Углеводы: ${totalCarbs}г",
+                                fontSize = 12.sp,
+                                color = Color(0xFF4CAF50)
+                            )
+                        }
+                    }
+                }
+
                 Text(
-                    text = "Введите данные с упаковки продукта",
+                    text = "💡 Введите данные с упаковки продукта (на 100г)",
                     fontSize = 12.sp,
                     color = Color.Gray,
                     modifier = Modifier.padding(top = 4.dp)
@@ -373,58 +421,153 @@ fun ManualFoodInputDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (foodName.isNotBlank() && calories.isNotBlank()) {
-                        onConfirm(foodName, calories, proteins, fats, carbs, weight)
+                    if (foodName.isNotBlank() && caloriesPer100g.isNotBlank()) {
+                        // Передаем итоговые значения
+                        onConfirm(
+                            foodName,
+                            totalCalories.toString(),
+                            totalProteins.toString(),
+                            totalFats.toString(),
+                            totalCarbs.toString(),
+                            weight
+                        )
                         onDismiss()
                     }
                 }
             ) {
-                Text("Добавить")
+                Text("Добавить", color = Color.Black)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text("Отмена", color = Color.Gray)
             }
         }
     )
 }
 
-// Простой индикатор статуса AI
 @Composable
-fun SimpleAIStatus(isOnline: Boolean) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isOnline) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
-        ),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = if (isOnline) Icons.Default.Wifi else Icons.Default.WifiOff,
-                contentDescription = null,
-                tint = if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (isOnline)
-                    "AI анализ доступен - сфотографируйте продукт"
-                else
-                    "Нет интернета - введите данные вручную",
-                fontSize = 14.sp,
-                color = Color.Black
-            )
+fun PhotoUploadDialog(
+    onDismiss: () -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Добавить фото продукта",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "AI автоматически распознает продукт и определит его калорийность",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+
+                // Кнопка камеры
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onCameraClick() },
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFF3F4F6)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "Сделать фото",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Black
+                            )
+                            Text(
+                                text = "Сфотографируйте продукт или упаковку",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+
+                // Кнопка галереи
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onGalleryClick() },
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFF3F4F6)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Photo,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "Выбрать из галереи",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Black
+                            )
+                            Text(
+                                text = "Загрузите готовое фото",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена", color = Color.Black)
+            }
         }
-    }
+    )
 }
 
 // Кнопки для фото/ручного ввода
@@ -489,7 +632,6 @@ fun MainScreen(
     )
 }
 
-// ОБНОВЛЕННЫЙ MainScreen с AI функциями
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdatedMainScreen(
@@ -498,8 +640,6 @@ fun UpdatedMainScreen(
     onManualClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
-    SetStatusBarColorToWhite()
-
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color.White
@@ -525,7 +665,6 @@ fun UpdatedMainScreen(
                     color = Color.Black,
                     modifier = Modifier.weight(1f)
                 )
-                // ВСТАВЬ вот эту строку прямо перед IconButton:
                 OnlineStatus(isOnline = viewModel.isOnline)
                 Spacer(modifier = Modifier.width(12.dp))
                 IconButton(
