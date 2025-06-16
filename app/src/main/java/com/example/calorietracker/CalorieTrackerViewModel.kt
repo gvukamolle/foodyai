@@ -2,7 +2,6 @@ package com.example.calorietracker
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.util.Base64
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
@@ -19,9 +18,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.round
@@ -44,7 +41,7 @@ data class FoodItem(
     val proteins: Int,
     val fats: Int,
     val carbs: Int,
-    val weight: Int
+    val weight: String
 )
 
 enum class MealType(val displayName: String) {
@@ -248,6 +245,7 @@ class CalorieTrackerViewModel(
 
                 if (result?.answer != null) {
                     try {
+                        Log.i("FoodParseDebug", "answer: " + result.answer)
                         val foodData = gson.fromJson(result.answer, FoodDataFromAnswer::class.java)
                         val flag = foodData.food.trim().lowercase()
 
@@ -265,23 +263,21 @@ class CalorieTrackerViewModel(
                             // Предлагаем переснять
                             showPhotoDialog = true
                         } else if (flag == "да" || flag == "yes") {
+                            Log.d("PolCheck", "AI нашёл еду: ${foodData.name}, открываю диалог")
                             // Если еда обнаружена, заполняем данные
                             messages = messages + ChatMessage(
                                 MessageType.AI,
                                 "✅ Распознан продукт: ${foodData.name}"
                             )
-
                             // ВАЖНО: Устанавливаем prefillFood перед открытием диалога
                             prefillFood = FoodItem(
                                 name = foodData.name,
-                                calories = foodData.calories.toInt(),
-                                proteins = foodData.proteins.toInt(),
-                                fats = foodData.fats.toInt(),
-                                carbs = foodData.carbs.toInt(),
+                                calories = foodData.calories.toIntOrNull() ?: 0,
+                                proteins = foodData.proteins.toIntOrNull() ?: 0,
+                                fats = foodData.fats.toIntOrNull() ?: 0,
+                                carbs = foodData.carbs.toIntOrNull() ?: 0,
                                 weight = foodData.weight
                             )
-
-                            // Открываем диалог с заполненными данными
                             showManualInputDialog = true
                         } else {
                             // Если ответ непонятный
@@ -340,7 +336,7 @@ class CalorieTrackerViewModel(
             proteins = proteins.toIntOrNull() ?: 0,
             fats = fats.toIntOrNull() ?: 0,
             carbs = carbs.toIntOrNull() ?: 0,
-            weight = weight.toIntOrNull() ?: 100
+            weight = (weight.toIntOrNull() ?: 100).toString()
         )
 
         messages = messages + ChatMessage(

@@ -84,7 +84,7 @@ data class AiChatResponse(
 data class FoodAnalysisResponse(
     val status: String,
     val answer: String? = null, // Теперь это строка, которую нужно распарсить отдельно
-    val food: EnhancedFoodData? = null,
+    val food: String? = null,
     val recommendations: List<String>? = null
 )
 
@@ -92,11 +92,11 @@ data class FoodAnalysisResponse(
 data class FoodDataFromAnswer(
     val food: String,
     val name: String,
-    val calories: Double,
-    val proteins: Double,
-    val fats: Double,
-    val carbs: Double,
-    val weight: Int
+    val calories: String,
+    val proteins: String,
+    val fats: String,
+    val carbs: String,
+    val weight: String
 )
 
 data class EnhancedFoodData(
