@@ -120,7 +120,7 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
     // Диалог ручного ввода
     if (viewModel.showManualInputDialog) {
         ManualFoodInputDialog(
-            
+            // УБЕДИТЕСЬ, что передаете данные из prefillFood!
             initialFoodName = viewModel.prefillFood?.name ?: "",
             initialCalories = viewModel.prefillFood?.calories?.toString() ?: "",
             initialProteins = viewModel.prefillFood?.proteins?.toString() ?: "",
@@ -129,14 +129,15 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
             initialWeight = viewModel.prefillFood?.weight?.toString() ?: "100",
             onDismiss = {
                 viewModel.showManualInputDialog = false
-                viewModel.prefillFood = null
+                viewModel.prefillFood = null  // очищаем после закрытия
             },
             onConfirm = { name, calories, proteins, fats, carbs, weight ->
                 viewModel.handleManualInput(name, calories, proteins, fats, carbs, weight)
-                viewModel.prefillFood = null
+                viewModel.prefillFood = null  // очищаем после подтверждения
             }
         )
     }
+
 
     // Навигация между экранами
     when {

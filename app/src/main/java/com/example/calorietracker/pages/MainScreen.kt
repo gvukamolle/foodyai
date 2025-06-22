@@ -43,6 +43,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -50,7 +55,7 @@ fun OnlineStatus(isOnline: Boolean) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .background(
-                color = if (isOnline) Color(0x1A82FFAE) else Color(0x1AFF9292),
+                color = if (isOnline) Color(0xFFE8F5E9) else Color(0xFFFFEBEE), // Более светлые цвета
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 10.dp, vertical = 4.dp)
@@ -58,14 +63,14 @@ fun OnlineStatus(isOnline: Boolean) {
         Icon(
             imageVector = if (isOnline) Icons.Default.Wifi else Icons.Default.WifiOff,
             contentDescription = null,
-            tint = if (isOnline) Color(0xFF4EFF8A) else Color(0xFFFF9292),
-            modifier = Modifier.size(18.dp)
+            tint = if (isOnline) Color(0xFF4CAF50) else Color(0xFFF44336), // Зеленый/красный
+            modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = if (isOnline) "Online" else "Offline",
-            fontSize = 13.sp,
-            color = if (isOnline) Color(0xFF4EFF8A) else Color(0xFFFF9292),
+            fontSize = 12.sp,
+            color = if (isOnline) Color(0xFF2E7D32) else Color(0xFFC62828), // Темнее для лучшей читаемости
             fontWeight = FontWeight.Medium
         )
     }
@@ -409,13 +414,6 @@ fun ManualFoodInputDialog(
                         }
                     }
                 }
-
-                Text(
-                    text = "💡 Введите данные с упаковки продукта (на 100г)",
-                    fontSize = 12.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
             }
         },
         confirmButton = {
@@ -477,7 +475,7 @@ fun PhotoUploadDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "AI автоматически распознает продукт и определит его калорийность",
+                    text = "Рекомендуем загрузить фотографию этикетки с КБЖУ и составом",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
@@ -640,6 +638,36 @@ fun UpdatedMainScreen(
     onManualClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
+    // Управление системными UI элементами
+    val systemUiController = rememberSystemUiController()
+
+    // Устанавливаем белый цвет для статус бара и навигационного бара
+    SideEffect {
+        systemUiController.setSystemBarsColor(
+            color = Color.White,
+            darkIcons = true // черные иконки на белом фоне
+        )
+
+        // Отдельно для навигационного бара если нужно
+        systemUiController.setNavigationBarColor(
+            color = Color.White,
+            darkIcons = true
+        )
+    }
+
+    // Состояние для прокрутки чата
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // Автоматическая прокрутка при новых сообщениях
+    LaunchedEffect(viewModel.messages.size) {
+        if (viewModel.messages.isNotEmpty()) {
+            coroutineScope.launch {
+                listState.animateScrollToItem(viewModel.messages.size - 1)
+            }
+        }
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color.White
@@ -650,10 +678,11 @@ fun UpdatedMainScreen(
                 .navigationBarsPadding()
                 .imePadding()
         ) {
-            // Заголовок с настройками
+            // Заголовок с настройками - убираем серый фон
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(Color.White) // Явно белый фон
                     .padding(WindowInsets.statusBars.asPaddingValues())
                     .padding(top = 8.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -753,9 +782,10 @@ fun UpdatedMainScreen(
                 Spacer(modifier = Modifier.height(6.dp))
             }
 
-            // Чат и загрузка
+            // Чат с автопрокруткой
             Box(modifier = Modifier.weight(1f)) {
                 LazyColumn(
+                    state = listState, // Используем состояние для прокрутки
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp),
@@ -793,27 +823,12 @@ fun UpdatedMainScreen(
                 }
             }
 
-            // Подсказка
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFF9FAFB)
-            ) {
-                Text(
-                    text = if (viewModel.isOnline)
-                        "💡 AI распознает продукты по фото автоматически"
-                    else
-                        "💡 Введите данные с упаковки продукта вручную",
-                    fontSize = 12.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
 
             // Поле ввода сообщения
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(Color.White) // Белый фон
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -830,13 +845,13 @@ fun UpdatedMainScreen(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .height(56.dp),
+                        .height(54.dp),
                     singleLine = true,
-                    shape = RoundedCornerShape(50),
+                    shape = RoundedCornerShape(54),
                     trailingIcon = {
                         IconButton(
                             onClick = { viewModel.sendMessage() },
-                            modifier = Modifier.size(50.dp)
+                            modifier = Modifier.size(54.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Send,

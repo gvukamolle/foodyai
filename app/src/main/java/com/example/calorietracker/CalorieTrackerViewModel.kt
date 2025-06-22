@@ -25,10 +25,16 @@ import kotlin.math.round
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.example.calorietracker.network.FoodDataFromAnswer
 import android.widget.Toast
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import com.example.calorietracker.network.LogFoodRequest
+import com.example.calorietracker.network.FoodItemData
 
+// Обновленная структура сообщения с датой
 data class ChatMessage(
     val type: MessageType,
-    val content: String
+    val content: String,
+    val timestamp: LocalDateTime = LocalDateTime.now()
 )
 
 enum class MessageType {
@@ -55,6 +61,19 @@ enum class MealType(val displayName: String) {
 
 // Исправленная структура CalorieTrackerViewModel.kt
 
+fun getFoodHistoryByDate(date: String): List<FoodHistoryItem> {
+    // Этот метод будет вызываться при запросах типа "что я ел вчера"
+    // Данные можно получить с сервера или из локальной БД
+    return emptyList() // TODO: Implement when server API is ready
+}
+
+data class FoodHistoryItem(
+    val foodName: String,
+    val calories: Int,
+    val mealType: String,
+    val timestamp: LocalDateTime
+)
+
 class CalorieTrackerViewModel(
     private val repository: DataRepository,
     private val context: Context
@@ -66,11 +85,13 @@ class CalorieTrackerViewModel(
     var showSettings by mutableStateOf(false)
     var userProfile by mutableStateOf(UserProfile())
     var dailyIntake by mutableStateOf(DailyIntake())
+    var currentFoodSource by mutableStateOf<String?>(null)
     var messages by mutableStateOf(
         listOf(
             ChatMessage(
                 MessageType.AI,
-                "Привет! Я ваш персональный AI-диетолог. Готов помочь с анализом питания и дать советы по здоровому образу жизни."
+                "Привет! Я ваш персональный AI-диетолог. Готов помочь с анализом питания и дать советы по здоровому образу жизни.",
+                LocalDateTime.now()
             )
         )
     )
@@ -184,8 +205,10 @@ class CalorieTrackerViewModel(
     // Анализ фото с AI
     suspend fun analyzePhotoWithAI(bitmap: Bitmap) {
         isAnalyzing = true
+        currentFoodSource = "ai_photo"
         messages = messages + ChatMessage(MessageType.USER, "Фото загружено")
 
+        // Проверяем интернет
         checkInternetConnection()
         if (!isOnline) {
             messages = messages + ChatMessage(
@@ -203,34 +226,26 @@ class CalorieTrackerViewModel(
         )
 
         try {
-            // Создаем временный файл
+            // 1. Подготавливаем изображение
             val tempFile = File.createTempFile("photo", ".jpg", context.cacheDir)
-            val outputStream = FileOutputStream(tempFile)
+            FileOutputStream(tempFile).use { outputStream ->
+                val scaledBitmap = scaleBitmap(bitmap, 800)
+                scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+            }
 
-            // Сжимаем и сохраняем
-            val scaledBitmap = scaleBitmap(bitmap, 800)
-            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
-            outputStream.close()
-
-            // Подготавливаем данные
-            val profileData = userProfile.toNetworkProfile()
-
-            // Создаем multipart parts
+            // 2. Подготавливаем данные для отправки
+            val gson = Gson()
             val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
 
-            // Создаем JSON для userProfile
-            val gson = Gson()
-            val profileJson = gson.toJson(profileData)
+            val profileJson = gson.toJson(userProfile.toNetworkProfile())
             val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
-
-            // userId как текст
             val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
 
-            // Отправляем запрос
+            // 3. Отправляем запрос
             val response = safeApiCall {
                 NetworkModule.makeService.analyzeFoodPhoto(
-                    webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
+                    webhookId = MakeService.WEBHOOK_ID,
                     photo = photoPart,
                     userProfile = profileRequestBody,
                     userId = userIdRequestBody
@@ -240,86 +255,95 @@ class CalorieTrackerViewModel(
             // Удаляем временный файл
             tempFile.delete()
 
-            if (response.isSuccess) {
-                val result = response.getOrNull()
+            // 4. Обрабатываем ответ
+            if (!response.isSuccess) {
+                handleError("Ошибка соединения")
+                return
+            }
 
-                if (result?.answer != null) {
-                    try {
-                        Log.i("FoodParseDebug", "answer: " + result.answer)
-                        val foodData = gson.fromJson(result.answer, FoodDataFromAnswer::class.java)
-                        val flag = foodData.food.trim().lowercase()
+            val result = response.getOrNull()
+            if (result?.answer == null) {
+                handleError("Сервер не вернул данные")
+                return
+            }
 
-                        // Проверяем, обнаружена ли еда
-                        if (flag == "нет" || flag == "no") {
-                            messages = messages + ChatMessage(
-                                MessageType.AI,
-                                "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
-                            )
-                            Toast.makeText(
-                                context,
-                                "На фото не обнаружено еды",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            // Предлагаем переснять
-                            showPhotoDialog = true
-                        } else if (flag == "да" || flag == "yes") {
-                            Log.d("PolCheck", "AI нашёл еду: ${foodData.name}, открываю диалог")
-                            // Если еда обнаружена, заполняем данные
-                            messages = messages + ChatMessage(
-                                MessageType.AI,
-                                "✅ Распознан продукт: ${foodData.name}"
-                            )
-                            // ВАЖНО: Устанавливаем prefillFood перед открытием диалога
-                            prefillFood = FoodItem(
-                                name = foodData.name,
-                                calories = foodData.calories.toIntOrNull() ?: 0,
-                                proteins = foodData.proteins.toIntOrNull() ?: 0,
-                                fats = foodData.fats.toIntOrNull() ?: 0,
-                                carbs = foodData.carbs.toIntOrNull() ?: 0,
-                                weight = foodData.weight
-                            )
-                            showManualInputDialog = true
-                        } else {
-                            // Если ответ непонятный
-                            messages = messages + ChatMessage(
-                                MessageType.AI,
-                                "Не удалось определить тип продукта. Введите данные вручную."
-                            )
-                            showManualInputDialog = true
-                        }
-                    } catch (e: Exception) {
-                        Log.e("CalorieTracker", "Ошибка парсинга JSON", e)
+            // 5. Парсим JSON ответ
+            try {
+                Log.d("CalorieTracker", "Ответ от сервера: ${result.answer}")
+
+                // Парсим через data class
+                val foodData = gson.fromJson(result.answer, FoodDataFromAnswer::class.java)
+
+                when (foodData.food.trim().lowercase()) {
+                    "нет", "no" -> {
+                        // Еда не найдена
                         messages = messages + ChatMessage(
                             MessageType.AI,
-                            "Не удалось обработать ответ. Введите данные вручную."
+                            "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
                         )
+                        Toast.makeText(context, "На фото не обнаружено еды", Toast.LENGTH_LONG).show()
+                        showPhotoDialog = true // Предлагаем переснять
+                    }
+
+                    "да", "yes" -> {
+                        // Еда найдена - заполняем данные
+                        messages = messages + ChatMessage(
+                            MessageType.AI,
+                            "✅ Распознан продукт: ${foodData.name}"
+                        )
+
+                        // Создаем FoodItem из полученных данных
+                        prefillFood = FoodItem(
+                            name = foodData.name,
+                            calories = foodData.calories,
+                            proteins = foodData.proteins,
+                            fats = foodData.fats,
+                            carbs = foodData.carbs,
+                            weight = foodData.weight
+                        )
+
+                        Log.d("CalorieTracker", "Установлен prefillFood: $prefillFood")
                         showManualInputDialog = true
                     }
-                } else {
-                    messages = messages + ChatMessage(
-                        MessageType.AI,
-                        "Сервер не вернул данные. Попробуйте еще раз."
-                    )
+
+                    else -> {
+                        // Неизвестный ответ
+                        handleError("Не удалось определить тип продукта")
+                    }
                 }
-            } else {
-                Log.e("CalorieTracker", "Ошибка API", response.exceptionOrNull())
-                messages = messages + ChatMessage(
-                    MessageType.AI,
-                    "Ошибка соединения. Проверьте интернет и попробуйте снова."
-                )
-                showManualInputDialog = true
+
+            } catch (e: Exception) {
+                Log.e("CalorieTracker", "Ошибка парсинга JSON", e)
+                handleError("Не удалось обработать ответ сервера")
             }
+
         } catch (e: Exception) {
             Log.e("CalorieTracker", "Общая ошибка", e)
-            messages = messages + ChatMessage(
-                MessageType.AI,
-                "Произошла ошибка. Введите данные вручную."
-            )
-            showManualInputDialog = true
+            handleError("Произошла ошибка при анализе")
         } finally {
             isAnalyzing = false
         }
     }
+
+    // Вспомогательная функция для обработки ошибок
+    private fun handleError(errorMessage: String) {
+        messages = messages + ChatMessage(
+            MessageType.AI,
+            "$errorMessage. Введите данные вручную."
+        )
+        showManualInputDialog = true
+    }
+
+    // Data class для парсинга ответа (должен быть в файле с моделями)
+    data class FoodDataFromAnswer(
+        val food: String,      // "да" или "нет"
+        val name: String,      // название продукта
+        val calories: Int,     // калории
+        val proteins: Int,     // белки
+        val fats: Int,         // жиры
+        val carbs: Int,        // углеводы
+        val weight: String     // вес (строка, т.к. может быть "100г")
+    )
 
     // Обработка ручного ввода продукта
     fun handleManualInput(
@@ -330,6 +354,10 @@ class CalorieTrackerViewModel(
         carbs: String,
         weight: String
     ) {
+        if (currentFoodSource == null) {
+            currentFoodSource = "manual" // Устанавливаем источник если не был установлен
+        }
+
         pendingFood = FoodItem(
             name = name,
             calories = calories.toIntOrNull() ?: 0,
@@ -352,9 +380,10 @@ class CalorieTrackerViewModel(
         showManualInputDialog = false
     }
 
-    // Подтверждение добавления продукта
+    // Подтверждение добавления продукта с отправкой на сервер
     fun confirmFood() {
         pendingFood?.let { food ->
+            // Обновляем локальные данные
             dailyIntake = dailyIntake.copy(
                 calories = dailyIntake.calories + food.calories,
                 proteins = dailyIntake.proteins + food.proteins,
@@ -363,14 +392,76 @@ class CalorieTrackerViewModel(
             )
 
             val aiStatus = if (isOnline) "с помощью AI" else "вручную"
+
+            // Удаляем временное сообщение "Обрабатываю..." если оно есть
+            messages = messages.filterNot {
+                it.type == MessageType.AI && it.content.contains("Обрабатываю")
+            }
+
             messages = messages + ChatMessage(
                 MessageType.AI,
                 "Отлично! Записал ${food.name} в ${selectedMeal.displayName.lowercase()} ($aiStatus). " +
                         generateNutritionalAdvice(food)
             )
 
+            // Отправляем данные на сервер
+            if (isOnline) {
+                viewModelScope.launch {
+                    sendFoodToServer(food, selectedMeal)
+                }
+            }
             pendingFood = null
+            prefillFood = null // Очищаем prefillFood
+            currentFoodSource = null // Очищаем источник
             saveUserData()
+        }
+    }
+
+    // Обновите sendFoodToServer чтобы использовать правильный источник:
+    private suspend fun sendFoodToServer(food: FoodItem, mealType: MealType) {
+        try {
+            val now = LocalDateTime.now()
+            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+            val foodItemData = FoodItemData(
+                name = food.name,
+                calories = food.calories,
+                proteins = food.proteins,
+                fats = food.fats,
+                carbs = food.carbs,
+                weight = food.weight.toIntOrNull() ?: 100
+            )
+
+            val request = LogFoodRequest(
+                userId = userId,
+                foodData = foodItemData,
+                mealType = mealType.name,
+                timestamp = System.currentTimeMillis(),
+                date = now.format(dateFormatter),
+                time = now.format(timeFormatter),
+                source = currentFoodSource ?: "manual", // Используем сохраненный источник
+                userProfile = userProfile.toNetworkProfile()
+            )
+
+            val response = safeApiCall {
+                NetworkModule.makeService.logFoodToThread(
+                    webhookId = MakeService.WEBHOOK_ID,
+                    request = request
+                )
+            }
+
+            if (response.isSuccess) {
+                Log.d("CalorieTracker", "Еда успешно отправлена на сервер (источник: ${currentFoodSource})")
+            } else {
+                Log.e("CalorieTracker", "Ошибка отправки еды на сервер", response.exceptionOrNull())
+            }
+
+            // Сбрасываем источник после отправки
+            currentFoodSource = null
+
+        } catch (e: Exception) {
+            Log.e("CalorieTracker", "Ошибка при отправке данных о еде", e)
         }
     }
 
@@ -388,28 +479,27 @@ class CalorieTrackerViewModel(
         }
     }
 
-    // Отправка сообщения в чат
+    // Обновим sendMessage для работы с историей
     fun sendMessage() {
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
-            Log.d("CalorieTracker", "sendMessage вызван. Сообщение: $userMessage")
             messages = messages + ChatMessage(MessageType.USER, userMessage)
             inputMessage = ""
 
             viewModelScope.launch {
                 if (isOnline) {
-                    messages = messages + ChatMessage(
+                    // Добавляем временное сообщение
+                    val tempMessage = ChatMessage(
                         MessageType.AI,
                         "Обрабатываю ваш вопрос..."
                     )
+                    messages = messages + tempMessage
+
                     try {
                         val profileData = userProfile.toNetworkProfile()
-                        val userId = getOrCreateUserId(context)
-                        Log.d("CalorieTracker", "userId: $userId, Профиль для AI: $profileData")
-
                         val response = safeApiCall {
                             NetworkModule.makeService.askAiDietitian(
-                                webhookId = "653st2c10rmg92nlltf3y0m8sggxaac6",
+                                webhookId = MakeService.WEBHOOK_ID,
                                 request = AiChatRequest(
                                     message = userMessage,
                                     userProfile = profileData,
@@ -417,7 +507,10 @@ class CalorieTrackerViewModel(
                                 )
                             )
                         }
-                        Log.d("CalorieTracker", "Ответ от Make: $response")
+
+                        // Удаляем временное сообщение
+                        messages = messages.filterNot { it == tempMessage }
+
                         if (response.isSuccess) {
                             val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
                             messages = messages + ChatMessage(MessageType.AI, answer)
@@ -428,14 +521,14 @@ class CalorieTrackerViewModel(
                             )
                         }
                     } catch (e: Exception) {
-                        Log.e("CalorieTracker", "Ошибка при обращении к Make", e)
+                        // Удаляем временное сообщение в случае ошибки
+                        messages = messages.filterNot { it == tempMessage }
                         messages = messages + ChatMessage(
                             MessageType.AI,
                             "Произошла ошибка при обращении к AI: ${e.message}"
                         )
                     }
                 } else {
-                    // Офлайн ответы
                     val offlineResponse = getOfflineResponse(userMessage)
                     messages = messages + ChatMessage(MessageType.AI, offlineResponse)
                 }

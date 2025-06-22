@@ -4,6 +4,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.http.*
 
+
 // Data classes for requests
 data class FoodAnalysisRequest(
     val name: String,
@@ -67,6 +68,24 @@ data class FoodItemData(
     val weight: Int
 )
 
+// Запрос для записи съеденной еды
+data class LogFoodRequest(
+    val userId: String,
+    val foodData: FoodItemData,
+    val mealType: String,
+    val timestamp: Long,
+    val date: String, // YYYY-MM-DD
+    val time: String, // HH:mm
+    val source: String, // "ai_photo" или "manual"
+    val userProfile: UserProfileData
+)
+
+data class LogFoodResponse(
+    val status: String,
+    val message: String,
+    val threadId: String? = null
+)
+
 // NEW: Data classes for AI chat
 data class AiChatRequest(
     val message: String,
@@ -83,20 +102,18 @@ data class AiChatResponse(
 // Исправленный response для парсинга вложенного JSON как строки
 data class FoodAnalysisResponse(
     val status: String,
-    val answer: String? = null, // Теперь это строка, которую нужно распарсить отдельно
-    val food: String? = null,
-    val recommendations: List<String>? = null
+    val answer: String? = null,
 )
 
 // Отдельный класс для парсинга содержимого answer
 data class FoodDataFromAnswer(
-    val food: String,
-    val name: String,
-    val calories: String,
-    val proteins: String,
-    val fats: String,
-    val carbs: String,
-    val weight: String
+    val food: String,      // "да" или "нет"
+    val name: String,      // название продукта
+    val calories: Int,     // Gson автоматически распарсит число
+    val proteins: Int,     // Gson автоматически распарсит число
+    val fats: Int,         // Gson автоматически распарсит число
+    val carbs: Int,        // Gson автоматически распарсит число
+    val weight: String     // оставляем String (может быть "100" или "100г")
 )
 
 data class EnhancedFoodData(
@@ -240,6 +257,14 @@ interface MakeService {
         @Path("webhookId") webhookId: String,
         @Body request: RecommendationRequest
     ): RecommendationResponse
+
+    // Добавьте этот метод в interface MakeService:
+    @Headers("Content-Type: application/json")
+    @POST("{webhookId}")
+    suspend fun logFoodToThread(
+        @Path("webhookId") webhookId: String,
+        @Body request: LogFoodRequest
+    ): LogFoodResponse
 
     // Загрузка реального файла изображения
     @Multipart
