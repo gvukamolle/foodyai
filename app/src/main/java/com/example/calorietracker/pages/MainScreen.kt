@@ -48,6 +48,9 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.asPaddingValues
+import com.example.calorietracker.utils.DailyResetUtils
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -687,13 +690,19 @@ fun UpdatedMainScreen(
                     .padding(top = 8.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Дневной прогресс",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Дневной прогресс",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = DailyResetUtils.getDisplayDate(DailyResetUtils.getFoodDate()),
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+                }
                 OnlineStatus(isOnline = viewModel.isOnline)
                 Spacer(modifier = Modifier.width(12.dp))
                 IconButton(

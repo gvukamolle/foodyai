@@ -29,6 +29,9 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import com.example.calorietracker.network.LogFoodRequest
 import com.example.calorietracker.network.FoodItemData
+import com.example.calorietracker.utils.calculateAge
+import com.example.calorietracker.utils.getOrCreateUserId
+import com.example.calorietracker.utils.DailyResetUtils
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -110,6 +113,8 @@ class CalorieTrackerViewModel(
     init {
         loadUserData()
         checkInternetConnection()
+        // Периодическая проверка обнуления каждые 5 минут
+        startPeriodicReset()
     }
 
     private fun loadUserData() {
@@ -117,7 +122,18 @@ class CalorieTrackerViewModel(
             userProfile = profile
             currentStep = "main"
         }
+        // getDailyIntake автоматически проверит и обнулит если нужно
         dailyIntake = repository.getDailyIntake()
+    }
+
+    private fun startPeriodicReset() {
+        viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(5 * 60 * 1000) // 5 минут
+                // Перезагружаем данные, что автоматически проверит обнуление
+                dailyIntake = repository.getDailyIntake()
+            }
+        }
     }
 
     private fun saveUserData() {
@@ -239,7 +255,8 @@ class CalorieTrackerViewModel(
             val photoPart = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
 
             val profileJson = gson.toJson(userProfile.toNetworkProfile())
-            val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
+            val profileRequestBody =
+                profileJson.toRequestBody("application/json".toMediaTypeOrNull())
             val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
 
             // 3. Отправляем запрос
@@ -281,7 +298,8 @@ class CalorieTrackerViewModel(
                             MessageType.AI,
                             "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
                         )
-                        Toast.makeText(context, "На фото не обнаружено еды", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "На фото не обнаружено еды", Toast.LENGTH_LONG)
+                            .show()
                         showPhotoDialog = true // Предлагаем переснять
                     }
 
@@ -452,7 +470,10 @@ class CalorieTrackerViewModel(
             }
 
             if (response.isSuccess) {
-                Log.d("CalorieTracker", "Еда успешно отправлена на сервер (источник: ${currentFoodSource})")
+                Log.d(
+                    "CalorieTracker",
+                    "Еда успешно отправлена на сервер (источник: ${currentFoodSource})"
+                )
             } else {
                 Log.e("CalorieTracker", "Ошибка отправки еды на сервер", response.exceptionOrNull())
             }
@@ -536,9 +557,37 @@ class CalorieTrackerViewModel(
         }
     }
 
-    // Генерация офлайн ответов
+    // Генерация офлайн ответов с поддержкой истории
     private fun getOfflineResponse(question: String): String {
         return when {
+            question.contains("вчера", ignoreCase = true) -> {
+                val yesterday = java.time.LocalDate.now().minusDays(1).toString()
+                val yesterdayIntake = repository.getIntakeHistory(yesterday)
+                if (yesterdayIntake != null && yesterdayIntake.calories > 0) {
+                    "Вчера вы употребили: ${yesterdayIntake.calories} ккал, " +
+                            "белки: ${yesterdayIntake.proteins}г, " +
+                            "жиры: ${yesterdayIntake.fats}г, " +
+                            "углеводы: ${yesterdayIntake.carbs}г."
+                } else {
+                    "У меня нет данных о вашем питании за вчера."
+                }
+            }
+
+            question.contains("история", ignoreCase = true) ||
+                    question.contains("статистик", ignoreCase = true) -> {
+                val dates = repository.getAvailableDates().take(7)
+                if (dates.isNotEmpty()) {
+                    val stats = dates.map { date ->
+                        val intake = repository.getIntakeHistory(date)
+                        val displayDate = DailyResetUtils.getDisplayDate(date)
+                        "$displayDate: ${intake?.calories ?: 0} ккал"
+                    }.joinToString("\n")
+                    "Ваша статистика за последние дни:\n$stats"
+                } else {
+                    "Пока нет сохраненной истории питания."
+                }
+            }
+
             question.contains("калори", ignoreCase = true) ->
                 "Ваша дневная норма: ${userProfile.dailyCalories} ккал. Сегодня вы употребили ${dailyIntake.calories} ккал. " +
                         "Осталось: ${userProfile.dailyCalories - dailyIntake.calories} ккал."
@@ -561,7 +610,7 @@ class CalorieTrackerViewModel(
 
             else ->
                 "Для полноценных консультаций AI необходимо подключение к интернету. " +
-                        "Сейчас могу помочь с базовыми вопросами о калориях, белках, воде и похудении."
+                        "Сейчас могу помочь с базовыми вопросами о калориях, белках, воде, истории питания и похудении."
         }
     }
 }

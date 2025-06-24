@@ -24,10 +24,17 @@ import com.example.calorietracker.pages.UpdatedMainScreen
 import com.example.calorietracker.pages.ManualFoodInputDialog
 import com.example.calorietracker.pages.PhotoUploadDialog
 import kotlinx.coroutines.launch
+import com.example.calorietracker.pages.PhotoUploadDialog
+import com.example.calorietracker.workers.CleanupWorker
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Запускаем периодическую очистку
+        CleanupWorker.schedule(this)
+
         setContent {
             CalorieTrackerTheme {
                 val repository = remember { DataRepository(this@MainActivity) }
