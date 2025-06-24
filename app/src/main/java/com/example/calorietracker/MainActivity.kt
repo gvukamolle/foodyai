@@ -26,6 +26,7 @@ import com.example.calorietracker.pages.SettingsScreen
 import com.example.calorietracker.pages.UpdatedMainScreen
 import com.example.calorietracker.pages.ManualFoodInputDialog
 import com.example.calorietracker.pages.PhotoUploadDialog
+import com.example.calorietracker.ui.animations.SwipeBackContainer
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
 
@@ -199,22 +200,86 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
                 )
             }
             Screen.Settings -> {
-                SettingsScreen(
-                    viewModel = viewModel,
-                    onSave = {
-                        viewModel.showSettings = false
-                        viewModel.checkInternetConnection()
-                    },
-                    onBack = { viewModel.showSettings = false }
-                )
-            }
+                SwipeBackContainer(
+                    onSwipeBack = { viewModel.showSettings = false },
+                    previousContent = {
+                        UpdatedMainScreen(
+                            viewModel = viewModel,
+                            onCameraClick = {
+                                if (viewModel.isOnline) {
+                                    if (
+                                        ContextCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.CAMERA
+                                        ) == PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        cameraLauncher.launch(null)
+                                    } else {
+                                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                                    }
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "AI анализ недоступен без интернета. Используйте ручной ввод.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    viewModel.showManualInputDialog = true
+                                }
+                            },
+                            onGalleryClick = {
+                                if (viewModel.isOnline) {
+                                    galleryLauncher.launch("image/*")
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "AI анализ недоступен без интернета. Используйте ручной ввод.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    viewModel.showManualInputDialog = true
+                                }
+                            },
+                            onManualClick = { viewModel.showManualInputDialog = true },
+                            onSettingsClick = {}
+                        )
+                    }
+                ) {
+                    SettingsScreen(
+                        viewModel = viewModel,
+                        onSave = {
+                            viewModel.showSettings = false
+                            viewModel.checkInternetConnection()
+                        },
+                        onBack = { viewModel.showSettings = false }
+                    )
+                }
+        }
             Screen.Main -> {
                 UpdatedMainScreen(
                     viewModel = viewModel,
-                    onPhotoClick = {
+                    onCameraClick = {
                         if (viewModel.isOnline) {
-                            viewModel.showPhotoDialog = true
+                            if (
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.CAMERA
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                cameraLauncher.launch(null)
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
                         } else {
+                            Toast.makeText(
+                                context,
+                                "AI анализ недоступен без интернета. Используйте ручной ввод.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            viewModel.showManualInputDialog = true
+                        }
+                    },
+                    onGalleryClick = {
+                        if (viewModel.isOnline) {
+                            galleryLauncher.launch("image/*")                        } else {
                             Toast.makeText(
                                 context,
                                 "AI анализ недоступен без интернета. Используйте ручной ввод.",

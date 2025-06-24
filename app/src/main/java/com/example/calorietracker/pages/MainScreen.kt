@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
@@ -50,6 +51,10 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -69,8 +74,8 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.utils.DailyResetUtils
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.example.calorietracker.ui.animations.AnimatedMessage
 import kotlinx.coroutines.launch
-
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -145,6 +150,129 @@ fun ProgressSection(
             modifier = Modifier.width(64.dp),
             textAlign = TextAlign.End
         )
+    }
+}
+
+// Индикатор в виде кольца для свернутого состояния
+@Composable
+fun RingIndicator(label: String, current: Int, target: Int, color: Color) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(60.dp)
+    ) {
+        CircularProgressIndicator(
+            progress = if (target > 0) current.toFloat() / target.toFloat() else 0f,
+            color = color,
+            trackColor = Color(0xFFE5E7EB),
+            strokeWidth = 8.dp,
+            modifier = Modifier.fillMaxSize()
+        )
+        Text(text = label, fontSize = 16.sp, color = Color.Black)
+    }
+}
+
+// Блок прогресса КБЖУ со сворачиванием
+@Composable
+fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
+    var expanded by remember { mutableStateOf(true) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .clickable { expanded = !expanded }
+    ) {
+        if (expanded) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                ProgressSection(
+                    label = "ККАЛ",
+                    current = viewModel.dailyIntake.calories,
+                    target = viewModel.userProfile.dailyCalories,
+                    unit = "",
+                    color = viewModel.getProgressColor(
+                        viewModel.dailyIntake.calories,
+                        viewModel.userProfile.dailyCalories
+                    )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                ProgressSection(
+                    label = "Б",
+                    current = viewModel.dailyIntake.proteins,
+                    target = viewModel.userProfile.dailyProteins,
+                    unit = "г",
+                    color = viewModel.getProgressColor(
+                        viewModel.dailyIntake.proteins,
+                        viewModel.userProfile.dailyProteins
+                    )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                ProgressSection(
+                    label = "Ж",
+                    current = viewModel.dailyIntake.fats,
+                    target = viewModel.userProfile.dailyFats,
+                    unit = "г",
+                    color = viewModel.getProgressColor(
+                        viewModel.dailyIntake.fats,
+                        viewModel.userProfile.dailyFats
+                    )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                ProgressSection(
+                    label = "У",
+                    current = viewModel.dailyIntake.carbs,
+                    target = viewModel.userProfile.dailyCarbs,
+                    unit = "г",
+                    color = viewModel.getProgressColor(
+                        viewModel.dailyIntake.carbs,
+                        viewModel.userProfile.dailyCarbs
+                    )
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                RingIndicator(
+                    label = "К",
+                    current = viewModel.dailyIntake.calories,
+                    target = viewModel.userProfile.dailyCalories,
+                    color = viewModel.getProgressColor(
+                        viewModel.dailyIntake.calories,
+                        viewModel.userProfile.dailyCalories
+                    )
+                )
+                RingIndicator(
+                    label = "Б",
+                    current = viewModel.dailyIntake.proteins,
+                    target = viewModel.userProfile.dailyProteins,
+                    color = viewModel.getProgressColor(
+                        viewModel.dailyIntake.proteins,
+                        viewModel.userProfile.dailyProteins
+                    )
+                )
+                RingIndicator(
+                    label = "Ж",
+                    current = viewModel.dailyIntake.fats,
+                    target = viewModel.userProfile.dailyFats,
+                    color = viewModel.getProgressColor(
+                        viewModel.dailyIntake.fats,
+                        viewModel.userProfile.dailyFats
+                    )
+                )
+                RingIndicator(
+                    label = "У",
+                    current = viewModel.dailyIntake.carbs,
+                    target = viewModel.userProfile.dailyCarbs,
+                    color = viewModel.getProgressColor(
+                        viewModel.dailyIntake.carbs,
+                        viewModel.userProfile.dailyCarbs
+                    )
+                )
+            }
+        }
     }
 }
 
@@ -603,12 +731,15 @@ fun AddFoodButton(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Кнопка камеры
+        val cameraColor by androidx.compose.animation.animateColorAsState(
+            if (isOnline) Color.Black else Color.Gray
+        )
         Button(
             onClick = onPhotoClick,
             modifier = Modifier.weight(1f),
             enabled = isOnline,
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isOnline) Color.Black else Color.Gray,
+                containerColor = cameraColor,
                 contentColor = Color.White
             )
         ) {
@@ -637,27 +768,12 @@ fun AddFoodButton(
     }
 }
 
-// СТАРЫЙ MainScreen для обратной совместимости
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MainScreen(
-    viewModel: CalorieTrackerViewModel,
-    onPhotoClick: () -> Unit,
-    onSettingsClick: () -> Unit
-) {
-    UpdatedMainScreen(
-        viewModel = viewModel,
-        onPhotoClick = onPhotoClick,
-        onManualClick = { viewModel.showManualInputDialog = true },
-        onSettingsClick = onSettingsClick
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdatedMainScreen(
     viewModel: CalorieTrackerViewModel,
-    onPhotoClick: () -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit,
     onManualClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -699,7 +815,6 @@ fun UpdatedMainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .navigationBarsPadding()
-                .imePadding()
         ) {
             // Заголовок с настройками - убираем серый фон
             Row(
@@ -737,66 +852,9 @@ fun UpdatedMainScreen(
                 }
             }
 
-            // Прогресс бары
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(horizontal = 16.dp)
-            ) {
-                ProgressSection(
-                    label = "ККАЛ",
-                    current = viewModel.dailyIntake.calories,
-                    target = viewModel.userProfile.dailyCalories,
-                    unit = "",
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.calories,
-                        viewModel.userProfile.dailyCalories
-                    )
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                ProgressSection(
-                    label = "Б",
-                    current = viewModel.dailyIntake.proteins,
-                    target = viewModel.userProfile.dailyProteins,
-                    unit = "г",
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.proteins,
-                        viewModel.userProfile.dailyProteins
-                    )
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                ProgressSection(
-                    label = "Ж",
-                    current = viewModel.dailyIntake.fats,
-                    target = viewModel.userProfile.dailyFats,
-                    unit = "г",
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.fats,
-                        viewModel.userProfile.dailyFats
-                    )
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                ProgressSection(
-                    label = "У",
-                    current = viewModel.dailyIntake.carbs,
-                    target = viewModel.userProfile.dailyCarbs,
-                    unit = "г",
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.carbs,
-                        viewModel.userProfile.dailyCarbs
-                    )
-                )
-            }
+            CollapsibleProgressBars(viewModel)
 
             Spacer(modifier = Modifier.height(12.dp))
-
-            // Кнопки добавления еды
-            AddFoodButton(
-                isOnline = viewModel.isOnline,
-                onPhotoClick = onPhotoClick,
-                onManualClick = onManualClick
-            )
 
             // Подтверждение еды
             viewModel.pendingFood?.let { food ->
@@ -821,7 +879,12 @@ fun UpdatedMainScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(viewModel.messages) { message ->
-                        ChatMessageCard(message = message)
+                        AnimatedMessage(
+                            visible = true,
+                            isUserMessage = message.type == com.example.calorietracker.MessageType.USER
+                        ) {
+                            ChatMessageCard(message = message)
+                        }
                     }
                 }
 
@@ -857,10 +920,11 @@ fun UpdatedMainScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White) // Белый фон
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .imePadding(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                var menuExpanded by remember { mutableStateOf(false) }
                 OutlinedTextField(
                     value = viewModel.inputMessage,
                     onValueChange = { viewModel.inputMessage = it },
@@ -874,34 +938,105 @@ fun UpdatedMainScreen(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .height(54.dp),
-                    singleLine = true,
-                    shape = RoundedCornerShape(54),
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { viewModel.sendMessage() },
-                            modifier = Modifier.size(54.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Send,
-                                contentDescription = "Отправить",
-                                tint = if (viewModel.inputMessage.isNotBlank())
-                                    Color.White else Color.Gray,
-                                modifier = Modifier
-                                    .background(
-                                        if (viewModel.inputMessage.isNotBlank())
-                                            Color.Black else Color.Transparent,
-                                        CircleShape
-                                    )
-                                    .padding(if (viewModel.inputMessage.isNotBlank()) 9.dp else 0.dp)
+                        .height(54.dp)
+                        .shadow(
+                            elevation = 2.dp,
+                            shape = RoundedCornerShape(
+                                topStart = 28.dp,
+                                topEnd = 28.dp,
+                                bottomStart = 8.dp,
+                                bottomEnd = 8.dp
                             )
+                        ),                    singleLine = true,
+                    shape = RoundedCornerShape(
+                        topStart = 28.dp,
+                        topEnd = 28.dp,
+                        bottomStart = 8.dp,
+                        bottomEnd = 8.dp
+                    ),                    trailingIcon = {
+                        val bgColor by androidx.compose.animation.animateColorAsState(
+                            if (viewModel.inputMessage.isNotBlank()) Color.Black else Color.Transparent
+                        )
+                        val iconColor by androidx.compose.animation.animateColorAsState(
+                            if (viewModel.inputMessage.isNotBlank()) Color.White else Color.Gray
+                        )
+                        Box {
+                            AnimatedContent(
+                                targetState = viewModel.inputMessage.isNotBlank(),
+                                label = "SendPlus"
+                            ) { hasText ->
+                                if (hasText) {
+                                    IconButton(
+                                        onClick = { viewModel.sendMessage() },
+                                        modifier = Modifier.size(54.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Send,
+                                            contentDescription = "Отправить",
+                                            tint = Color.White,
+                                            modifier = Modifier
+                                                .background(Color.Black, CircleShape)
+                                                .padding(9.dp)
+                                        )
+                                    }
+                                } else {
+                                    IconButton(
+                                        onClick = { menuExpanded = true },
+                                        modifier = Modifier.size(54.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Добавить",
+                                            tint = Color.Black
+                                        )
+                                    }
+                                }
+                            }
+
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Отправить фото") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onCameraClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.CameraAlt, contentDescription = null)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Загрузить фото") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onGalleryClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Photo, contentDescription = null)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Ввести вручную") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onManualClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Edit, contentDescription = null)
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.Black,
                         unfocusedBorderColor = Color.Gray,
-                        disabledBorderColor = Color.Gray
-                    )
+                        disabledBorderColor = Color.Gray,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        disabledContainerColor = Color.White                    )
                 )
             }
         }
