@@ -169,25 +169,14 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
         )
     }
 
-    // Анимированная навигация между экранами
-    AnimatedContent(
+    // Плавная навигация между экранами
+    Crossfade(
         targetState = when {
             viewModel.currentStep == "setup" -> Screen.Setup
             viewModel.showSettings -> Screen.Settings
             else -> Screen.Main
         },
-        transitionSpec = {
-            if (targetState == Screen.Settings || initialState == Screen.Settings) {
-                (slideInHorizontally { width -> width } + fadeIn(animationSpec = tween(300))) with
-                        (slideOutHorizontally { width -> -width } + fadeOut(animationSpec = tween(300)))
-            } else {
-                (fadeIn(animationSpec = tween(400))) with
-                        (fadeOut(animationSpec = tween(400)))
-            }.using(
-                SizeTransform(clip = false)
-            )
-        },
-        label = "ScreenTransition"
+        animationSpec = tween(durationMillis = 300)
     ) { targetScreen ->
         when (targetScreen) {
             Screen.Setup -> {
