@@ -58,19 +58,22 @@ object DailyResetUtils {
      */
     fun getDisplayDate(date: String): String {
         val localDate = LocalDate.parse(date)
-        val today = LocalDate.now()
-        val yesterday = today.minusDays(1)
 
-        return when (localDate) {
-            today -> "Сегодня"
-            yesterday -> "Вчера"
-            else -> {
-                val months = arrayOf(
-                    "января", "февраля", "марта", "апреля", "мая", "июня",
-                    "июля", "августа", "сентября", "октября", "ноября", "декабря"
-                )
-                "${localDate.dayOfMonth} ${months[localDate.monthValue - 1]}"
-            }
+        val dayOfWeek = when (localDate.dayOfWeek) {
+            java.time.DayOfWeek.MONDAY -> "Пн"
+            java.time.DayOfWeek.TUESDAY -> "Вт"
+            java.time.DayOfWeek.WEDNESDAY -> "Ср"
+            java.time.DayOfWeek.THURSDAY -> "Чт"
+            java.time.DayOfWeek.FRIDAY -> "Пт"
+            java.time.DayOfWeek.SATURDAY -> "Сб"
+            java.time.DayOfWeek.SUNDAY -> "Вс"
         }
+
+        val months = arrayOf(
+            "Января", "Февраля", "Марта", "Апреля", "Мая", "Июня",
+            "Июля", "Августа", "Сентября", "Октября", "Ноября", "Декабря"
+        )
+
+        return "$dayOfWeek, ${localDate.dayOfMonth} ${months[localDate.monthValue - 1]}"
     }
 }

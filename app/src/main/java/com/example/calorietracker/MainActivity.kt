@@ -9,9 +9,12 @@ import android.graphics.Bitmap
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
@@ -23,10 +26,12 @@ import com.example.calorietracker.pages.SettingsScreen
 import com.example.calorietracker.pages.UpdatedMainScreen
 import com.example.calorietracker.pages.ManualFoodInputDialog
 import com.example.calorietracker.pages.PhotoUploadDialog
-import kotlinx.coroutines.launch
-import com.example.calorietracker.pages.PhotoUploadDialog
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
+
+enum class Screen {
+    Setup, Main, Settings
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,14 +61,18 @@ fun CalorieTrackerTheme(content: @Composable () -> Unit) {
     )
 }
 
-// Замените CalorieTrackerApp в MainActivity.kt на это:
-
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun CalorieTrackerApp(repository: DataRepository, context: android.content.Context) {
     val viewModel: CalorieTrackerViewModel = remember {
         CalorieTrackerViewModel(repository, context)
     }
     val coroutineScope = rememberCoroutineScope()
+
+    // Состояние текущего экрана
+    var currentScreen by remember {
+        mutableStateOf(if (viewModel.currentStep == "setup") Screen.Setup else Screen.Main)
+    }
 
     // Лаунчер для камеры
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -103,6 +112,21 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
         }
     }
 
+    // Обработка кнопки назад
+    BackHandler(enabled = currentScreen != Screen.Main || viewModel.showSettings) {
+        when {
+            viewModel.showSettings -> {
+                viewModel.showSettings = false
+            }
+            currentScreen == Screen.Setup && viewModel.currentStep == "setup" -> {
+                (context as? Activity)?.finish()
+            }
+            else -> {
+                currentScreen = Screen.Main
+            }
+        }
+    }
+
     // Диалог загрузки фото
     if (viewModel.showPhotoDialog) {
         PhotoUploadDialog(
@@ -127,7 +151,6 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
     // Диалог ручного ввода
     if (viewModel.showManualInputDialog) {
         ManualFoodInputDialog(
-            // УБЕДИТЕСЬ, что передаете данные из prefillFood!
             initialFoodName = viewModel.prefillFood?.name ?: "",
             initialCalories = viewModel.prefillFood?.calories?.toString() ?: "",
             initialProteins = viewModel.prefillFood?.proteins?.toString() ?: "",
@@ -136,60 +159,78 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
             initialWeight = viewModel.prefillFood?.weight?.toString() ?: "100",
             onDismiss = {
                 viewModel.showManualInputDialog = false
-                viewModel.prefillFood = null  // очищаем после закрытия
+                viewModel.prefillFood = null
             },
             onConfirm = { name, calories, proteins, fats, carbs, weight ->
                 viewModel.handleManualInput(name, calories, proteins, fats, carbs, weight)
-                viewModel.prefillFood = null  // очищаем после подтверждения
+                viewModel.prefillFood = null
             }
         )
     }
 
-
-    // Навигация между экранами
-    when {
-        viewModel.currentStep == "setup" -> {
-            SetupScreen(
-                viewModel = viewModel,
-                onFinish = {
-                    viewModel.checkInternetConnection()
-                }
+    // Анимированная навигация между экранами
+    AnimatedContent(
+        targetState = when {
+            viewModel.currentStep == "setup" -> Screen.Setup
+            viewModel.showSettings -> Screen.Settings
+            else -> Screen.Main
+        },
+        transitionSpec = {
+            if (targetState == Screen.Settings || initialState == Screen.Settings) {
+                (slideInHorizontally { width -> width } + fadeIn(animationSpec = tween(300))) with
+                        (slideOutHorizontally { width -> -width } + fadeOut(animationSpec = tween(300)))
+            } else {
+                (fadeIn(animationSpec = tween(400))) with
+                        (fadeOut(animationSpec = tween(400)))
+            }.using(
+                SizeTransform(clip = false)
             )
-        }
-
-        viewModel.showSettings -> {
-            SettingsScreen(
-                viewModel = viewModel,
-                onSave = {
-                    viewModel.showSettings = false
-                    viewModel.checkInternetConnection()
-                },
-                onBack = { viewModel.showSettings = false }
-            )
-        }
-
-        else -> {
-            UpdatedMainScreen(
-                viewModel = viewModel,
-                onPhotoClick = {
-                    if (viewModel.isOnline) {
-                        viewModel.showPhotoDialog = true
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "AI анализ недоступен без интернета. Используйте ручной ввод.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        viewModel.showManualInputDialog = true
+        },
+        label = "ScreenTransition"
+    ) { targetScreen ->
+        when (targetScreen) {
+            Screen.Setup -> {
+                SetupScreen(
+                    viewModel = viewModel,
+                    onFinish = {
+                        viewModel.checkInternetConnection()
+                        currentScreen = Screen.Main
                     }
-                },
-                onManualClick = {
-                    viewModel.showManualInputDialog = true
-                },
-                onSettingsClick = {
-                    viewModel.showSettings = true
-                }
-            )
+                )
+            }
+            Screen.Settings -> {
+                SettingsScreen(
+                    viewModel = viewModel,
+                    onSave = {
+                        viewModel.showSettings = false
+                        viewModel.checkInternetConnection()
+                    },
+                    onBack = { viewModel.showSettings = false }
+                )
+            }
+            Screen.Main -> {
+                UpdatedMainScreen(
+                    viewModel = viewModel,
+                    onPhotoClick = {
+                        if (viewModel.isOnline) {
+                            viewModel.showPhotoDialog = true
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "AI анализ недоступен без интернета. Используйте ручной ввод.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            viewModel.showManualInputDialog = true
+                        }
+                    },
+                    onManualClick = {
+                        viewModel.showManualInputDialog = true
+                    },
+                    onSettingsClick = {
+                        viewModel.showSettings = true
+                    }
+                )
+            }
         }
     }
 
