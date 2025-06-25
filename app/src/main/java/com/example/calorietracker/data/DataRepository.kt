@@ -1,12 +1,18 @@
+
 package com.example.calorietracker.data
 
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.example.calorietracker.data.UserProfile
 import com.example.calorietracker.utils.DailyResetUtils
 import com.google.gson.Gson
+import java.time.LocalDate
 
+/**
+ * Репозиторий для управления данными приложения, такими как профиль пользователя и дневное потребление калорий.
+ * Все данные хранятся в SharedPreferences.
+ * @param context Контекст приложения, необходимый для доступа к SharedPreferences.
+ */
 class DataRepository(context: Context) {
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("calorie_tracker_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
@@ -25,34 +31,41 @@ class DataRepository(context: Context) {
         val json = gson.toJson(intake)
         sharedPreferences.edit {
             putString("daily_intake_$date", json)
-            // Сохраняем дату последнего обновления
+            // Сохраняем "пищевую" дату последнего обновления
             putString("last_intake_date", date)
         }
     }
 
+    /**
+     * Получает данные о потреблении за указанную дату.
+     * Перед этим запускает проверку, не наступил ли новый "пищевой" день для сброса счетчиков.
+     * @param date Дата в формате "YYYY-MM-DD". По умолчанию - текущая "пищевая" дата.
+     * @return Объект [DailyIntake]. Если данных нет, вернется пустой объект.
+     */
     fun getDailyIntake(date: String = DailyResetUtils.getFoodDate()): DailyIntake {
         // Проверяем, нужно ли обнулить счетчики
-        checkAndResetIfNeeded()
-
+        performResetIfNeeded()
         val json = sharedPreferences.getString("daily_intake_$date", null)
         return if (json != null) gson.fromJson(json, DailyIntake::class.java) else DailyIntake()
     }
 
     /**
-     * Проверяет и обнуляет счетчики если нужно
+     * Проверяет, наступил ли новый "пищевой" день, и если да, сбрасывает счетчики.
+     * @return `true` если сброс был выполнен, иначе `false`.
      */
-    private fun checkAndResetIfNeeded() {
+    fun performResetIfNeeded(): Boolean {
         val lastDate = sharedPreferences.getString("last_intake_date", null)
-        val currentDate = DailyResetUtils.getFoodDate()
-
         if (DailyResetUtils.shouldResetCounters(lastDate)) {
-            // Обнуляем счетчики для новой даты
+            // Обнуляем счетчики для новой "пищевой" даты
+            val currentDate = DailyResetUtils.getFoodDate()
             saveDailyIntake(DailyIntake(), currentDate)
+            return true // Сообщаем, что сброс произошел
         }
+        return false // Сброс не требовался
     }
 
     /**
-     * Получить историю приемов пищи за конкретную дату
+     * Получить историю приемов пищи за конкретную дату без проверки на сброс.
      */
     fun getIntakeHistory(date: String): DailyIntake? {
         val json = sharedPreferences.getString("daily_intake_$date", null)
@@ -60,7 +73,8 @@ class DataRepository(context: Context) {
     }
 
     /**
-     * Получить список дат, за которые есть данные
+     * Получить список дат (в формате "YYYY-MM-DD"), за которые есть данные,
+     * отсортированный от новой к старой.
      */
     fun getAvailableDates(): List<String> {
         return sharedPreferences.all.keys
@@ -71,15 +85,26 @@ class DataRepository(context: Context) {
     }
 
     /**
-     * Очистить старые данные (старше 30 дней)
+     * Очищает старые данные о приемах пищи (старше 30 дней).
      */
     fun cleanOldData() {
-        val thirtyDaysAgo = java.time.LocalDate.now().minusDays(30).toString()
+        // Получаем дату, которая была 30 дней назад
+        val thirtyDaysAgo = LocalDate.now().minusDays(30)
 
         sharedPreferences.all.keys
             .filter { it.startsWith("daily_intake_") }
             .map { it.removePrefix("daily_intake_") }
-            .filter { it < thirtyDaysAgo }
+            .filter { dateString ->
+                try {
+                    // Превращаем строку "YYYY-MM-DD" в полноценный объект даты
+                    val entryDate = LocalDate.parse(dateString)
+                    // Корректно сравниваем, была ли дата записи раньше, чем 30 дней назад
+                    entryDate.isBefore(thirtyDaysAgo)
+                } catch (e: Exception) {
+                    // Если вдруг ключ имеет неверный формат, игнорируем его
+                    false
+                }
+            }
             .forEach { date ->
                 sharedPreferences.edit { remove("daily_intake_$date") }
             }

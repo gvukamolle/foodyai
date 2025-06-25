@@ -33,6 +33,7 @@ import com.example.calorietracker.utils.calculateAge
 import com.example.calorietracker.utils.getOrCreateUserId
 import com.example.calorietracker.utils.DailyResetUtils
 import com.example.calorietracker.extensions.toNetworkProfile
+import kotlinx.coroutines.Dispatchers
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -89,6 +90,8 @@ class CalorieTrackerViewModel(
     var showSettings by mutableStateOf(false)
     var userProfile by mutableStateOf(UserProfile())
     var dailyIntake by mutableStateOf(DailyIntake())
+    var displayDate by mutableStateOf(DailyResetUtils.getFormattedDisplayDate())
+        private set
     var currentFoodSource by mutableStateOf<String?>(null)
     var messages by mutableStateOf(
         listOf(
@@ -147,6 +150,29 @@ class CalorieTrackerViewModel(
         viewModelScope.launch {
             val currentOnline = NetworkUtils.isInternetAvailable(context)
             isOnline = currentOnline
+        }
+    }
+
+    private fun loadInitialData() {
+    viewModelScope.launch {
+    userProfile = repository.getUserProfile() ?: UserProfile()
+        dailyIntake = repository.getDailyIntake()
+             }
+         }
+
+    fun updateDateAndCheckForReset() {
+        // Обновляем строку с датой (например, с "25 Июня" на "26 Июня")
+        displayDate = DailyResetUtils.getFormattedDisplayDate()
+
+        // Запускаем проверку, не наступили ли 4 утра нового дня.
+        // Используем viewModelScope для выполнения в фоновом потоке.
+        viewModelScope.launch(Dispatchers.IO) {
+            val wasReset = repository.performResetIfNeeded()
+            if (wasReset) {
+                // Если данные были сброшены, нужно обновить UI.
+                // Загружаем "новые" (пустые) данные за сегодняшний день.
+                loadInitialData() // Предполагается, что у тебя есть такая функция для загрузки данных
+            }
         }
     }
 

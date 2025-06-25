@@ -291,7 +291,7 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
     // Периодическая проверка интернета
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(30000)
+            kotlinx.coroutines.delay(1000)
             viewModel.checkInternetConnection()
         }
     }

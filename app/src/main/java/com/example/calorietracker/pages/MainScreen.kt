@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.Canvas
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -19,15 +20,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.utils.DailyResetUtils
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
@@ -36,7 +42,12 @@ import kotlinx.coroutines.launch
 import androidx.compose.material3.Scaffold
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import java.time.Duration
+import java.time.LocalDateTime
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -71,8 +82,20 @@ fun ProgressSection(
     current: Int,
     target: Int,
     unit: String,
-    color: Color
+    color: Color,
+    delay: Int = 0
 ) {
+    val progress = if (target > 0) minOf(current.toFloat() / target.toFloat(), 1f) else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(
+            durationMillis = 1000,
+            delayMillis = delay,
+            easing = FastOutSlowInEasing
+        ),
+        label = "progress"
+    )
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
@@ -96,9 +119,7 @@ fun ProgressSection(
             )
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(
-                        if (target > 0) minOf(current.toFloat() / target.toFloat(), 1f) else 0f
-                    )
+                    .fillMaxWidth(animatedProgress)
                     .height(8.dp)
                     .background(color, RoundedCornerShape(4.dp))
             )
@@ -114,45 +135,113 @@ fun ProgressSection(
 }
 
 @Composable
-fun RingIndicator(label: String, current: Int, target: Int, color: Color) {
+fun RingIndicator(
+    label: String,
+    current: Int,
+    target: Int,
+    color: Color,
+    delay: Int = 0
+) {
+    val progress = if (target > 0) current.toFloat() / target.toFloat() else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(
+            durationMillis = 1200,
+            delayMillis = delay,
+            easing = FastOutSlowInEasing
+        ),
+        label = "ring_progress"
+    )
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier.size(60.dp)
     ) {
         CircularProgressIndicator(
-            progress = 1f, // фоновая окружность
+            progress = 1f,
             color = Color(0xFFE5E7EB),
             strokeWidth = 8.dp,
             strokeCap = StrokeCap.Round,
             modifier = Modifier.fillMaxSize()
         )
         CircularProgressIndicator(
-            progress = if (target > 0) current.toFloat() / target.toFloat() else 0f,
+            progress = animatedProgress,
             color = color,
             strokeWidth = 8.dp,
-            strokeCap = StrokeCap.Round, // Закругленные концы
+            strokeCap = StrokeCap.Round,
             modifier = Modifier.fillMaxSize()
         )
         Text(text = label, fontSize = 16.sp, color = Color.Black)
     }
 }
 
-// Кастомный Divider с визуально закругленными краями
+// Кастомный Divider с закругленными краями
 @Composable
 fun RoundedDivider(
     modifier: Modifier = Modifier,
     color: Color = Color(0xFFE5E5E5),
-    thickness: Dp = 1.dp
+    thickness: Dp = 2.dp, // Увеличена толщина с 4.dp до 6.dp
+    curveDown: Boolean = true,
+    curveHeight: Dp = 16.dp // Увеличена высота кривой с 10.dp до 16.dp
 ) {
-    Box(
+    Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal =0.dp) // отступы от краев экрана
-            .height(thickness)
-            .clip(RoundedCornerShape(thickness)) // закругление концов линии
-            .background(color)
-    )
+            .height(curveHeight) // Убрано добавление thickness, чтобы не создавать дополнительное пространство
+    ) {
+        val path = Path().apply {
+            val curveHeightPx = curveHeight.toPx()
+            val thicknessPx = thickness.toPx()
+            val halfThickness = thicknessPx / 2f
+
+            if (curveDown) {
+                // Линия с загибами ВВЕРХ (для разделителя НАД полем ввода)
+                moveTo(0f, curveHeightPx)
+
+                // Левый загиб вверх
+                quadraticBezierTo(
+                    curveHeightPx * 0.7f, halfThickness, // Увеличен коэффициент скругления с 0.5f до 0.7f
+                    curveHeightPx * 1.5f, halfThickness // Увеличен коэффициент с 1f до 1.5f для плавности
+                )
+
+                // Горизонтальная линия
+                lineTo(size.width - curveHeightPx * 1.5f, halfThickness) // Согласовано с изменениями выше
+
+                // Правый загиб вверх
+                quadraticBezierTo(
+                    size.width - curveHeightPx * 0.7f, halfThickness, // Увеличен коэффициент скругления
+                    size.width, curveHeightPx
+                )
+            } else {
+                // Линия с загибами ВНИЗ (для разделителя ПОД блоком КБЖУ)
+                moveTo(0f, halfThickness)
+
+                // Левый загиб вниз
+                quadraticBezierTo(
+                    curveHeightPx * 0.7f, curveHeightPx, // Увеличен коэффициент скругления
+                    curveHeightPx * 1.5f, curveHeightPx  // Увеличен коэффициент для плавности
+                )
+
+                // Горизонтальная линия
+                lineTo(size.width - curveHeightPx * 1.5f, curveHeightPx) // Согласовано с изменениями выше
+
+                // Правый загиб вниз
+                quadraticBezierTo(
+                    size.width - curveHeightPx * 0.7f, curveHeightPx, // Увеличен коэффициент скругления
+                    size.width, halfThickness
+                )
+            }
+        }
+
+        val thicknessPx = thickness.toPx() // Изменено с 0.0f на thickness.toPx()
+        drawPath(
+            path = path,
+            color = color,
+            style = Stroke(width = thicknessPx)
+        )
+    }
 }
+
 
 @Composable
 fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
@@ -165,7 +254,7 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
             .clickable { expanded = !expanded }
     ) {
         if (expanded) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 0.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 ProgressSection(
                     label = "ККАЛ",
                     current = viewModel.dailyIntake.calories,
@@ -174,7 +263,8 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                     color = viewModel.getProgressColor(
                         viewModel.dailyIntake.calories,
                         viewModel.userProfile.dailyCalories
-                    )
+                    ),
+                    delay = 0
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 ProgressSection(
@@ -185,7 +275,8 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                     color = viewModel.getProgressColor(
                         viewModel.dailyIntake.proteins,
                         viewModel.userProfile.dailyProteins
-                    )
+                    ),
+                    delay = 100
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 ProgressSection(
@@ -196,7 +287,8 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                     color = viewModel.getProgressColor(
                         viewModel.dailyIntake.fats,
                         viewModel.userProfile.dailyFats
-                    )
+                    ),
+                    delay = 200
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 ProgressSection(
@@ -207,7 +299,8 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                     color = viewModel.getProgressColor(
                         viewModel.dailyIntake.carbs,
                         viewModel.userProfile.dailyCarbs
-                    )
+                    ),
+                    delay = 300
                 )
             }
         } else {
@@ -224,7 +317,8 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                     color = viewModel.getProgressColor(
                         viewModel.dailyIntake.calories,
                         viewModel.userProfile.dailyCalories
-                    )
+                    ),
+                    delay = 0
                 )
                 RingIndicator(
                     label = "Б",
@@ -233,7 +327,8 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                     color = viewModel.getProgressColor(
                         viewModel.dailyIntake.proteins,
                         viewModel.userProfile.dailyProteins
-                    )
+                    ),
+                    delay = 150
                 )
                 RingIndicator(
                     label = "Ж",
@@ -242,7 +337,8 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                     color = viewModel.getProgressColor(
                         viewModel.dailyIntake.fats,
                         viewModel.userProfile.dailyFats
-                    )
+                    ),
+                    delay = 300
                 )
                 RingIndicator(
                     label = "У",
@@ -251,7 +347,8 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                     color = viewModel.getProgressColor(
                         viewModel.dailyIntake.carbs,
                         viewModel.userProfile.dailyCarbs
-                    )
+                    ),
+                    delay = 450
                 )
             }
         }
@@ -706,7 +803,6 @@ fun UpdatedMainScreen(
     onSettingsClick: () -> Unit
 ) {
     val systemUiController = rememberSystemUiController()
-
     SideEffect {
         systemUiController.setSystemBarsColor(
             color = Color.White,
@@ -714,9 +810,32 @@ fun UpdatedMainScreen(
         )
     }
 
+    // НОВОЕ: Эффект, который будет следить за временем и обновлять дату.
+    // Он запустится один раз, когда экран появится, и будет работать, пока экран активен.
+    LaunchedEffect(key1 = Unit) {
+        while (true) {
+            // 1. Вычисляем, сколько времени осталось до следующей полуночи
+            val now = LocalDateTime.now()
+            val nextMidnight = now.toLocalDate().plusDays(1).atStartOfDay()
+            val durationToMidnight = Duration.between(now, nextMidnight).toMillis()
+
+            // 2. Вычисляем, сколько времени осталось до следующего сброса в 4 утра
+            val nextResetTime = DailyResetUtils.getNextResetTime()
+            val durationToReset = Duration.between(now, nextResetTime).toMillis()
+
+            // 3. Выбираем минимальное время ожидания, чтобы сработать на ближайшем событии
+            val delayMillis = minOf(durationToMidnight, durationToReset)
+
+            // 4. "Спим" до этого момента + 1 секунду, чтобы гарантированно перейти порог
+            delay(delayMillis + 1000)
+
+            // 5. Просыпаемся и просим ViewModel обновить дату и проверить сброс данных
+            viewModel.updateDateAndCheckForReset()
+        }
+    }
+
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-
     LaunchedEffect(viewModel.messages.size) {
         if (viewModel.messages.isNotEmpty()) {
             coroutineScope.launch {
@@ -725,14 +844,12 @@ fun UpdatedMainScreen(
         }
     }
 
-    // Используем Scaffold для правильной обработки клавиатуры
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .systemBarsPadding(), // защита от системных баров
+            .systemBarsPadding(),
         containerColor = Color.White,
         bottomBar = {
-            // ПОЛЕ ВВОДА В BOTTOM BAR
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -740,18 +857,19 @@ fun UpdatedMainScreen(
             ) {
                 var menuExpanded by remember { mutableStateOf(false) }
 
-                // Серая линия сверху с закруглениями
+                // Серая линия сверху с загибами вверх
                 RoundedDivider(
                     color = Color(0xFFE5E5E5),
-                    thickness = 1.dp
+                    thickness = 1.dp,
+                    curveDown = true,  // true = загибы вверх для линии над полем ввода
+                    curveHeight = 10.dp
                 )
 
                 // Поле ввода
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .padding(vertical = 8.dp),
+                        .height(56.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Spacer(modifier = Modifier.width(16.dp))
@@ -761,11 +879,11 @@ fun UpdatedMainScreen(
                         onValueChange = { viewModel.inputMessage = it },
                         singleLine = false,
                         keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences, // ← вот это включает автоматическую заглавную букву в начале предложения
+                            capitalization = KeyboardCapitalization.Sentences,
                             keyboardType = KeyboardType.Text
                         ),
                         textStyle = TextStyle(
-                            fontSize = 18.sp, // Увеличенный размер шрифта
+                            fontSize = 18.sp,
                             color = Color.Black
                         ),
                         modifier = Modifier.weight(1f),
@@ -778,7 +896,7 @@ fun UpdatedMainScreen(
                                         else
                                             "Задайте вопрос...",
                                         color = Color.Gray,
-                                        fontSize = 18.sp // Тот же размер шрифта
+                                        fontSize = 18.sp
                                     )
                                 }
                                 innerTextField()
@@ -831,7 +949,7 @@ fun UpdatedMainScreen(
                                 text = { Text("Отправить фото") },
                                 onClick = {
                                     menuExpanded = false
-                                    onCameraClick() // Используем переданный callback
+                                    onCameraClick()
                                 },
                                 leadingIcon = { Icon(Icons.Default.CameraAlt, null) }
                             )
@@ -847,7 +965,7 @@ fun UpdatedMainScreen(
                                 text = { Text("Ввести вручную") },
                                 onClick = {
                                     menuExpanded = false
-                                    onManualClick() // Используем переданный callback
+                                    onManualClick()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Edit, null) }
                             )
@@ -857,18 +975,17 @@ fun UpdatedMainScreen(
             }
         }
     ) { paddingValues ->
-        // ОСНОВНОЙ КОНТЕНТ
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // используем padding от Scaffold
+                .padding(paddingValues)
         ) {
             // Заголовок с настройками
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color.White)
-                    .padding(top = 8.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -878,8 +995,10 @@ fun UpdatedMainScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
+                    // ИЗМЕНЕНО: Теперь текст даты берется напрямую из ViewModel.
+                    // ViewModel будет сам следить за ее актуальностью.
                     Text(
-                        text = DailyResetUtils.getDisplayDate(DailyResetUtils.getFoodDate()),
+                        text = viewModel.displayDate, // <--- ВОТ ГЛАВНОЕ ИЗМЕНЕНИЕ
                         fontSize = 13.sp,
                         color = Color.Gray
                     )
@@ -901,9 +1020,18 @@ fun UpdatedMainScreen(
             // Прогресс бары
             CollapsibleProgressBars(viewModel)
 
+            // Разделитель с загибом вниз
+            RoundedDivider(
+                color = Color(0xFFE5E5E5),
+                thickness = 1.dp,
+                curveDown = false,  // false = загибы вниз для линии под КБЖУ
+                curveHeight = 8.dp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
             // Подтверждение еды
             viewModel.pendingFood?.let { food ->
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 PendingFoodCard(
                     food = food,
                     selectedMeal = viewModel.selectedMeal,
@@ -911,7 +1039,6 @@ fun UpdatedMainScreen(
                     onConfirm = { viewModel.confirmFood() },
                     onCancel = { viewModel.pendingFood = null }
                 )
-                Spacer(modifier = Modifier.height(6.dp))
             }
 
             // Чат
@@ -920,8 +1047,9 @@ fun UpdatedMainScreen(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     items(viewModel.messages) { message ->
                         AnimatedMessage(
