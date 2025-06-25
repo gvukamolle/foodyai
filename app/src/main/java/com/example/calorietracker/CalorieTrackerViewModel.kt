@@ -32,6 +32,7 @@ import com.example.calorietracker.network.FoodItemData
 import com.example.calorietracker.utils.calculateAge
 import com.example.calorietracker.utils.getOrCreateUserId
 import com.example.calorietracker.utils.DailyResetUtils
+import com.example.calorietracker.extensions.toNetworkProfile
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -400,6 +401,7 @@ class CalorieTrackerViewModel(
 
     // Подтверждение добавления продукта с отправкой на сервер
     fun confirmFood() {
+        Log.d("CalorieTracker", "confirmFood called, source: $currentFoodSource")
         pendingFood?.let { food ->
             // Обновляем локальные данные
             dailyIntake = dailyIntake.copy(

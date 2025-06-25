@@ -16,7 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +35,8 @@ import com.example.calorietracker.ui.animations.AnimatedMessage
 import kotlinx.coroutines.launch
 import androidx.compose.material3.Scaffold
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.unit.Dp
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -115,14 +120,38 @@ fun RingIndicator(label: String, current: Int, target: Int, color: Color) {
         modifier = Modifier.size(60.dp)
     ) {
         CircularProgressIndicator(
+            progress = 1f, // фоновая окружность
+            color = Color(0xFFE5E7EB),
+            strokeWidth = 8.dp,
+            strokeCap = StrokeCap.Round,
+            modifier = Modifier.fillMaxSize()
+        )
+        CircularProgressIndicator(
             progress = if (target > 0) current.toFloat() / target.toFloat() else 0f,
             color = color,
-            trackColor = Color(0xFFE5E7EB),
             strokeWidth = 8.dp,
+            strokeCap = StrokeCap.Round, // Закругленные концы
             modifier = Modifier.fillMaxSize()
         )
         Text(text = label, fontSize = 16.sp, color = Color.Black)
     }
+}
+
+// Кастомный Divider с визуально закругленными краями
+@Composable
+fun RoundedDivider(
+    modifier: Modifier = Modifier,
+    color: Color = Color(0xFFE5E5E5),
+    thickness: Dp = 1.dp
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal =0.dp) // отступы от краев экрана
+            .height(thickness)
+            .clip(RoundedCornerShape(thickness)) // закругление концов линии
+            .background(color)
+    )
 }
 
 @Composable
@@ -136,7 +165,7 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
             .clickable { expanded = !expanded }
     ) {
         if (expanded) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 0.dp)) {
                 ProgressSection(
                     label = "ККАЛ",
                     current = viewModel.dailyIntake.calories,
@@ -185,7 +214,7 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 32.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 RingIndicator(
@@ -667,52 +696,6 @@ fun PhotoUploadDialog(
     )
 }
 
-@Composable
-fun AddFoodButton(
-    isOnline: Boolean,
-    onPhotoClick: () -> Unit,
-    onManualClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        val cameraColor by animateColorAsState(
-            if (isOnline) Color.Black else Color.Gray
-        )
-        Button(
-            onClick = onPhotoClick,
-            modifier = Modifier.weight(1f),
-            enabled = isOnline,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = cameraColor,
-                contentColor = Color.White
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.CameraAlt,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Фото")
-        }
-
-        OutlinedButton(
-            onClick = onManualClick,
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Вручную")
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdatedMainScreen(
@@ -757,8 +740,8 @@ fun UpdatedMainScreen(
             ) {
                 var menuExpanded by remember { mutableStateOf(false) }
 
-                // Серая линия сверху
-                Divider(
+                // Серая линия сверху с закруглениями
+                RoundedDivider(
                     color = Color(0xFFE5E5E5),
                     thickness = 1.dp
                 )
@@ -776,7 +759,15 @@ fun UpdatedMainScreen(
                     BasicTextField(
                         value = viewModel.inputMessage,
                         onValueChange = { viewModel.inputMessage = it },
-                        singleLine = true,
+                        singleLine = false,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences, // ← вот это включает автоматическую заглавную букву в начале предложения
+                            keyboardType = KeyboardType.Text
+                        ),
+                        textStyle = TextStyle(
+                            fontSize = 18.sp, // Увеличенный размер шрифта
+                            color = Color.Black
+                        ),
                         modifier = Modifier.weight(1f),
                         decorationBox = { innerTextField ->
                             Box {
@@ -786,7 +777,8 @@ fun UpdatedMainScreen(
                                             "Спросите у AI-диетолога..."
                                         else
                                             "Задайте вопрос...",
-                                        color = Color.Gray
+                                        color = Color.Gray,
+                                        fontSize = 18.sp // Тот же размер шрифта
                                     )
                                 }
                                 innerTextField()
@@ -839,7 +831,7 @@ fun UpdatedMainScreen(
                                 text = { Text("Отправить фото") },
                                 onClick = {
                                     menuExpanded = false
-                                    onCameraClick()
+                                    onCameraClick() // Используем переданный callback
                                 },
                                 leadingIcon = { Icon(Icons.Default.CameraAlt, null) }
                             )
@@ -855,7 +847,7 @@ fun UpdatedMainScreen(
                                 text = { Text("Ввести вручную") },
                                 onClick = {
                                     menuExpanded = false
-                                    onManualClick()
+                                    onManualClick() // Используем переданный callback
                                 },
                                 leadingIcon = { Icon(Icons.Default.Edit, null) }
                             )
@@ -908,8 +900,6 @@ fun UpdatedMainScreen(
 
             // Прогресс бары
             CollapsibleProgressBars(viewModel)
-
-            Spacer(modifier = Modifier.height(12.dp))
 
             // Подтверждение еды
             viewModel.pendingFood?.let { food ->
