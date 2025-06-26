@@ -48,6 +48,27 @@ import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.LocalDateTime
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.*
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.foundation.layout.RowScope
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -242,116 +263,474 @@ fun RoundedDivider(
     }
 }
 
+// Заменяем функцию CollapsibleProgressBars в MainScreen.kt на эту версию
 
 @Composable
 fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
     var expanded by remember { mutableStateOf(true) }
+    val haptic = LocalHapticFeedback.current
 
-    Column(
+    // Отслеживаем изменения значений для хаптика
+    LaunchedEffect(viewModel.dailyIntake) {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    // Анимация высоты контейнера
+    val containerHeight by animateDpAsState(
+        targetValue = if (expanded) 140.dp else 100.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "container_height"
+    )
+
+    // Анимация прозрачности для плавного перехода
+    val progressAlpha by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 200,
+            easing = FastOutSlowInEasing
+        ),
+        label = "progress_alpha"
+    )
+
+    val ringsAlpha by animateFloatAsState(
+        targetValue = if (expanded) 0f else 1f,
+        animationSpec = tween(
+            durationMillis = 200,
+            delayMillis = if (expanded) 0 else 100,
+            easing = FastOutSlowInEasing
+        ),
+        label = "rings_alpha"
+    )
+
+    // Индикатор состояния (стрелка)
+    val indicatorRotation by animateFloatAsState(
+        targetValue = if (expanded) 0f else 180f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "indicator_rotation"
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .height(containerHeight)
             .background(Color.White)
-            .clickable { expanded = !expanded }
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null, // Убираем ripple effect
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    expanded = !expanded
+                }
+            )
     ) {
-        if (expanded) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                ProgressSection(
-                    label = "ККАЛ",
-                    current = viewModel.dailyIntake.calories,
-                    target = viewModel.userProfile.dailyCalories,
-                    unit = "",
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.calories,
-                        viewModel.userProfile.dailyCalories
-                    ),
-                    delay = 0
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                ProgressSection(
-                    label = "Б",
-                    current = viewModel.dailyIntake.proteins,
-                    target = viewModel.userProfile.dailyProteins,
-                    unit = "г",
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.proteins,
-                        viewModel.userProfile.dailyProteins
-                    ),
-                    delay = 100
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                ProgressSection(
-                    label = "Ж",
-                    current = viewModel.dailyIntake.fats,
-                    target = viewModel.userProfile.dailyFats,
-                    unit = "г",
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.fats,
-                        viewModel.userProfile.dailyFats
-                    ),
-                    delay = 200
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                ProgressSection(
-                    label = "У",
-                    current = viewModel.dailyIntake.carbs,
-                    target = viewModel.userProfile.dailyCarbs,
-                    unit = "г",
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.carbs,
-                        viewModel.userProfile.dailyCarbs
-                    ),
-                    delay = 300
-                )
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                RingIndicator(
-                    label = "К",
-                    current = viewModel.dailyIntake.calories,
-                    target = viewModel.userProfile.dailyCalories,
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.calories,
-                        viewModel.userProfile.dailyCalories
-                    ),
-                    delay = 0
-                )
-                RingIndicator(
-                    label = "Б",
-                    current = viewModel.dailyIntake.proteins,
-                    target = viewModel.userProfile.dailyProteins,
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.proteins,
-                        viewModel.userProfile.dailyProteins
-                    ),
-                    delay = 150
-                )
-                RingIndicator(
-                    label = "Ж",
-                    current = viewModel.dailyIntake.fats,
-                    target = viewModel.userProfile.dailyFats,
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.fats,
-                        viewModel.userProfile.dailyFats
-                    ),
-                    delay = 300
-                )
-                RingIndicator(
-                    label = "У",
-                    current = viewModel.dailyIntake.carbs,
-                    target = viewModel.userProfile.dailyCarbs,
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.carbs,
-                        viewModel.userProfile.dailyCarbs
-                    ),
-                    delay = 450
-                )
+        // Прогресс-бары (развернутое состояние)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = progressAlpha }
+        ) {
+            if (progressAlpha > 0.01f) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    WaveProgressSection(
+                        label = "ККАЛ",
+                        current = viewModel.dailyIntake.calories,
+                        target = viewModel.userProfile.dailyCalories,
+                        unit = "",
+                        color = viewModel.getProgressColor(
+                            viewModel.dailyIntake.calories,
+                            viewModel.userProfile.dailyCalories
+                        ),
+                        delay = 0,
+                        visible = expanded
+                    )
+
+                    WaveProgressSection(
+                        label = "Б",
+                        current = viewModel.dailyIntake.proteins,
+                        target = viewModel.userProfile.dailyProteins,
+                        unit = "г",
+                        color = viewModel.getProgressColor(
+                            viewModel.dailyIntake.proteins,
+                            viewModel.userProfile.dailyProteins
+                        ),
+                        delay = 50,
+                        visible = expanded
+                    )
+
+                    WaveProgressSection(
+                        label = "Ж",
+                        current = viewModel.dailyIntake.fats,
+                        target = viewModel.userProfile.dailyFats,
+                        unit = "г",
+                        color = viewModel.getProgressColor(
+                            viewModel.dailyIntake.fats,
+                            viewModel.userProfile.dailyFats
+                        ),
+                        delay = 100,
+                        visible = expanded
+                    )
+
+                    WaveProgressSection(
+                        label = "У",
+                        current = viewModel.dailyIntake.carbs,
+                        target = viewModel.userProfile.dailyCarbs,
+                        unit = "г",
+                        color = viewModel.getProgressColor(
+                            viewModel.dailyIntake.carbs,
+                            viewModel.userProfile.dailyCarbs
+                        ),
+                        delay = 150,
+                        visible = expanded
+                    )
+                }
             }
         }
+
+        // Кольца (свернутое состояние)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = ringsAlpha }
+        ) {
+            if (ringsAlpha > 0.01f) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AnimatedRingIndicator(
+                        label = "К",
+                        current = viewModel.dailyIntake.calories,
+                        target = viewModel.userProfile.dailyCalories,
+                        color = viewModel.getProgressColor(
+                            viewModel.dailyIntake.calories,
+                            viewModel.userProfile.dailyCalories
+                        ),
+                        delay = 0,
+                        visible = !expanded
+                    )
+
+                    AnimatedRingIndicator(
+                        label = "Б",
+                        current = viewModel.dailyIntake.proteins,
+                        target = viewModel.userProfile.dailyProteins,
+                        color = viewModel.getProgressColor(
+                            viewModel.dailyIntake.proteins,
+                            viewModel.userProfile.dailyProteins
+                        ),
+                        delay = 75,
+                        visible = !expanded
+                    )
+
+                    AnimatedRingIndicator(
+                        label = "Ж",
+                        current = viewModel.dailyIntake.fats,
+                        target = viewModel.userProfile.dailyFats,
+                        color = viewModel.getProgressColor(
+                            viewModel.dailyIntake.fats,
+                            viewModel.userProfile.dailyFats
+                        ),
+                        delay = 150,
+                        visible = !expanded
+                    )
+
+                    AnimatedRingIndicator(
+                        label = "У",
+                        current = viewModel.dailyIntake.carbs,
+                        target = viewModel.userProfile.dailyCarbs,
+                        color = viewModel.getProgressColor(
+                            viewModel.dailyIntake.carbs,
+                            viewModel.userProfile.dailyCarbs
+                        ),
+                        delay = 225,
+                        visible = !expanded
+                    )
+                }
+            }
+        }
+
+        // Индикатор состояния (стрелочка внизу)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 4.dp)
+                .size(24.dp)
+                .graphicsLayer {
+                    rotationZ = indicatorRotation
+                    alpha = 0.3f
+                }
+        ) {
+            Icon(
+                imageVector = Icons.Default.ExpandLess,
+                contentDescription = null,
+                tint = Color.Gray,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun WaveProgressSection(
+    label: String,
+    current: Int,
+    target: Int,
+    unit: String,
+    color: Color,
+    delay: Int,
+    visible: Boolean
+) {
+    val progress = if (target > 0) minOf(current.toFloat() / target.toFloat(), 1f) else 0f
+
+    // Отслеживаем изменения для запуска волны
+    var previousCurrent by remember { mutableIntStateOf(current) }
+    var showWave by remember { mutableStateOf(false) }
+
+    LaunchedEffect(current) {
+        if (current != previousCurrent) {
+            showWave = true
+            previousCurrent = current
+            delay(1000) // Волна длится 1 секунду
+            showWave = false
+        }
+    }
+
+    // Анимация появления/исчезновения
+    val sectionAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 300,
+            delayMillis = if (visible) delay else 0,
+            easing = FastOutSlowInEasing
+        ),
+        label = "section_alpha"
+    )
+
+    // Анимация масштаба для эффекта "выпрыгивания"
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0.8f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "section_scale"
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                alpha = sectionAlpha
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = Color.Black.copy(alpha = 0.8f),
+            modifier = Modifier.width(48.dp),
+            fontWeight = FontWeight.Medium
+        )
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp)
+        ) {
+            // Фоновая полоса
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .background(
+                        Color(0xFFE5E7EB).copy(alpha = 0.6f),
+                        RoundedCornerShape(4.dp)
+                    )
+            )
+
+            // Анимированный прогресс
+            val animatedProgress by animateFloatAsState(
+                targetValue = progress,
+                animationSpec = tween(
+                    durationMillis = 800,
+                    delayMillis = delay,
+                    easing = FastOutSlowInEasing
+                ),
+                label = "bar_progress"
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedProgress)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+            ) {
+                // Основной цвет прогресса
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(color)
+                )
+
+                // Волновой эффект - создаем анимацию вне условия
+                val waveAnimation = rememberInfiniteTransition(label = "wave_transition")
+                val waveOffset by waveAnimation.animateFloat(
+                    initialValue = -1f,
+                    targetValue = 2f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1000, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "wave"
+                )
+
+                // Показываем волну только когда нужно
+                if (showWave) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(0.3f)
+                            .graphicsLayer {
+                                translationX = size.width * waveOffset
+                                alpha = 0.6f
+                            }
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.White.copy(alpha = 0.8f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = "$current/$target$unit",
+            fontSize = 12.sp,
+            color = Color.Black.copy(alpha = 0.8f),
+            modifier = Modifier.width(64.dp),
+            textAlign = TextAlign.End,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+fun AnimatedRingIndicator(
+    label: String,
+    current: Int,
+    target: Int,
+    color: Color,
+    delay: Int,
+    visible: Boolean
+) {
+    val progress = if (target > 0) current.toFloat() / target.toFloat() else 0f
+
+    // Анимация появления
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0.3f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ring_scale"
+    )
+
+    val rotation by animateFloatAsState(
+        targetValue = if (visible) 0f else -90f,
+        animationSpec = tween(
+            durationMillis = 400,
+            delayMillis = delay,
+            easing = FastOutSlowInEasing
+        ),
+        label = "ring_rotation"
+    )
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(60.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                rotationZ = rotation
+            }
+    ) {
+        // Фоновое кольцо
+        CircularProgressIndicator(
+            progress = 1f,
+            color = Color(0xFFE5E7EB).copy(alpha = 0.5f),
+            strokeWidth = 6.dp,
+            strokeCap = StrokeCap.Round,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Анимированное кольцо прогресса
+        val animatedProgress by animateFloatAsState(
+            targetValue = if (visible) progress else 0f,
+            animationSpec = tween(
+                durationMillis = 1000,
+                delayMillis = if (visible) delay else 0,
+                easing = FastOutSlowInEasing
+            ),
+            label = "ring_progress"
+        )
+
+        // Пульсация при высоком прогрессе - вынесли из graphicsLayer
+        val infiniteTransition = rememberInfiniteTransition(label = "pulse_transition")
+        val pulse by infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.05f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulse"
+        )
+
+        // Определяем масштаб заранее
+        val pulseScale = if (animatedProgress > 0.9f) pulse else 1f
+
+        CircularProgressIndicator(
+            progress = animatedProgress,
+            color = color,
+            strokeWidth = 6.dp,
+            strokeCap = StrokeCap.Round,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = pulseScale
+                    scaleY = pulseScale
+                }
+        )
+
+        // Метка в центре
+        Text(
+            text = label,
+            fontSize = 18.sp,
+            color = Color.Black,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -390,6 +769,7 @@ fun PendingFoodCard(
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -486,7 +866,10 @@ fun PendingFoodCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = onConfirm,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onConfirm()
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Black,
                         contentColor = Color.White
@@ -496,13 +879,89 @@ fun PendingFoodCard(
                     Text("Подтвердить")
                 }
                 OutlinedButton(
-                    onClick = onCancel,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onCancel()
+                    },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Отмена")
                 }
             }
         }
+    }
+}
+
+@Composable
+fun MealTypeButton(
+    meal: com.example.calorietracker.MealType,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+
+    Button(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isSelected) Color.Black else Color(0xFFE5E7EB),
+            contentColor = if (isSelected) Color.White else Color.Black
+        ),
+        modifier = modifier
+            .height(32.dp),
+        contentPadding = PaddingValues(horizontal = 0.dp),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Text(meal.displayName, fontSize = 13.sp)
+    }
+}
+
+@Composable
+fun HapticIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+
+    IconButton(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
+        modifier = modifier,
+        enabled = enabled
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun HapticButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: ButtonColors = ButtonDefaults.buttonColors(),
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    content: @Composable RowScope.() -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+
+    Button(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
+        modifier = modifier,
+        enabled = enabled,
+        colors = colors,
+        contentPadding = contentPadding
+    ) {
+        content()
     }
 }
 

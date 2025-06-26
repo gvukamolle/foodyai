@@ -209,12 +209,64 @@ class CalorieTrackerViewModel(
 
     fun getProgressColor(current: Int, target: Int): androidx.compose.ui.graphics.Color {
         val percentage = (current.toFloat() / target.toFloat()) * 100
+
         return when {
-            percentage < 80 -> androidx.compose.ui.graphics.Color(0xFFFF9292)
-            percentage < 95 -> androidx.compose.ui.graphics.Color(0xFFFFE08A)
-            percentage <= 110 -> androidx.compose.ui.graphics.Color(0xFF82FFAE)
-            else -> androidx.compose.ui.graphics.Color(0xFFFF9292)
+            percentage <= 0 -> androidx.compose.ui.graphics.Color(0xFFE53E3E) // Темно-красный
+            percentage < 40 -> {
+                // Градиент от темно-красного к красному
+                val factor = percentage / 40f
+                lerpColor(
+                    androidx.compose.ui.graphics.Color(0xFFE53E3E), // Темно-красный
+                    androidx.compose.ui.graphics.Color(0xFFFF6B6B), // Красный
+                    factor
+                )
+            }
+            percentage < 80 -> {
+                // Градиент от красного к желтому
+                val factor = (percentage - 40) / 40f
+                lerpColor(
+                    androidx.compose.ui.graphics.Color(0xFFFF6B6B), // Красный
+                    androidx.compose.ui.graphics.Color(0xFFFFD93D), // Желтый
+                    factor
+                )
+            }
+            percentage <= 100 -> {
+                // Градиент от желтого к зеленому
+                val factor = (percentage - 80) / 20f
+                lerpColor(
+                    androidx.compose.ui.graphics.Color(0xFFFFD93D), // Желтый
+                    androidx.compose.ui.graphics.Color(0xFF6BCF7F), // Зеленый
+                    factor
+                )
+            }
+            percentage <= 110 -> {
+                // Остаемся зеленым
+                androidx.compose.ui.graphics.Color(0xFF6BCF7F)
+            }
+            else -> {
+                // Градиент от зеленого к бордовому при превышении
+                val factor = minOf((percentage - 110) / 20f, 1f)
+                lerpColor(
+                    androidx.compose.ui.graphics.Color(0xFF6BCF7F), // Зеленый
+                    androidx.compose.ui.graphics.Color(0xFF8B0000), // Темно-бордовый
+                    factor
+                )
+            }
         }
+    }
+
+    // Функция для плавного перехода между цветами
+    private fun lerpColor(start: androidx.compose.ui.graphics.Color, end: androidx.compose.ui.graphics.Color, fraction: Float): androidx.compose.ui.graphics.Color {
+        return androidx.compose.ui.graphics.Color(
+            red = lerp(start.red, end.red, fraction),
+            green = lerp(start.green, end.green, fraction),
+            blue = lerp(start.blue, end.blue, fraction),
+            alpha = 1f
+        )
+    }
+
+    private fun lerp(start: Float, end: Float, fraction: Float): Float {
+        return start + (end - start) * fraction
     }
 
     fun handleSetupSubmit() {
