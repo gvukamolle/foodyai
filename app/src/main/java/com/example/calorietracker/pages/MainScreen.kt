@@ -52,7 +52,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -277,7 +276,7 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
 
     // Анимация высоты контейнера
     val containerHeight by animateDpAsState(
-        targetValue = if (expanded) 140.dp else 100.dp,
+        targetValue = if (expanded) 150.dp else 80.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -408,7 +407,7 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 32.dp),
+                        .padding(horizontal = 0.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -467,8 +466,8 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 4.dp)
-                .size(24.dp)
+                .padding(bottom = 0.dp)
+                .size(20.dp)
                 .graphicsLayer {
                     rotationZ = indicatorRotation
                     alpha = 0.3f
@@ -478,7 +477,7 @@ fun CollapsibleProgressBars(viewModel: CalorieTrackerViewModel) {
                 imageVector = Icons.Default.ExpandLess,
                 contentDescription = null,
                 tint = Color.Gray,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(32.dp)
             )
         }
     }
@@ -495,19 +494,6 @@ fun WaveProgressSection(
     visible: Boolean
 ) {
     val progress = if (target > 0) minOf(current.toFloat() / target.toFloat(), 1f) else 0f
-
-    // Отслеживаем изменения для запуска волны
-    var previousCurrent by remember { mutableIntStateOf(current) }
-    var showWave by remember { mutableStateOf(false) }
-
-    LaunchedEffect(current) {
-        if (current != previousCurrent) {
-            showWave = true
-            previousCurrent = current
-            delay(1000) // Волна длится 1 секунду
-            showWave = false
-        }
-    }
 
     // Анимация появления/исчезновения
     val sectionAlpha by animateFloatAsState(
@@ -575,53 +561,23 @@ fun WaveProgressSection(
                 label = "bar_progress"
             )
 
+            // Анимированный цвет
+            val animatedColor by animateColorAsState(
+                targetValue = color,
+                animationSpec = tween(
+                    durationMillis = 1000,
+                    easing = FastOutSlowInEasing
+                ),
+                label = "color_animation"
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth(animatedProgress)
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-            ) {
-                // Основной цвет прогресса
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(color)
-                )
-
-                // Волновой эффект - создаем анимацию вне условия
-                val waveAnimation = rememberInfiniteTransition(label = "wave_transition")
-                val waveOffset by waveAnimation.animateFloat(
-                    initialValue = -1f,
-                    targetValue = 2f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1000, easing = LinearEasing),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "wave"
-                )
-
-                // Показываем волну только когда нужно
-                if (showWave) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(0.3f)
-                            .graphicsLayer {
-                                translationX = size.width * waveOffset
-                                alpha = 0.6f
-                            }
-                            .background(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        Color.White.copy(alpha = 0.8f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                    )
-                }
-            }
+                    .background(animatedColor)
+            )
         }
 
         Text(
@@ -696,21 +652,6 @@ fun AnimatedRingIndicator(
             label = "ring_progress"
         )
 
-        // Пульсация при высоком прогрессе - вынесли из graphicsLayer
-        val infiniteTransition = rememberInfiniteTransition(label = "pulse_transition")
-        val pulse by infiniteTransition.animateFloat(
-            initialValue = 1f,
-            targetValue = 1.05f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1000),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "pulse"
-        )
-
-        // Определяем масштаб заранее
-        val pulseScale = if (animatedProgress > 0.9f) pulse else 1f
-
         CircularProgressIndicator(
             progress = animatedProgress,
             color = color,
@@ -719,8 +660,6 @@ fun AnimatedRingIndicator(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    scaleX = pulseScale
-                    scaleY = pulseScale
                 }
         )
 
@@ -770,6 +709,7 @@ fun PendingFoodCard(
     onCancel: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -865,11 +805,9 @@ fun PendingFoodCard(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onConfirm()
-                    },
+                // Используем вашу кастомную кнопку, которая уже содержит хаптик
+                HapticButton(
+                    onClick = onConfirm,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Black,
                         contentColor = Color.White
@@ -880,6 +818,7 @@ fun PendingFoodCard(
                 }
                 OutlinedButton(
                     onClick = {
+                        // 2. Используем уже готовую переменную haptic ВНУТРИ лямбды
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onCancel()
                     },

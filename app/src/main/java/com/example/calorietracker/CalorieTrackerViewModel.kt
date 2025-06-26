@@ -210,48 +210,13 @@ class CalorieTrackerViewModel(
     fun getProgressColor(current: Int, target: Int): androidx.compose.ui.graphics.Color {
         val percentage = (current.toFloat() / target.toFloat()) * 100
 
+        // Пастельные мягкие цвета для разных зон
         return when {
-            percentage <= 0 -> androidx.compose.ui.graphics.Color(0xFFE53E3E) // Темно-красный
-            percentage < 40 -> {
-                // Градиент от темно-красного к красному
-                val factor = percentage / 40f
-                lerpColor(
-                    androidx.compose.ui.graphics.Color(0xFFE53E3E), // Темно-красный
-                    androidx.compose.ui.graphics.Color(0xFFFF6B6B), // Красный
-                    factor
-                )
-            }
-            percentage < 80 -> {
-                // Градиент от красного к желтому
-                val factor = (percentage - 40) / 40f
-                lerpColor(
-                    androidx.compose.ui.graphics.Color(0xFFFF6B6B), // Красный
-                    androidx.compose.ui.graphics.Color(0xFFFFD93D), // Желтый
-                    factor
-                )
-            }
-            percentage <= 100 -> {
-                // Градиент от желтого к зеленому
-                val factor = (percentage - 80) / 20f
-                lerpColor(
-                    androidx.compose.ui.graphics.Color(0xFFFFD93D), // Желтый
-                    androidx.compose.ui.graphics.Color(0xFF6BCF7F), // Зеленый
-                    factor
-                )
-            }
-            percentage <= 110 -> {
-                // Остаемся зеленым
-                androidx.compose.ui.graphics.Color(0xFF6BCF7F)
-            }
-            else -> {
-                // Градиент от зеленого к бордовому при превышении
-                val factor = minOf((percentage - 110) / 20f, 1f)
-                lerpColor(
-                    androidx.compose.ui.graphics.Color(0xFF6BCF7F), // Зеленый
-                    androidx.compose.ui.graphics.Color(0xFF8B0000), // Темно-бордовый
-                    factor
-                )
-            }
+            percentage < 40 -> androidx.compose.ui.graphics.Color(0xFFFF828B) // Пастельный розовый
+            percentage < 80 -> androidx.compose.ui.graphics.Color(0xFFFFDB82) // Пастельный персиковый
+            percentage < 100 -> androidx.compose.ui.graphics.Color(0xFF7BFF9C) // Пастельный мятный
+            percentage < 110 -> androidx.compose.ui.graphics.Color(0xFF37BE2C) // Пастельный зеленый
+            else -> androidx.compose.ui.graphics.Color(0xFFFF5259) // Пастельный лавандовый для переедания
         }
     }
 
