@@ -5,7 +5,6 @@ package com.example.calorietracker
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -18,33 +17,27 @@ import androidx.compose.animation.core.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.data.DataRepository
-import com.example.calorietracker.pages.SetupScreen
-import com.example.calorietracker.pages.SettingsScreen
-import com.example.calorietracker.pages.UpdatedMainScreen
-import com.example.calorietracker.pages.ManualFoodInputDialog
-import com.example.calorietracker.pages.PhotoUploadDialog
-import com.example.calorietracker.ui.animations.SwipeBackContainer
+import com.example.calorietracker.pages.*
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
 
 enum class Screen {
-    Setup, Main, Settings
+    Setup, Main, SettingsV2
 }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Запускаем периодическую очистку
         CleanupWorker.schedule(this)
 
         setContent {
             CalorieTrackerTheme {
                 val repository = remember { DataRepository(this@MainActivity) }
-                CalorieTrackerApp(repository, this@MainActivity)
+                val authManager = remember { AuthManager(this@MainActivity) }
+                CalorieTrackerApp(repository, authManager, this@MainActivity)
             }
         }
     }
@@ -64,48 +57,36 @@ fun CalorieTrackerTheme(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun CalorieTrackerApp(repository: DataRepository, context: android.content.Context) {
-    val viewModel: CalorieTrackerViewModel = remember {
-        CalorieTrackerViewModel(repository, context)
-    }
+fun CalorieTrackerApp(repository: DataRepository, authManager: AuthManager, context: android.content.Context) {
+    val viewModel: CalorieTrackerViewModel = remember { CalorieTrackerViewModel(repository, context) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Состояние текущего экрана
     var currentScreen by remember {
-        mutableStateOf(if (viewModel.currentStep == "setup") Screen.Setup else Screen.Main)
+        mutableStateOf(if (viewModel.userProfile.isSetupComplete) Screen.Main else Screen.Setup)
     }
 
-    // Лаунчер для камеры
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap ->
+    var showSettingsScreen by remember { mutableStateOf(false) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
         bitmap?.let {
-            viewModel.showPhotoDialog = false
-            coroutineScope.launch {
+            coroutineScope.launch { // ИСПРАВЛЕНО
                 viewModel.analyzePhotoWithAI(it)
             }
         }
     }
 
-    // Лаунчер для галереи
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
-            viewModel.showPhotoDialog = false
             context.contentResolver.openInputStream(it)?.use { stream ->
                 val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
-                coroutineScope.launch {
+                coroutineScope.launch { // ИСПРАВЛЕНО
                     viewModel.analyzePhotoWithAI(bitmap)
                 }
             }
         }
     }
 
-    // Лаунчер для разрешений камеры
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
             cameraLauncher.launch(null)
         } else {
@@ -113,43 +94,32 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
         }
     }
 
-    // Обработка кнопки назад
-    BackHandler(enabled = currentScreen != Screen.Main || viewModel.showSettings) {
-        when {
-            viewModel.showSettings -> {
-                viewModel.showSettings = false
-            }
-            currentScreen == Screen.Setup && viewModel.currentStep == "setup" -> {
-                (context as? Activity)?.finish()
-            }
-            else -> {
-                currentScreen = Screen.Main
-            }
+    BackHandler(enabled = showSettingsScreen || currentScreen == Screen.Setup) {
+        if (showSettingsScreen) {
+            showSettingsScreen = false
+        } else if (currentScreen == Screen.Setup) {
+            (context as? Activity)?.finish()
         }
     }
 
-    // Диалог загрузки фото
     if (viewModel.showPhotoDialog) {
         PhotoUploadDialog(
             onDismiss = { viewModel.showPhotoDialog = false },
             onCameraClick = {
-                if (ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.CAMERA
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
+                viewModel.showPhotoDialog = false
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                     cameraLauncher.launch(null)
                 } else {
                     permissionLauncher.launch(Manifest.permission.CAMERA)
                 }
             },
             onGalleryClick = {
+                viewModel.showPhotoDialog = false
                 galleryLauncher.launch("image/*")
             }
         )
     }
 
-    // Диалог ручного ввода
     if (viewModel.showManualInputDialog) {
         ManualFoodInputDialog(
             initialFoodName = viewModel.prefillFood?.name ?: "",
@@ -169,130 +139,59 @@ fun CalorieTrackerApp(repository: DataRepository, context: android.content.Conte
         )
     }
 
-    // Плавная навигация между экранами
     Crossfade(
-        targetState = when {
-            viewModel.currentStep == "setup" -> Screen.Setup
-            viewModel.showSettings -> Screen.Settings
-            else -> Screen.Main
-        },
-        animationSpec = tween(durationMillis = 300)
+        targetState = if (showSettingsScreen) Screen.SettingsV2 else currentScreen,
+        animationSpec = tween(durationMillis = 300),
+        label = "screen_crossfade"
     ) { targetScreen ->
         when (targetScreen) {
             Screen.Setup -> {
                 SetupScreen(
                     viewModel = viewModel,
                     onFinish = {
-                        viewModel.checkInternetConnection()
+                        viewModel.userProfile.isSetupComplete = true
+                        repository.saveUserProfile(viewModel.userProfile)
                         currentScreen = Screen.Main
                     }
                 )
             }
-            Screen.Settings -> {
-                SwipeBackContainer(
-                    onSwipeBack = { viewModel.showSettings = false },
-                    previousContent = {
-                        UpdatedMainScreen(
-                            viewModel = viewModel,
-                            onCameraClick = {
-                                if (viewModel.isOnline) {
-                                    if (
-                                        ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.CAMERA
-                                        ) == PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        cameraLauncher.launch(null)
-                                    } else {
-                                        permissionLauncher.launch(Manifest.permission.CAMERA)
-                                    }
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        "AI анализ недоступен без интернета. Используйте ручной ввод.",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                    viewModel.showManualInputDialog = true
-                                }
-                            },
-                            onGalleryClick = {
-                                if (viewModel.isOnline) {
-                                    galleryLauncher.launch("image/*")
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        "AI анализ недоступен без интернета. Используйте ручной ввод.",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                    viewModel.showManualInputDialog = true
-                                }
-                            },
-                            onManualClick = { viewModel.showManualInputDialog = true },
-                            onSettingsClick = {}
-                        )
+            Screen.SettingsV2 -> {
+                SettingsScreenV2(
+                    authManager = authManager,
+                    onBack = { showSettingsScreen = false },
+                    onNavigateToProfile = {},
+                    onNavigateToBodySettings = {},
+                    onNavigateToSubscription = {},
+                    onSignOut = {
+                        authManager.signOut()
                     }
-                ) {
-                    SettingsScreen(
-                        viewModel = viewModel,
-                        onSave = {
-                            viewModel.showSettings = false
-                            viewModel.checkInternetConnection()
-                        },
-                        onBack = { viewModel.showSettings = false }
-                    )
-                }
-        }
+                )
+            }
             Screen.Main -> {
                 UpdatedMainScreen(
                     viewModel = viewModel,
                     onCameraClick = {
                         if (viewModel.isOnline) {
-                            if (
-                                ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.CAMERA
-                                ) == PackageManager.PERMISSION_GRANTED
-                            ) {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                                 cameraLauncher.launch(null)
                             } else {
                                 permissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                         } else {
-                            Toast.makeText(
-                                context,
-                                "AI анализ недоступен без интернета. Используйте ручной ввод.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            viewModel.showManualInputDialog = true
+                            Toast.makeText(context, "AI анализ недоступен без интернета.", Toast.LENGTH_LONG).show()
                         }
                     },
                     onGalleryClick = {
                         if (viewModel.isOnline) {
-                            galleryLauncher.launch("image/*")                        } else {
-                            Toast.makeText(
-                                context,
-                                "AI анализ недоступен без интернета. Используйте ручной ввод.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            viewModel.showManualInputDialog = true
+                            galleryLauncher.launch("image/*")
+                        } else {
+                            Toast.makeText(context, "AI анализ недоступен без интернета.", Toast.LENGTH_LONG).show()
                         }
                     },
-                    onManualClick = {
-                        viewModel.showManualInputDialog = true
-                    },
-                    onSettingsClick = {
-                        viewModel.showSettings = true
-                    }
+                    onManualClick = { viewModel.showManualInputDialog = true },
+                    onSettingsClick = { showSettingsScreen = true }
                 )
             }
-        }
-    }
-
-    // Периодическая проверка интернета
-    LaunchedEffect(Unit) {
-        while (true) {
-            kotlinx.coroutines.delay(1000)
-            viewModel.checkInternetConnection()
         }
     }
 }

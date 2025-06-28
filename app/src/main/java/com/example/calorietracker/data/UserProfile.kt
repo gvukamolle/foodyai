@@ -18,7 +18,8 @@ data class UserProfile(
     val dailyCalories: Int = 0,
     val dailyProteins: Int = 0,
     val dailyFats: Int = 0,
-    val dailyCarbs: Int = 0
+    val dailyCarbs: Int = 0,
+    var isSetupComplete: Boolean = false // <-- ДОБАВЬ ЭТУ СТРОКУ
 )
 
 // ====== 2. Модель для хранения в Room (БД) ======
