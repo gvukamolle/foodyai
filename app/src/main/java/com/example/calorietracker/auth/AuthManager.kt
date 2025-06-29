@@ -8,10 +8,16 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.CompletableJob
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.Date
 
@@ -60,6 +66,32 @@ class AuthManager(private val context: Context) {
         }
     }
 
+    fun updateDisplayName(newName: String): Job {
+        val user = auth.currentUser ?: return Job().apply { complete() } // <-- ИСПРАВЛЕНО
+        val uid = user.uid
+
+        return CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // 1. Обновляем имя в Firebase Authentication
+                val profileUpdates = UserProfileChangeRequest.Builder()
+                    .setDisplayName(newName)
+                    .build()
+                user.updateProfile(profileUpdates).await()
+
+                // 2. Обновляем имя в Firestore
+                firestore.collection("users").document(uid).update("displayName", newName).await()
+
+                // 3. Обновляем локальное состояние в главном потоке
+                withContext(Dispatchers.Main) {
+                    _currentUser.value = _currentUser.value?.copy(displayName = newName)
+                }
+            } catch (e: Exception) {
+                // Обработка ошибок, если что-то пошло не так
+                e.printStackTrace()
+            }
+        }
+    }
+
     private fun loadUserData(firebaseUser: FirebaseUser) {
         firestore.collection("users").document(firebaseUser.uid).get()
             .addOnSuccessListener { document ->
@@ -91,11 +123,12 @@ class AuthManager(private val context: Context) {
         }
     }
 
-    private fun createUserInFirestore(firebaseUser: FirebaseUser) {
+    private fun createUserInFirestore(firebaseUser: FirebaseUser, initialDisplayName: String? = null) {
         val newUser = UserData(
             uid = firebaseUser.uid,
             email = firebaseUser.email ?: "",
-            displayName = firebaseUser.displayName ?: "Пользователь",
+            // Приоритет: имя из формы, потом имя из Firebase, потом "Пользователь"
+            displayName = initialDisplayName ?: firebaseUser.displayName ?: "Пользователь",
             photoUrl = firebaseUser.photoUrl?.toString(),
             isEmailVerified = firebaseUser.isEmailVerified,
             createdAt = Date(),
@@ -103,6 +136,7 @@ class AuthManager(private val context: Context) {
         )
         firestore.collection("users").document(firebaseUser.uid).set(newUser)
             .addOnSuccessListener {
+                // Успешно создали, обновляем локальное состояние
                 _currentUser.value = newUser
             }
     }
@@ -125,8 +159,8 @@ class AuthManager(private val context: Context) {
                     .build()
                 user.updateProfile(profileUpdates).await()
                 user.sendEmailVerification().await()
-                // Создаем пользователя в Firestore, остальное сделает addAuthStateListener
-                createUserInFirestore(user)
+                // Создаем запись в Firestore, ПЕРЕДАВАЯ ИМЯ НАПРЯМУЮ
+                createUserInFirestore(user, initialDisplayName = displayName)
                 Result.success(Unit)
             } ?: Result.failure(Exception("Не удалось создать пользователя"))
         } catch (e: Exception) {

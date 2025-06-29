@@ -24,6 +24,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.data.DataRepository
+// --- VVV --- ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ --- VVV ---
+import com.example.calorietracker.data.UserProfile
+// --- ^^^ --- ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ --- ^^^ ---
 import com.example.calorietracker.pages.*
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
@@ -74,19 +77,15 @@ fun CalorieTrackerApp(
     val currentUser by authManager.currentUser.collectAsState()
     var showSettingsScreen by remember { mutableStateOf(false) }
 
-    // Переменная для управления текущим экраном ПОСЛЕ авторизации
     var currentScreen by remember { mutableStateOf<Screen?>(null) }
 
-    // Эффект, который определяет, какой экран показать, когда меняется пользователь
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
-            // Синхронизируем ViewModel с данными из Firebase
             viewModel.syncWithUserData(user)
             currentScreen = if (user.isSetupComplete) Screen.Main else Screen.Setup
         }
     }
 
-    // Лаунчеры для камеры, галереи и разрешений
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
         bitmap?.let { coroutineScope.launch { viewModel.analyzePhotoWithAI(it) } }
     }
@@ -107,11 +106,9 @@ fun CalorieTrackerApp(
         showSettingsScreen = false
     }
 
-    // Диалоги
     if (viewModel.showPhotoDialog) { /* ... */ }
     if (viewModel.showManualInputDialog) { /* ... */ }
 
-    // Главный навигатор
     when (authState) {
         AuthManager.AuthState.LOADING -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -122,7 +119,6 @@ fun CalorieTrackerApp(
             AuthScreen(authManager = authManager, onAuthSuccess = {})
         }
         AuthManager.AuthState.AUTHENTICATED -> {
-            // Пользователь вошел, теперь смотрим на currentScreen
             Crossfade(
                 targetState = if (showSettingsScreen) Screen.SettingsV2 else currentScreen,
                 animationSpec = tween(durationMillis = 300),
@@ -132,18 +128,23 @@ fun CalorieTrackerApp(
                     Screen.Setup -> {
                         SetupScreen(
                             viewModel = viewModel,
-                            onFinish = {
-                                // Теперь onFinish напрямую говорит, что нужно перейти на главный экран
+                            onFinish = { finishedProfile -> // <-- Теперь тут нет ошибки
                                 coroutineScope.launch {
-                                    authManager.updateUserSetupComplete(true) // Обновляем в Firebase
+                                    viewModel.updateUserProfile(finishedProfile)
+                                    val result = authManager.updateUserSetupComplete(true)
+                                    if (result.isSuccess) {
+                                        currentScreen = Screen.Main
+                                    } else {
+                                        Toast.makeText(context, "Не удалось сохранить настройки. Попробуйте снова.", Toast.LENGTH_LONG).show()
+                                    }
                                 }
-                                currentScreen = Screen.Main
                             }
                         )
                     }
                     Screen.SettingsV2 -> {
                         SettingsScreenV2(
                             authManager = authManager,
+                            viewModel = viewModel,
                             onBack = { showSettingsScreen = false },
                             onNavigateToProfile = {},
                             onNavigateToBodySettings = {},
@@ -161,7 +162,6 @@ fun CalorieTrackerApp(
                         )
                     }
                     null -> {
-                        // Экран загрузки, пока мы определяем, setup или main
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }

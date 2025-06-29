@@ -1,5 +1,6 @@
 package com.example.calorietracker.pages
 
+import android.widget.Toast
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -9,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,11 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.auth.AuthManager
 import kotlinx.coroutines.launch
 
 // Настройки приложения
@@ -339,6 +345,189 @@ fun OtherAppsContent() {
                     Button(onClick = { /* Subscribe */ }, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) {
                         Text("Подписаться на новости")
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BodySettingsContent(
+    viewModel: CalorieTrackerViewModel,
+    onSave: () -> Unit
+) {
+    val context = LocalContext.current
+
+    // Локальные состояния, чтобы не менять ViewModel напрямую до сохранения
+    var height by remember { mutableStateOf(if (viewModel.userProfile.height > 0) viewModel.userProfile.height.toString() else "") }
+    var weight by remember { mutableStateOf(if (viewModel.userProfile.weight > 0) viewModel.userProfile.weight.toString() else "") }
+    var gender by remember { mutableStateOf(viewModel.userProfile.gender) }
+    var condition by remember { mutableStateOf(viewModel.userProfile.condition) }
+    var goal by remember { mutableStateOf(viewModel.userProfile.goal) }
+
+    val initialBirthdayParts = viewModel.userProfile.birthday.split("-").mapNotNull { it.toIntOrNull() }
+    var year by remember { mutableStateOf(initialBirthdayParts.getOrNull(0)?.toString() ?: "") }
+    var month by remember { mutableStateOf(initialBirthdayParts.getOrNull(1)?.toString() ?: "") }
+    var day by remember { mutableStateOf(initialBirthdayParts.getOrNull(2)?.toString() ?: "") }
+
+    // Проверка валидности
+    val isDataValid by remember(height, weight, year, month, day, gender, condition, goal) {
+        derivedStateOf {
+            height.toIntOrNull() ?: 0 > 0 &&
+                    weight.toIntOrNull() ?: 0 > 0 &&
+                    gender.isNotEmpty() &&
+                    condition.isNotEmpty() &&
+                    goal.isNotEmpty() &&
+                    (year.toIntOrNull() ?: 0) > 1900 &&
+                    (month.toIntOrNull() ?: 0) in 1..12 &&
+                    (day.toIntOrNull() ?: 0) in 1..31
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Поля ввода
+        OutlinedTextField(value = height, onValueChange = { height = it.filter(Char::isDigit) }, label = { Text("Рост (см)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = weight, onValueChange = { weight = it.filter(Char::isDigit) }, label = { Text("Вес (кг)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+
+        // Дата рождения
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(value = year, onValueChange = { if (it.length <= 4) year = it.filter(Char::isDigit) }, label = { Text("Год") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = month, onValueChange = { if (it.length <= 2) month = it.filter(Char::isDigit) }, label = { Text("Месяц") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = day, onValueChange = { if (it.length <= 2) day = it.filter(Char::isDigit) }, label = { Text("День") }, modifier = Modifier.weight(1f))
+        }
+
+        // Выпадающие списки для пола, активности и цели...
+        // (Этот код можно скопировать из твоего старого SettingsScreen, он останется таким же)
+        var genderExpanded by remember { mutableStateOf(false) }
+        ExposedDropdownMenuBox(expanded = genderExpanded, onExpandedChange = { genderExpanded = !genderExpanded }) {
+            OutlinedTextField(value = when (gender) { "male" -> "Мужской"; "female" -> "Женский"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Пол") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+            ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
+                DropdownMenuItem(text = { Text("Мужской") }, onClick = { gender = "male"; genderExpanded = false })
+                DropdownMenuItem(text = { Text("Женский") }, onClick = { gender = "female"; genderExpanded = false })
+            }
+        }
+
+        var conditionExpanded by remember { mutableStateOf(false) }
+        ExposedDropdownMenuBox(expanded = conditionExpanded, onExpandedChange = { conditionExpanded = !conditionExpanded }) {
+            OutlinedTextField(value = when (condition) { "sedentary" -> "Малоподвижный"; "active" -> "Активный"; "very-active" -> "Очень активный"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Активность") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+            ExposedDropdownMenu(expanded = conditionExpanded, onDismissRequest = { conditionExpanded = false }) {
+                DropdownMenuItem(text = { Text("Малоподвижный") }, onClick = { condition = "sedentary"; conditionExpanded = false })
+                DropdownMenuItem(text = { Text("Активный") }, onClick = { condition = "active"; conditionExpanded = false })
+                DropdownMenuItem(text = { Text("Очень активный") }, onClick = { condition = "very-active"; conditionExpanded = false })
+            }
+        }
+
+        var goalExpanded by remember { mutableStateOf(false) }
+        ExposedDropdownMenuBox(expanded = goalExpanded, onExpandedChange = { goalExpanded = !goalExpanded }) {
+            OutlinedTextField(value = when (goal) { "lose" -> "Худеем"; "maintain" -> "Питаемся лучше"; "gain" -> "Набор массы"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Цель") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+            ExposedDropdownMenu(expanded = goalExpanded, onDismissRequest = { goalExpanded = false }) {
+                DropdownMenuItem(text = { Text("Худеем") }, onClick = { goal = "lose"; goalExpanded = false })
+                DropdownMenuItem(text = { Text("Питаемся лучше") }, onClick = { goal = "maintain"; goalExpanded = false })
+                DropdownMenuItem(text = { Text("Набор массы") }, onClick = { goal = "gain"; goalExpanded = false })
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = {
+                val formattedBirthday = String.format("%04d-%02d-%02d", year.toIntOrNull() ?: 0, month.toIntOrNull() ?: 0, day.toIntOrNull() ?: 0)
+                val finalProfile = viewModel.userProfile.copy(
+                    height = height.toInt(),
+                    weight = weight.toInt(),
+                    birthday = formattedBirthday,
+                    gender = gender,
+                    condition = condition,
+                    goal = goal
+                )
+                viewModel.updateUserProfile(finalProfile)
+                Toast.makeText(context, "Настройки обновлены", Toast.LENGTH_SHORT).show()
+                onSave()
+            },
+            enabled = isDataValid,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Сохранить")
+        }
+    }
+}
+
+@Composable
+fun ProfileSettingsContent(
+    authManager: AuthManager,
+    onSave: () -> Unit
+) {
+    val currentUser by authManager.currentUser.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    // Локальное состояние для редактируемого имени
+    var displayName by remember(currentUser) {
+        mutableStateOf(currentUser?.displayName ?: "")
+    }
+
+    // Состояние для отображения прогресса сохранения
+    var isLoading by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text("Редактировать профиль", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
+
+        item {
+            OutlinedTextField(
+                value = displayName,
+                onValueChange = { displayName = it },
+                label = { Text("Ваше имя") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        }
+
+        item {
+            OutlinedTextField(
+                value = currentUser?.email ?: "Email не найден",
+                onValueChange = {},
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth(),
+                readOnly = true, // Email менять нельзя
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = LocalContentColor.current.copy(LocalContentColor.current.alpha),
+                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                enabled = false
+            )
+        }
+
+        item {
+            Button(
+                onClick = {
+                    isLoading = true
+                    scope.launch {
+                        authManager.updateDisplayName(displayName).join() // Запускаем и ждем завершения
+                        isLoading = false
+                        onSave() // Возвращаемся назад
+                    }
+                },
+                enabled = displayName.isNotBlank() && displayName != currentUser?.displayName && !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                } else {
+                    Text("Сохранить изменения")
                 }
             }
         }

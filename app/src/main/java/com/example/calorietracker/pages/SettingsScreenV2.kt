@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.auth.SubscriptionPlan
 import com.example.calorietracker.auth.UserData
@@ -54,6 +55,7 @@ data class SettingsItem(
 @Composable
 fun SettingsScreenV2(
     authManager: AuthManager,
+    viewModel: CalorieTrackerViewModel,
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToBodySettings: () -> Unit,
@@ -109,7 +111,10 @@ fun SettingsScreenV2(
             }
         ) { section ->
             when (section) {
+
                 SettingsSection.MAIN -> MainSettingsContent(currentUser = currentUser, onSectionClick = { currentSection = it })
+                SettingsSection.PROFILE -> ProfileSettingsContent(authManager = authManager, onSave = { currentSection = SettingsSection.MAIN })
+                SettingsSection.BODY_SETTINGS -> BodySettingsContent(viewModel = viewModel, onSave = { currentSection = SettingsSection.MAIN }) // Возвращаемся в главное меню после сохранения
                 SettingsSection.APP_SETTINGS -> AppSettingsContent()
                 SettingsSection.DATA_EXPORT -> DataExportContent()
                 SettingsSection.DATA_MANAGEMENT -> DataManagementContent()

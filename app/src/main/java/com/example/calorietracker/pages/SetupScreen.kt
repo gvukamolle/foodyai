@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.data.UserProfile
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import java.util.Calendar
 
@@ -23,7 +24,7 @@ import java.util.Calendar
 @Composable
 fun SetupScreen(
     viewModel: CalorieTrackerViewModel,
-    onFinish: () -> Unit
+    onFinish: (UserProfile) -> Unit
 ) {
     val systemUiController = rememberSystemUiController()
     SideEffect {
@@ -159,8 +160,7 @@ fun SetupScreen(
                     goal = goal,
                     isSetupComplete = true
                 )
-                viewModel.updateUserProfile(finalProfile)
-                onFinish()
+                onFinish(finalProfile)
             },
             enabled = isButtonEnabled,
             modifier = Modifier.fillMaxWidth(),
