@@ -164,8 +164,9 @@ class CalorieTrackerViewModel(
         // в твой локальный UserProfile (SharedPreferences)
         // Пока сделаем простую синхронизацию
         userProfile = userProfile.copy(
-            isSetupComplete = userData.isSetupComplete
-            // Тут можно добавить и другие поля, если они хранятся в Firebase
+            isSetupComplete =
+                userData.isSetupComplete || userProfile.isSetupComplete
+        // Тут можно добавить и другие поля, если они хранятся в Firebase
         )
     }
 

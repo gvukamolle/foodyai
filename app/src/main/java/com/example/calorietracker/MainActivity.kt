@@ -81,6 +81,7 @@ fun CalorieTrackerApp(
 
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
+            val localSetupComplete = viewModel.userProfile.isSetupComplete
             viewModel.syncWithUserData(user)
             if (!user.isSetupComplete && viewModel.userProfile.isSetupComplete) {
                 authManager.updateUserSetupComplete(true)
@@ -111,8 +112,39 @@ fun CalorieTrackerApp(
         showSettingsScreen = false
     }
 
-    if (viewModel.showPhotoDialog) { /* ... */ }
-    if (viewModel.showManualInputDialog) { /* ... */ }
+    if (viewModel.showPhotoDialog) {
+        PhotoUploadDialog(
+            onDismiss = { viewModel.showPhotoDialog = false },
+            onCameraClick = {
+                viewModel.showPhotoDialog = false
+                val permission = Manifest.permission.CAMERA
+                if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
+                    cameraLauncher.launch(null)
+                } else {
+                    permissionLauncher.launch(permission)
+                }
+            },
+            onGalleryClick = {
+                viewModel.showPhotoDialog = false
+                galleryLauncher.launch("image/*")
+            }
+        )
+    }
+    if (viewModel.showManualInputDialog) {
+        val prefill = viewModel.prefillFood
+        ManualFoodInputDialog(
+            initialFoodName = prefill?.name ?: "",
+            initialCalories = prefill?.calories?.toString() ?: "",
+            initialProteins = prefill?.proteins?.toString() ?: "",
+            initialFats = prefill?.fats?.toString() ?: "",
+            initialCarbs = prefill?.carbs?.toString() ?: "",
+            initialWeight = prefill?.weight ?: "100",
+            onDismiss = { viewModel.showManualInputDialog = false },
+            onConfirm = { name, calories, proteins, fats, carbs, weight ->
+                viewModel.handleManualInput(name, calories, proteins, fats, carbs, weight)
+            }
+        )
+    }
 
     when (authState) {
         AuthManager.AuthState.LOADING -> {
@@ -160,9 +192,21 @@ fun CalorieTrackerApp(
                     Screen.Main -> {
                         UpdatedMainScreen(
                             viewModel = viewModel,
-                            onCameraClick = { /* ... */ },
-                            onGalleryClick = { /* ... */ },
-                            onManualClick = { /* ... */ },
+                            onCameraClick = {
+                                val permission = Manifest.permission.CAMERA
+                                if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
+                                    cameraLauncher.launch(null)
+                                } else {
+                                    permissionLauncher.launch(permission)
+                                }
+                            },
+                            onGalleryClick = {
+                                galleryLauncher.launch("image/*")
+                            },
+                            onManualClick = {
+                                viewModel.prefillFood = null
+                                viewModel.showManualInputDialog = true
+                            },
                             onSettingsClick = { showSettingsScreen = true }
                         )
                     }

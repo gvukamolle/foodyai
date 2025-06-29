@@ -28,7 +28,7 @@ fun SetupScreen(
 ) {
     val systemUiController = rememberSystemUiController()
     SideEffect {
-        systemUiController.setStatusBarColor(color = Color.White, darkIcons = true)
+        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
     }
 
     // Локальные состояния для всех полей ввода
