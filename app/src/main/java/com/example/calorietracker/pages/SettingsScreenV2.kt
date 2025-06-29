@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -69,33 +70,38 @@ fun SettingsScreenV2(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var currentSection by remember { mutableStateOf(SettingsSection.MAIN) }
 
+    BackHandler(enabled = currentSection != SettingsSection.MAIN) {
+        currentSection = SettingsSection.MAIN
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(text = when (currentSection) {
-                        SettingsSection.MAIN -> "Настройки"
-                        SettingsSection.APP_SETTINGS -> "Настройки приложения"
-                        SettingsSection.DATA_EXPORT -> "Выгрузка данных"
-                        SettingsSection.DATA_MANAGEMENT -> "Управление данными"
-                        SettingsSection.FEEDBACK -> "Обратная связь"
-                        SettingsSection.ABOUT -> "О нас"
-                        SettingsSection.MISSION -> "Наша миссия"
-                        SettingsSection.OTHER_APPS -> "Другие приложения"
-                        SettingsSection.SUBSCRIPTION -> "Подписки"
-                        else -> "Настройки"
-                    }, fontWeight = FontWeight.Bold)
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (currentSection == SettingsSection.MAIN) onBack() else currentSection = SettingsSection.MAIN
-                    }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
+            if (currentSection != SettingsSection.SUBSCRIPTION) {
+                TopAppBar(
+                    title = {
+                        Text(text = when (currentSection) {
+                            SettingsSection.MAIN -> "Настройки"
+                            SettingsSection.APP_SETTINGS -> "Настройки приложения"
+                            SettingsSection.DATA_EXPORT -> "Выгрузка данных"
+                            SettingsSection.DATA_MANAGEMENT -> "Управление данными"
+                            SettingsSection.FEEDBACK -> "Обратная связь"
+                            SettingsSection.ABOUT -> "О нас"
+                            SettingsSection.MISSION -> "Наша миссия"
+                            SettingsSection.OTHER_APPS -> "Другие приложения"
+                            else -> "Настройки"
+                        }, fontWeight = FontWeight.Bold)
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            if (currentSection == SettingsSection.MAIN) onBack() else currentSection = SettingsSection.MAIN
+                        }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                )
+            }
         },
         containerColor = Color(0xFFF8F9FA)
     ) { paddingValues ->
