@@ -25,7 +25,8 @@ data class UserData(
     val subscriptionExpiry: Date? = null,
     val createdAt: Date = Date(),
     val lastLogin: Date = Date(),
-    val isEmailVerified: Boolean = false
+    val isEmailVerified: Boolean = false,
+    val isSetupComplete: Boolean = false // <-- ДОБАВЬ ЭТО!
 )
 
 class AuthManager(private val context: Context) {
@@ -76,6 +77,18 @@ class AuthManager(private val context: Context) {
                 // Ошибка загрузки данных
                 _authState.value = AuthState.UNAUTHENTICATED
             }
+    }
+
+    suspend fun updateUserSetupComplete(isComplete: Boolean): Result<Unit> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Пользователь не авторизован"))
+        return try {
+            firestore.collection("users").document(uid).update("isSetupComplete", isComplete).await()
+            // Обновляем локального юзера
+            _currentUser.value = _currentUser.value?.copy(isSetupComplete = isComplete)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     private fun createUserInFirestore(firebaseUser: FirebaseUser) {

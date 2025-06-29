@@ -25,6 +25,7 @@ import kotlin.math.round
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.example.calorietracker.network.FoodDataFromAnswer
 import android.widget.Toast
+import com.example.calorietracker.auth.UserData
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import com.example.calorietracker.network.LogFoodRequest
@@ -151,6 +152,21 @@ class CalorieTrackerViewModel(
             val currentOnline = NetworkUtils.isInternetAvailable(context)
             isOnline = currentOnline
         }
+    }
+
+    fun updateUserProfile(newProfile: UserProfile) {
+        userProfile = newProfile
+        handleSetupSubmit() // Эта функция у тебя уже есть, она пересчитывает КБЖУ и сохраняет профиль
+    }
+
+    fun syncWithUserData(userData: UserData) {
+        // Тут нужно будет дописать маппинг данных из UserData (Firebase)
+        // в твой локальный UserProfile (SharedPreferences)
+        // Пока сделаем простую синхронизацию
+        userProfile = userProfile.copy(
+            isSetupComplete = userData.isSetupComplete
+            // Тут можно добавить и другие поля, если они хранятся в Firebase
+        )
     }
 
     private fun loadInitialData() {

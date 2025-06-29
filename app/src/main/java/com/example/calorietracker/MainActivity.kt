@@ -14,8 +14,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import com.example.calorietracker.auth.AuthManager
@@ -24,6 +28,7 @@ import com.example.calorietracker.pages.*
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
 
+// Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
     Setup, Main, SettingsV2
 }
@@ -37,7 +42,9 @@ class MainActivity : ComponentActivity() {
             CalorieTrackerTheme {
                 val repository = remember { DataRepository(this@MainActivity) }
                 val authManager = remember { AuthManager(this@MainActivity) }
-                CalorieTrackerApp(repository, authManager, this@MainActivity)
+                val viewModel: CalorieTrackerViewModel = remember { CalorieTrackerViewModel(repository, this@MainActivity) }
+
+                CalorieTrackerApp(authManager, viewModel, this@MainActivity)
             }
         }
     }
@@ -57,140 +64,109 @@ fun CalorieTrackerTheme(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun CalorieTrackerApp(repository: DataRepository, authManager: AuthManager, context: android.content.Context) {
-    val viewModel: CalorieTrackerViewModel = remember { CalorieTrackerViewModel(repository, context) }
+fun CalorieTrackerApp(
+    authManager: AuthManager,
+    viewModel: CalorieTrackerViewModel,
+    context: android.content.Context
+) {
     val coroutineScope = rememberCoroutineScope()
-
-    var currentScreen by remember {
-        mutableStateOf(if (viewModel.userProfile.isSetupComplete) Screen.Main else Screen.Setup)
-    }
-
+    val authState by authManager.authState.collectAsState()
+    val currentUser by authManager.currentUser.collectAsState()
     var showSettingsScreen by remember { mutableStateOf(false) }
 
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        bitmap?.let {
-            coroutineScope.launch { // ИСПРАВЛЕНО
-                viewModel.analyzePhotoWithAI(it)
-            }
+    // Переменная для управления текущим экраном ПОСЛЕ авторизации
+    var currentScreen by remember { mutableStateOf<Screen?>(null) }
+
+    // Эффект, который определяет, какой экран показать, когда меняется пользователь
+    LaunchedEffect(currentUser) {
+        currentUser?.let { user ->
+            // Синхронизируем ViewModel с данными из Firebase
+            viewModel.syncWithUserData(user)
+            currentScreen = if (user.isSetupComplete) Screen.Main else Screen.Setup
         }
     }
 
+    // Лаунчеры для камеры, галереи и разрешений
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        bitmap?.let { coroutineScope.launch { viewModel.analyzePhotoWithAI(it) } }
+    }
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             context.contentResolver.openInputStream(it)?.use { stream ->
                 val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
-                coroutineScope.launch { // ИСПРАВЛЕНО
-                    viewModel.analyzePhotoWithAI(bitmap)
-                }
+                coroutineScope.launch { viewModel.analyzePhotoWithAI(bitmap) }
             }
         }
     }
-
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) {
-            cameraLauncher.launch(null)
-        } else {
-            Toast.makeText(context, "Необходимо разрешение на использование камеры", Toast.LENGTH_SHORT).show()
+        if (isGranted) cameraLauncher.launch(null)
+        else Toast.makeText(context, "Необходимо разрешение на использование камеры", Toast.LENGTH_SHORT).show()
+    }
+
+    BackHandler(enabled = showSettingsScreen) {
+        showSettingsScreen = false
+    }
+
+    // Диалоги
+    if (viewModel.showPhotoDialog) { /* ... */ }
+    if (viewModel.showManualInputDialog) { /* ... */ }
+
+    // Главный навигатор
+    when (authState) {
+        AuthManager.AuthState.LOADING -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
         }
-    }
-
-    BackHandler(enabled = showSettingsScreen || currentScreen == Screen.Setup) {
-        if (showSettingsScreen) {
-            showSettingsScreen = false
-        } else if (currentScreen == Screen.Setup) {
-            (context as? Activity)?.finish()
+        AuthManager.AuthState.UNAUTHENTICATED -> {
+            AuthScreen(authManager = authManager, onAuthSuccess = {})
         }
-    }
-
-    if (viewModel.showPhotoDialog) {
-        PhotoUploadDialog(
-            onDismiss = { viewModel.showPhotoDialog = false },
-            onCameraClick = {
-                viewModel.showPhotoDialog = false
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                    cameraLauncher.launch(null)
-                } else {
-                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                }
-            },
-            onGalleryClick = {
-                viewModel.showPhotoDialog = false
-                galleryLauncher.launch("image/*")
-            }
-        )
-    }
-
-    if (viewModel.showManualInputDialog) {
-        ManualFoodInputDialog(
-            initialFoodName = viewModel.prefillFood?.name ?: "",
-            initialCalories = viewModel.prefillFood?.calories?.toString() ?: "",
-            initialProteins = viewModel.prefillFood?.proteins?.toString() ?: "",
-            initialFats = viewModel.prefillFood?.fats?.toString() ?: "",
-            initialCarbs = viewModel.prefillFood?.carbs?.toString() ?: "",
-            initialWeight = viewModel.prefillFood?.weight?.toString() ?: "100",
-            onDismiss = {
-                viewModel.showManualInputDialog = false
-                viewModel.prefillFood = null
-            },
-            onConfirm = { name, calories, proteins, fats, carbs, weight ->
-                viewModel.handleManualInput(name, calories, proteins, fats, carbs, weight)
-                viewModel.prefillFood = null
-            }
-        )
-    }
-
-    Crossfade(
-        targetState = if (showSettingsScreen) Screen.SettingsV2 else currentScreen,
-        animationSpec = tween(durationMillis = 300),
-        label = "screen_crossfade"
-    ) { targetScreen ->
-        when (targetScreen) {
-            Screen.Setup -> {
-                SetupScreen(
-                    viewModel = viewModel,
-                    onFinish = {
-                        viewModel.userProfile.isSetupComplete = true
-                        repository.saveUserProfile(viewModel.userProfile)
-                        currentScreen = Screen.Main
-                    }
-                )
-            }
-            Screen.SettingsV2 -> {
-                SettingsScreenV2(
-                    authManager = authManager,
-                    onBack = { showSettingsScreen = false },
-                    onNavigateToProfile = {},
-                    onNavigateToBodySettings = {},
-                    onNavigateToSubscription = {},
-                    onSignOut = {
-                        authManager.signOut()
-                    }
-                )
-            }
-            Screen.Main -> {
-                UpdatedMainScreen(
-                    viewModel = viewModel,
-                    onCameraClick = {
-                        if (viewModel.isOnline) {
-                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                cameraLauncher.launch(null)
-                            } else {
-                                permissionLauncher.launch(Manifest.permission.CAMERA)
+        AuthManager.AuthState.AUTHENTICATED -> {
+            // Пользователь вошел, теперь смотрим на currentScreen
+            Crossfade(
+                targetState = if (showSettingsScreen) Screen.SettingsV2 else currentScreen,
+                animationSpec = tween(durationMillis = 300),
+                label = "main_nav"
+            ) { screen ->
+                when (screen) {
+                    Screen.Setup -> {
+                        SetupScreen(
+                            viewModel = viewModel,
+                            onFinish = {
+                                // Теперь onFinish напрямую говорит, что нужно перейти на главный экран
+                                coroutineScope.launch {
+                                    authManager.updateUserSetupComplete(true) // Обновляем в Firebase
+                                }
+                                currentScreen = Screen.Main
                             }
-                        } else {
-                            Toast.makeText(context, "AI анализ недоступен без интернета.", Toast.LENGTH_LONG).show()
+                        )
+                    }
+                    Screen.SettingsV2 -> {
+                        SettingsScreenV2(
+                            authManager = authManager,
+                            onBack = { showSettingsScreen = false },
+                            onNavigateToProfile = {},
+                            onNavigateToBodySettings = {},
+                            onNavigateToSubscription = {},
+                            onSignOut = { authManager.signOut() }
+                        )
+                    }
+                    Screen.Main -> {
+                        UpdatedMainScreen(
+                            viewModel = viewModel,
+                            onCameraClick = { /* ... */ },
+                            onGalleryClick = { /* ... */ },
+                            onManualClick = { /* ... */ },
+                            onSettingsClick = { showSettingsScreen = true }
+                        )
+                    }
+                    null -> {
+                        // Экран загрузки, пока мы определяем, setup или main
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
                         }
-                    },
-                    onGalleryClick = {
-                        if (viewModel.isOnline) {
-                            galleryLauncher.launch("image/*")
-                        } else {
-                            Toast.makeText(context, "AI анализ недоступен без интернета.", Toast.LENGTH_LONG).show()
-                        }
-                    },
-                    onManualClick = { viewModel.showManualInputDialog = true },
-                    onSettingsClick = { showSettingsScreen = true }
-                )
+                    }
+                }
             }
         }
     }
