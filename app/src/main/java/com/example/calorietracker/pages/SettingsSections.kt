@@ -30,18 +30,13 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.auth.AuthManager
 import kotlinx.coroutines.launch
-import com.example.calorietracker.ui.theme.ThemeMode
 
 
 // Настройки приложения
 @Composable
-fun AppSettingsContent(
-    themeMode: ThemeMode,
-    onThemeChange: (ThemeMode) -> Unit
-) {
+fun AppSettingsContent() {
     var notificationsEnabled by remember { mutableStateOf(true) }
     var mealReminders by remember { mutableStateOf(true) }
-    var showThemeDialog by remember { mutableStateOf(false) }
     var language by remember { mutableStateOf("Русский") }
     var showLanguageDialog by remember { mutableStateOf(false) }
 
@@ -61,16 +56,6 @@ fun AppSettingsContent(
         }
         item {
             SettingsSectionCard(title = "Внешний вид") {
-                ClickableSettingItem(
-                    title = "Тема",
-                    subtitle = when (themeMode) {
-                        ThemeMode.LIGHT -> "Светлая"
-                        ThemeMode.DARK -> "Темная"
-                        ThemeMode.SYSTEM -> "Как в системе"
-                    },
-                    onClick = { showThemeDialog = true }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 ClickableSettingItem(title = "Язык", subtitle = language, onClick = { showLanguageDialog = true })
             }
         }
@@ -94,39 +79,6 @@ fun AppSettingsContent(
                             RadioButton(selected = language == lang, onClick = { language = lang; showLanguageDialog = false })
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(lang)
-                        }
-                    }
-                }
-            },
-            confirmButton = {}
-        )
-    }
-
-    if (showThemeDialog) {
-        AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = { Text("Выбрать тему") },
-            text = {
-                Column {
-                    ThemeMode.values().forEach { mode ->
-                        val title = when (mode) {
-                            ThemeMode.LIGHT -> "Светлая"
-                            ThemeMode.DARK -> "Темная"
-                            ThemeMode.SYSTEM -> "Как в системе"
-                        }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onThemeChange(mode); showThemeDialog = false }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = themeMode == mode,
-                                onClick = { onThemeChange(mode); showThemeDialog = false }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(title)
                         }
                     }
                 }
@@ -166,10 +118,10 @@ fun DataExportContent() {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(2.dp)
                 ) {                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Экспортируем данные...", fontWeight = FontWeight.Medium)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        LinearProgressIndicator(progress = { exportProgress }, modifier = Modifier.fillMaxWidth())
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Text("Экспортируем данные...", fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LinearProgressIndicator(progress = { exportProgress }, modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "${(exportProgress * 100).toInt()}%",
                         fontSize = 14.sp,
@@ -335,7 +287,7 @@ fun AboutContent() {
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
-              }
+        }
         item {
             SettingsSectionCard(title = "Наша команда") {
                 TeamMemberItem(name = "Александр Иванов", role = "CEO & Founder", avatar = "АИ")
@@ -695,7 +647,7 @@ fun SettingsSectionCard(
             elevation = CardDefaults.cardElevation(0.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
-          Column(content = content)
+            Column(content = content)
         }
     }
 }
@@ -734,9 +686,9 @@ private fun InfoCard(icon: ImageVector, text: String) {
         shape = RoundedCornerShape(12.dp)
     ) {        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Text(text, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
-        }
+    }
     }
 }
 

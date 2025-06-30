@@ -1,7 +1,6 @@
 package com.example.calorietracker.pages
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -17,7 +16,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.data.UserProfile
-import com.example.calorietracker.ui.theme.ThemeMode
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import java.util.Calendar
 
@@ -29,21 +27,12 @@ fun SetupScreen(
 ) {
     val systemUiController = rememberSystemUiController()
 
-    // 1. Call the Composable function unconditionally at the top level
-    val systemInDarkTheme = isSystemInDarkTheme()
-    // 2. Then use its result in your logic
-    val darkTheme = when (viewModel.themeMode) {
-        ThemeMode.DARK -> true
-        ThemeMode.LIGHT -> false
-        ThemeMode.SYSTEM -> systemInDarkTheme // Use the variable, not the function call here
-    }
-
     val systemBarColor = MaterialTheme.colorScheme.background
 
     SideEffect {
         systemUiController.setSystemBarsColor(
-            color = systemBarColor, // <-- Используем переменную
-            darkIcons = !darkTheme
+            color = systemBarColor,
+            darkIcons = true
         )
     }
 

@@ -24,12 +24,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.data.DataRepository
-import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.calorietracker.data.UserProfile
 import com.example.calorietracker.pages.*
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
-import com.example.calorietracker.ui.theme.ThemeMode
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
@@ -46,14 +44,7 @@ class MainActivity : ComponentActivity() {
             val authManager = remember { AuthManager(this@MainActivity) }
             val viewModel: CalorieTrackerViewModel = remember { CalorieTrackerViewModel(repository, this@MainActivity) }
 
-            val themeMode = viewModel.themeMode
-            com.example.calorietracker.ui.theme.CalorieTrackerTheme(
-                darkTheme = when (themeMode) {
-                    ThemeMode.DARK -> true
-                    ThemeMode.LIGHT -> false
-                    ThemeMode.SYSTEM -> isSystemInDarkTheme()
-                }
-            ) {
+            com.example.calorietracker.ui.theme.CalorieTrackerTheme {
                 CalorieTrackerApp(authManager, viewModel, this@MainActivity)
             }
         }

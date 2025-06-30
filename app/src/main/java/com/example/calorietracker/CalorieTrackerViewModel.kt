@@ -35,7 +35,6 @@ import com.example.calorietracker.utils.getOrCreateUserId
 import com.example.calorietracker.utils.DailyResetUtils
 import com.example.calorietracker.extensions.toNetworkProfile
 import kotlinx.coroutines.Dispatchers
-import com.example.calorietracker.ui.theme.ThemeMode
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -118,14 +117,6 @@ class CalorieTrackerViewModel(
     var showPhotoConfirmDialog by mutableStateOf(false)
     var pendingPhoto by mutableStateOf<Bitmap?>(null)
     var photoCaption by mutableStateOf("")
-
-    private var themeModeState = mutableStateOf(repository.getThemeMode())
-    var themeMode: ThemeMode
-        get() = themeModeState.value
-        set(value) {
-            themeModeState.value = value
-            repository.saveThemeMode(value)
-        }
 
     init {
         loadUserData()
