@@ -40,7 +40,7 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 
 enum class SettingsSection {
-    MAIN, PROFILE, BODY_SETTINGS, APP_SETTINGS, SUBSCRIPTION,
+    MAIN, PROFILE, BODY_SETTINGS, APP_SETTINGS, SUBSCRIPTION, CHANGE_PASSWORD,
     DATA_EXPORT, DATA_MANAGEMENT, FEEDBACK, ABOUT, MISSION, OTHER_APPS
 }
 
@@ -71,7 +71,8 @@ fun SettingsScreenV2(
     SideEffect { systemUiController.setSystemBarsColor(color = Color(0xFFF8F9FA), darkIcons = true) }
 
     val currentUser by authManager.currentUser.collectAsState()
-    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
+    var deleteDialogStep by remember { mutableStateOf(0) }
     var currentSection by remember { mutableStateOf(SettingsSection.MAIN) }
 
     BackHandler(enabled = currentSection != SettingsSection.MAIN) {
@@ -122,7 +123,12 @@ fun SettingsScreenV2(
         ) { section ->
             when (section) {
 
-                SettingsSection.MAIN -> MainSettingsContent(currentUser = currentUser, onSectionClick = { currentSection = it })
+                SettingsSection.MAIN -> MainSettingsContent(
+                    currentUser = currentUser,
+                    onSectionClick = { currentSection = it },
+                    onSignOutClick = { showSignOutDialog = true },     // <-- Передаем реализацию
+                    onDeleteAccountClick = { deleteDialogStep = 1 } // <-- И здесь
+                )
                 SettingsSection.PROFILE -> ProfileSettingsContent(authManager = authManager, onSave = { currentSection = SettingsSection.MAIN })
                 SettingsSection.BODY_SETTINGS -> BodySettingsContent(viewModel = viewModel, onSave = { currentSection = SettingsSection.MAIN }) // Возвращаемся в главное меню после сохранения
                 SettingsSection.APP_SETTINGS -> AppSettingsContent()
@@ -132,6 +138,7 @@ fun SettingsScreenV2(
                 SettingsSection.ABOUT -> AboutContent()
                 SettingsSection.MISSION -> MissionContent()
                 SettingsSection.OTHER_APPS -> OtherAppsContent()
+                SettingsSection.CHANGE_PASSWORD -> ChangePasswordContent(authManager = authManager) { currentSection = SettingsSection.MAIN }
                 SettingsSection.SUBSCRIPTION -> SubscriptionScreen(
                     currentPlan = currentUser?.subscriptionPlan ?: SubscriptionPlan.FREE,
                     onSelectPlan = { /* TODO: Handle plan selection */ },
@@ -142,19 +149,40 @@ fun SettingsScreenV2(
         }
     }
 
-    if (showDeleteAccountDialog) {
+    if (showSignOutDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteAccountDialog = false },
+            onDismissRequest = { showSignOutDialog = false },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFF9800), modifier = Modifier.size(48.dp)) },
+            title = { Text("Выйти из аккаунта?") },
+            text = { Text("Вы сможете войти снова в любой момент.", textAlign = TextAlign.Center) },
+            confirmButton = { TextButton(onClick = { showSignOutDialog = false; onSignOut() }, colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFFF9800))) { Text("Выйти") } },
+            dismissButton = { TextButton(onClick = { showSignOutDialog = false }) { Text("Отмена") } }
+        )
+    }
+
+    if (deleteDialogStep == 1) {
+        AlertDialog(
+            onDismissRequest = { deleteDialogStep = 0 },
             icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Red, modifier = Modifier.size(48.dp)) },
             title = { Text("Удалить аккаунт?", textAlign = TextAlign.Center) },
-            text = { Text("Это действие необратимо. Все ваши данные будут удалены навсегда.", textAlign = TextAlign.Center) },
-            confirmButton = {
+            text = { Text("Все ваши данные будут удалены.", textAlign = TextAlign.Center) },
+            confirmButton = { TextButton(onClick = { deleteDialogStep = 2 }, colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)) { Text("Далее") } },
+            dismissButton = { TextButton(onClick = { deleteDialogStep = 0 }) { Text("Отмена") } }
+        )
+    }
+
+    if (deleteDialogStep == 2) {
+        AlertDialog(
+            onDismissRequest = { deleteDialogStep = 0 },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Red, modifier = Modifier.size(48.dp)) },
+            title = { Text("Точно удалить?", textAlign = TextAlign.Center) },
+            text = { Text("Это действие необратимо.", textAlign = TextAlign.Center) },            confirmButton = {
                 TextButton(
-                    onClick = { scope.launch { authManager.deleteAccount(); showDeleteAccountDialog = false; onSignOut() } },
+                    onClick = { scope.launch { authManager.deleteAccount(); deleteDialogStep = 0; onSignOut() } },
                     colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
                 ) { Text("Удалить") }
             },
-            dismissButton = { TextButton(onClick = { showDeleteAccountDialog = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { deleteDialogStep = 0 }) { Text("Отмена") } }
         )
     }
 }
@@ -162,8 +190,10 @@ fun SettingsScreenV2(
 @Composable
 fun MainSettingsContent(
     currentUser: UserData?,
-    onSectionClick: (SettingsSection) -> Unit
-) {
+    onSectionClick: (SettingsSection) -> Unit,
+    onSignOutClick: () -> Unit,      // <-- Добавили это
+    onDeleteAccountClick: () -> Unit // <-- И это
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 16.dp),
@@ -244,10 +274,11 @@ fun MainSettingsContent(
             SettingsGroup(
                 title = "Аккаунт",
                 items = listOf(
-                    SettingsItem(icon = Icons.Default.Logout, title = "Выйти", showArrow = false, onClick = { /* Handle logout */ }),
-                    SettingsItem(icon = Icons.Default.DeleteForever, title = "Удалить аккаунт", showArrow = false, onClick = { /* Show delete dialog */ })
-                ),
-                onItemClick = { it.onClick() }
+                    SettingsItem(icon = Icons.Default.Lock, title = "Изменить пароль", section = SettingsSection.CHANGE_PASSWORD),
+                    SettingsItem(icon = Icons.Default.Logout, title = "Выйти", showArrow = false, onClick = onSignOutClick), // <-- Используем лямбду
+                    SettingsItem(icon = Icons.Default.DeleteForever, title = "Удалить аккаунт", showArrow = false, onClick = onDeleteAccountClick) // <-- И здесь тоже
+                 ),
+                onItemClick = { item -> item.section?.let { onSectionClick(it) } ?: item.onClick() }
             )
         }
         item {
@@ -263,5 +294,10 @@ fun AsyncImage(
     modifier: Modifier,
     contentScale: ContentScale
 ) {
-    TODO("Not yet implemented")
+    coil.compose.AsyncImage(
+        model = model,
+        contentDescription = contentDescription,
+        modifier = modifier,
+        contentScale = contentScale
+    )
 }
