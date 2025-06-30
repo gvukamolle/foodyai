@@ -24,12 +24,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.data.DataRepository
-// --- VVV --- ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ --- VVV ---
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.calorietracker.data.UserProfile
-// --- ^^^ --- ВОТ ЭТА СТРОКА РЕШАЕТ ПРОБЛЕМУ --- ^^^ ---
 import com.example.calorietracker.pages.*
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
+import com.example.calorietracker.ui.theme.ThemeMode
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
@@ -42,27 +42,22 @@ class MainActivity : ComponentActivity() {
         CleanupWorker.schedule(this)
 
         setContent {
-            CalorieTrackerTheme {
-                val repository = remember { DataRepository(this@MainActivity) }
-                val authManager = remember { AuthManager(this@MainActivity) }
-                val viewModel: CalorieTrackerViewModel = remember { CalorieTrackerViewModel(repository, this@MainActivity) }
+            val repository = remember { DataRepository(this@MainActivity) }
+            val authManager = remember { AuthManager(this@MainActivity) }
+            val viewModel: CalorieTrackerViewModel = remember { CalorieTrackerViewModel(repository, this@MainActivity) }
 
+            val themeMode = viewModel.themeMode
+            com.example.calorietracker.ui.theme.CalorieTrackerTheme(
+                darkTheme = when (themeMode) {
+                    ThemeMode.DARK -> true
+                    ThemeMode.LIGHT -> false
+                    ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                }
+            ) {
                 CalorieTrackerApp(authManager, viewModel, this@MainActivity)
             }
         }
     }
-}
-
-@Composable
-fun CalorieTrackerTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = Color.Black,
-            background = Color.White,
-            surface = Color.White
-        ),
-        content = content
-    )
 }
 
 @OptIn(ExperimentalAnimationApi::class)

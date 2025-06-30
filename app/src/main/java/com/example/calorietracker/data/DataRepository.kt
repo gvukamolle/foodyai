@@ -7,6 +7,8 @@ import androidx.core.content.edit
 import com.example.calorietracker.utils.DailyResetUtils
 import com.google.gson.Gson
 import java.time.LocalDate
+import com.example.calorietracker.ui.theme.ThemeMode
+
 
 /**
  * Репозиторий для управления данными приложения, такими как профиль пользователя и дневное потребление калорий.
@@ -16,6 +18,21 @@ import java.time.LocalDate
 class DataRepository(context: Context) {
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("calorie_tracker_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
+
+    //region Theme mode
+    fun saveThemeMode(mode: ThemeMode) {
+        sharedPreferences.edit { putString("theme_mode", mode.name) }
+    }
+
+    fun getThemeMode(): ThemeMode {
+        val stored = sharedPreferences.getString("theme_mode", ThemeMode.SYSTEM.name)
+        return try {
+            ThemeMode.valueOf(stored ?: ThemeMode.SYSTEM.name)
+        } catch (e: Exception) {
+            ThemeMode.SYSTEM
+        }
+    }
+    //endregion
 
     fun saveUserProfile(profile: UserProfile) {
         val json = gson.toJson(profile)

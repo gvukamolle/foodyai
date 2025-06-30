@@ -1,6 +1,7 @@
 package com.example.calorietracker.pages
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -8,15 +9,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.input.KeyboardType
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.data.UserProfile
+import com.example.calorietracker.ui.theme.ThemeMode
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import java.util.Calendar
 
@@ -27,8 +28,23 @@ fun SetupScreen(
     onFinish: (UserProfile) -> Unit
 ) {
     val systemUiController = rememberSystemUiController()
+
+    // 1. Call the Composable function unconditionally at the top level
+    val systemInDarkTheme = isSystemInDarkTheme()
+    // 2. Then use its result in your logic
+    val darkTheme = when (viewModel.themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> systemInDarkTheme // Use the variable, not the function call here
+    }
+
+    val systemBarColor = MaterialTheme.colorScheme.background
+
     SideEffect {
-        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
+        systemUiController.setSystemBarsColor(
+            color = systemBarColor, // <-- Используем переменную
+            darkIcons = !darkTheme
+        )
     }
 
     // Локальные состояния для всех полей ввода
@@ -59,38 +75,58 @@ fun SetupScreen(
         return dayInt in 1..maxDay
     }
 
-    // Проверка, активна ли кнопка
-    val isButtonEnabled by remember(height, weight, year, month, day, gender, condition, bodyFeeling, goal) {
-        derivedStateOf {
-            height.toIntOrNull() ?: 0 > 0 &&
-                    weight.toIntOrNull() ?: 0 > 0 &&
-                    isDateValid(year, month, day) &&
-                    gender.isNotEmpty() &&
-                    condition.isNotEmpty() &&
-                    bodyFeeling.isNotEmpty() &&
-                    goal.isNotEmpty()
-        }
+    // --- УЛУЧШЕНИЕ КОДА ---
+    // Убрали избыточный derivedStateOf. remember с ключами уже делает то, что нужно:
+    // пересчитывает значение, когда один из ключей изменяется.
+    val isButtonEnabled = remember(height, weight, year, month, day, gender, condition, bodyFeeling, goal) {
+        (height.toIntOrNull() ?: 0 > 0) &&
+                (weight.toIntOrNull() ?: 0 > 0) &&
+                isDateValid(year, month, day) &&
+                gender.isNotEmpty() &&
+                condition.isNotEmpty() &&
+                bodyFeeling.isNotEmpty() &&
+                goal.isNotEmpty()
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .padding(WindowInsets.systemBars.asPaddingValues())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(imageVector = Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(44.dp), tint = Color.Black)
-        Text("AI Калория Трекер", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-        Text("Настройте свой профиль для персональных рекомендаций", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
+        Icon(
+            imageVector = Icons.Default.Favorite,
+            contentDescription = null,
+            modifier = Modifier.size(44.dp),
+            tint = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            "AI Калория Трекер",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            "Настройте свой профиль для персональных рекомендаций",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
 
         Spacer(Modifier.height(8.dp))
 
         OutlinedTextField(value = height, onValueChange = { height = it.filter { ch -> ch.isDigit() } }, label = { Text("Рост (см)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = weight, onValueChange = { weight = it.filter { ch -> ch.isDigit() } }, label = { Text("Вес (кг)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
 
-        Text("Дата рождения", color = Color.Gray, fontSize = 13.sp, modifier = Modifier.align(Alignment.Start))
+        Text(
+            "Дата рождения",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp,
+            modifier = Modifier.align(Alignment.Start)
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(value = year, onValueChange = { if (it.length <= 4) year = it.filter(Char::isDigit) }, label = { Text("Год") }, modifier = Modifier.weight(1f))
             OutlinedTextField(value = month, onValueChange = { if (it.length <= 2) month = it.filter(Char::isDigit) }, label = { Text("Месяц") }, modifier = Modifier.weight(1f))
@@ -116,7 +152,6 @@ fun SetupScreen(
             }
         }
 
-        // ВОЗВРАЩЕННЫЕ ПОЛЯ
         var bodyFeelingExpanded by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = bodyFeelingExpanded, onExpandedChange = { bodyFeelingExpanded = !bodyFeelingExpanded }) {
             OutlinedTextField(value = when (bodyFeeling) { "thin" -> "Худой"; "normal" -> "Обычный"; "chubby" -> "Плотный"; "fat" -> "Толстый"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Ощущение тела") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bodyFeelingExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
@@ -142,7 +177,6 @@ fun SetupScreen(
 
         Button(
             onClick = {
-                // Форматируем дату с ведущими нулями
                 val formattedBirthday = String.format(
                     "%04d-%02d-%02d",
                     year.toIntOrNull() ?: 0,
@@ -153,7 +187,7 @@ fun SetupScreen(
                 val finalProfile = viewModel.userProfile.copy(
                     height = height.toInt(),
                     weight = weight.toInt(),
-                    birthday = formattedBirthday, // <-- ИСПОЛЬЗУЕМ ОТФОРМАТИРОВАННУЮ ДАТУ
+                    birthday = formattedBirthday,
                     gender = gender,
                     condition = condition,
                     bodyFeeling = bodyFeeling,
@@ -164,7 +198,7 @@ fun SetupScreen(
             },
             enabled = isButtonEnabled,
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text("Поехали!", modifier = Modifier.padding(vertical = 8.dp))
         }

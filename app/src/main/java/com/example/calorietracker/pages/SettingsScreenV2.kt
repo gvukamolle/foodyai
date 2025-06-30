@@ -125,7 +125,10 @@ fun SettingsScreenV2(
                 SettingsSection.MAIN -> MainSettingsContent(currentUser = currentUser, onSectionClick = { currentSection = it })
                 SettingsSection.PROFILE -> ProfileSettingsContent(authManager = authManager, onSave = { currentSection = SettingsSection.MAIN })
                 SettingsSection.BODY_SETTINGS -> BodySettingsContent(viewModel = viewModel, onSave = { currentSection = SettingsSection.MAIN }) // Возвращаемся в главное меню после сохранения
-                SettingsSection.APP_SETTINGS -> AppSettingsContent()
+                SettingsSection.APP_SETTINGS -> AppSettingsContent(
+                    themeMode = viewModel.themeMode,
+                    onThemeChange = { viewModel.themeMode = it }
+                )
                 SettingsSection.DATA_EXPORT -> DataExportContent()
                 SettingsSection.DATA_MANAGEMENT -> DataManagementContent()
                 SettingsSection.FEEDBACK -> FeedbackContent()

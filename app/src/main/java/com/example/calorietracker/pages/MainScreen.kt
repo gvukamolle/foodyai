@@ -58,6 +58,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 import android.graphics.Bitmap
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -360,12 +362,36 @@ fun PhotoConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Отправить фото", fontSize = 18.sp, fontWeight = FontWeight.Medium) },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Image(bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .width(320.dp)
+                .heightIn(min = 380.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    "Отправить фото",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Image(
+                    bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
                 OutlinedTextField(
                     value = caption,
                     onValueChange = onCaptionChange,
@@ -373,13 +399,22 @@ fun PhotoConfirmDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Отмена", color = Color.Gray)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = onConfirm) {
+                        Text("Отправить", color = Color.Black)
+                    }
+                }
             }
-        },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Отправить", color = Color.Black) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена", color = Color.Gray) } }
-    )
+        }
+    }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

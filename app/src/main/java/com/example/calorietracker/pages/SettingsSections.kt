@@ -30,13 +30,18 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.auth.AuthManager
 import kotlinx.coroutines.launch
+import com.example.calorietracker.ui.theme.ThemeMode
+
 
 // Настройки приложения
 @Composable
-fun AppSettingsContent() {
+fun AppSettingsContent(
+    themeMode: ThemeMode,
+    onThemeChange: (ThemeMode) -> Unit
+) {
     var notificationsEnabled by remember { mutableStateOf(true) }
     var mealReminders by remember { mutableStateOf(true) }
-    var darkTheme by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var language by remember { mutableStateOf("Русский") }
     var showLanguageDialog by remember { mutableStateOf(false) }
 
@@ -56,7 +61,15 @@ fun AppSettingsContent() {
         }
         item {
             SettingsSectionCard(title = "Внешний вид") {
-                SwitchSettingItem(title = "Темная тема", subtitle = "Включить ночной режим", checked = darkTheme, onCheckedChange = { darkTheme = it })
+                ClickableSettingItem(
+                    title = "Тема",
+                    subtitle = when (themeMode) {
+                        ThemeMode.LIGHT -> "Светлая"
+                        ThemeMode.DARK -> "Темная"
+                        ThemeMode.SYSTEM -> "Как в системе"
+                    },
+                    onClick = { showThemeDialog = true }
+                )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 ClickableSettingItem(title = "Язык", subtitle = language, onClick = { showLanguageDialog = true })
             }
@@ -81,6 +94,39 @@ fun AppSettingsContent() {
                             RadioButton(selected = language == lang, onClick = { language = lang; showLanguageDialog = false })
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(lang)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Выбрать тему") },
+            text = {
+                Column {
+                    ThemeMode.values().forEach { mode ->
+                        val title = when (mode) {
+                            ThemeMode.LIGHT -> "Светлая"
+                            ThemeMode.DARK -> "Темная"
+                            ThemeMode.SYSTEM -> "Как в системе"
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onThemeChange(mode); showThemeDialog = false }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = themeMode == mode,
+                                onClick = { onThemeChange(mode); showThemeDialog = false }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(title)
                         }
                     }
                 }
@@ -116,14 +162,19 @@ fun DataExportContent() {
         }
         if (isExporting) {
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Экспортируем данные...", fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(16.dp))
                         LinearProgressIndicator(progress = { exportProgress }, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("${(exportProgress * 100).toInt()}%", fontSize = 14.sp, color = Color.Gray)
-                    }
+                    Text(
+                        "${(exportProgress * 100).toInt()}%",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )                    }
                 }
             }
         }
@@ -140,11 +191,20 @@ fun DataManagementContent() {
         item {
             SettingsSectionCard(title = "Резервное копирование") {
                 Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(40.dp), tint = Color(0xFF4CAF50))
+                    Icon(
+                        Icons.Default.CloudUpload,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Автоматическое копирование", fontWeight = FontWeight.Medium)
-                        Text("Последнее: $lastBackupDate", fontSize = 14.sp, color = Color.Gray)
+                        Text(
+                            "Последнее: $lastBackupDate",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     Switch(checked = true, onCheckedChange = {})
                 }
@@ -201,7 +261,11 @@ fun FeedbackContent() {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Text("Мы ценим ваше мнение!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Text("Помогите нам сделать приложение лучше", fontSize = 16.sp, color = Color.Gray)
+            Text(
+                "Помогите нам сделать приложение лучше",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         item {
             Text("Тип обращения", fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
@@ -217,14 +281,19 @@ fun FeedbackContent() {
         item { OutlinedTextField(value = feedbackText, onValueChange = { feedbackText = it }, label = { Text("Ваше сообщение") }, placeholder = { Text("Расскажите подробнее...") }, modifier = Modifier.fillMaxWidth().height(150.dp), maxLines = 6) }
         item { OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email для ответа (необязательно)") }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
         item {
-            Button(onClick = { /* Send feedback */ }, modifier = Modifier.fillMaxWidth(), enabled = feedbackType.isNotEmpty() && feedbackText.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = Color.Black)) {
+            Button(
+                onClick = { /* Send feedback */ },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = feedbackType.isNotEmpty() && feedbackText.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
                 Icon(Icons.Default.Send, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Отправить")
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Или свяжитесь с нами напрямую:", fontWeight = FontWeight.Medium)
                     ContactItem(icon = Icons.Default.Email, text = "support@foodyai.com", onClick = { /* Open email */ })
@@ -243,13 +312,30 @@ fun AboutContent() {
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
                 val infiniteTransition = rememberInfiniteTransition(label = "logo-transition")
                 val scale by infiniteTransition.animateFloat(initialValue = 1f, targetValue = 1.1f, animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Reverse), label = "logo-scale")
-                Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(80.dp).graphicsLayer { scaleX = scale; scaleY = scale }, tint = Color.Black)
+                Icon(
+                    Icons.Default.Favorite,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
             }
         }
         item {
-            Text("Foody AI", fontSize = 32.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            Text("Ваш персональный AI-диетолог", fontSize = 16.sp, color = Color.Gray, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-        }
+            Text(
+                "Foody AI",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+            Text(
+                "Ваш персональный AI-диетолог",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+              }
         item {
             SettingsSectionCard(title = "Наша команда") {
                 TeamMemberItem(name = "Александр Иванов", role = "CEO & Founder", avatar = "АИ")
@@ -282,11 +368,24 @@ fun AboutContent() {
 fun MissionContent() {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color.Black), shape = RoundedCornerShape(16.dp)) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Наша миссия", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        "Наша миссия",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Сделать здоровое питание простым и доступным для каждого с помощью искусственного интеллекта", fontSize = 18.sp, color = Color.White.copy(alpha = 0.9f), lineHeight = 28.sp)
+                    Text(
+                        "Сделать здоровое питание простым и доступным для каждого с помощью искусственного интеллекта",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
+                        lineHeight = 28.sp
+                    )
                 }
             }
         }
@@ -300,15 +399,28 @@ fun MissionContent() {
             ValueCard(icon = Icons.Default.Favorite, title = "Забота", description = "Ваше здоровье - наш приоритет. Мы заботимся о каждом пользователе")
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)), shape = RoundedCornerShape(16.dp)) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.RemoveRedEye, contentDescription = null, tint = Color.Black, modifier = Modifier.size(32.dp))
+                        Icon(
+                            Icons.Default.RemoveRedEye,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(32.dp)
+                        )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("Видение будущего", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("К 2030 году мы стремимся стать глобальной платформой для управления здоровьем, объединяющей питание, физическую активность и ментальное благополучие.", fontSize = 16.sp, lineHeight = 24.sp, color = Color.Black.copy(alpha = 0.8f))
+                    Text(
+                        "К 2030 году мы стремимся стать глобальной платформой для управления здоровьем, объединяющей питание, физическую активность и ментальное благополучие.",
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
                 }
             }
         }
@@ -329,20 +441,48 @@ fun OtherAppsContent() {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Text("Экосистема здоровья", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Text("Скоро запустим новые приложения для комплексной заботы о вашем здоровье", fontSize = 16.sp, color = Color.Gray)
+            Text(
+                "Скоро запустим новые приложения для комплексной заботы о вашем здоровье",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         item { AppPreviewCard(title = "Sporty AI", subtitle = "Персональный AI-тренер", description = "Индивидуальные программы тренировок, анализ техники выполнения упражнений, отслеживание прогресса", icon = Icons.Default.FitnessCenter, accentColor = Color(0xFF4CAF50), launchDate = "Запуск: Март 2025") }
         item { AppPreviewCard(title = "Mind AI", subtitle = "Ментальное здоровье", description = "Медитации, дыхательные практики, дневник настроения, AI-психолог для поддержки", icon = Icons.Default.SelfImprovement, accentColor = Color(0xFF2196F3), launchDate = "Запуск: Май 2025") }
         item { AppPreviewCard(title = "Woman AI", subtitle = "Женское здоровье", description = "Отслеживание цикла, рекомендации по питанию и тренировкам с учетом фаз, поддержка беременности", icon = Icons.Default.Female, accentColor = Color(0xFFE91E63), launchDate = "Запуск: Июль 2025") }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color.Black), shape = RoundedCornerShape(16.dp)) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
+                    Icon(
+                        Icons.Default.Notifications,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(48.dp)
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Будьте первыми!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text("Получите ранний доступ и специальные предложения", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center)
+                    Text(
+                        "Будьте первыми!",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Text(
+                        "Получите ранний доступ и специальные предложения",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                        textAlign = TextAlign.Center
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { /* Subscribe */ }, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) {
+                    Button(
+                        onClick = { /* Subscribe */ },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.onPrimary,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
                         Text("Подписаться на новости")
                     }
                 }
@@ -525,7 +665,10 @@ fun ProfileSettingsContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 } else {
                     Text("Сохранить изменения")
                 }
@@ -540,9 +683,19 @@ fun SettingsSectionCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column {
-        Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.Gray, modifier = Modifier.padding(bottom = 8.dp))
-        Card(colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(0.dp), shape = RoundedCornerShape(12.dp)) {
-            Column(content = content)
+        Text(
+            text = title,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(0.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+          Column(content = content)
         }
     }
 }
@@ -551,8 +704,8 @@ fun SettingsSectionCard(
 private fun SwitchSettingItem(title: String, subtitle: String? = null, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 16.sp)
-            subtitle?.let { Text(it, fontSize = 14.sp, color = Color.Gray) }
+            Text(title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
+            subtitle?.let { Text(it, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
@@ -562,20 +715,27 @@ private fun SwitchSettingItem(title: String, subtitle: String? = null, checked: 
 private fun ClickableSettingItem(title: String, subtitle: String? = null, onClick: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 16.sp)
-            subtitle?.let { Text(it, fontSize = 14.sp, color = Color.Gray) }
+            Text(title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
+            subtitle?.let { Text(it, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+        Icon(
+            Icons.Default.ArrowForwardIos,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 
 @Composable
 private fun InfoCard(icon: ImageVector, text: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)), shape = RoundedCornerShape(12.dp)) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            Icon(icon, contentDescription = null, tint = Color(0xFF2196F3), modifier = Modifier.size(24.dp))
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        shape = RoundedCornerShape(12.dp)
+    ) {        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text, fontSize = 14.sp, color = Color(0xFF1976D2))
+        Text(text, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -583,20 +743,25 @@ private fun InfoCard(icon: ImageVector, text: String) {
 @Composable
 private fun ExportFormatItem(title: String, subtitle: String, icon: ImageVector, badge: String? = null, onClick: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(40.dp), tint = Color.Black)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 badge?.let {
                     Spacer(modifier = Modifier.width(8.dp))
-                    Surface(color = Color(0xFFE3F2FD), shape = RoundedCornerShape(4.dp)) {
-                        Text(it, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 11.sp, color = Color(0xFF2196F3))
+                    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(4.dp)) {
+                        Text(it, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
-            Text(subtitle, fontSize = 14.sp, color = Color.Gray)
+            Text(subtitle, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+        Icon(
+            Icons.Default.ArrowForwardIos,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
