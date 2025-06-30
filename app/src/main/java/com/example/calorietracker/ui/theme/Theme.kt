@@ -9,22 +9,30 @@ import androidx.compose.ui.graphics.Color
 
 // ИЗМЕНЕНИЯ ЗДЕСЬ
 private val LightColorScheme = lightColorScheme(
-    primary = AppBlack,       // ИСПРАВЛЕНО: был Purple40
-    onPrimary = Color.White,  // Текст на черной кнопке будет белым
-
-    secondary = AppDarkGrey,    // ИСПРАВЛЕНО: был PurpleGrey40
+    primary = AppBlack,
+    onPrimary = Color.White,
+    primaryContainer = AppGreyContainer,
+    onPrimaryContainer = AppBlack,
+    inversePrimary = AppBlack,
+    secondary = AppDarkGrey,
     onSecondary = Color.White,
-
-    tertiary = AppDarkGrey,     // ИСПРАВЛЕНО: был Pink40 (можно тот же, что и secondary)
+    secondaryContainer = AppGreyContainer,
+    onSecondaryContainer = AppBlack,
+    tertiary = AppDarkGrey,
     onTertiary = Color.White,
-
-    /* Остальные цвета можно оставить по умолчанию или настроить */
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    onSurfaceVariant = AppDarkGrey, // для второстепенного текста
-    outline = AppLightGrey // для границ
+    tertiaryContainer = AppGreyContainer,
+    onTertiaryContainer = AppBlack,
+    background = LightBackground,
+    surface = LightSurface,
+    surfaceVariant = AppGreyContainer,
+    onBackground = AppBlack,
+    onSurface = AppBlack,
+    onSurfaceVariant = AppDarkGrey,
+    outline = AppDarkGrey,
+    outlineVariant = AppLightGrey,
+    inverseSurface = AppBlack,
+    inverseOnSurface = Color.White,
+    surfaceTint = AppBlack,
 )
 
 @Composable

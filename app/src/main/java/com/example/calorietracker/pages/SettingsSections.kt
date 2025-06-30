@@ -31,6 +31,9 @@ import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.auth.AuthManager
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.material3.MaterialTheme
+
+
 
 
 
@@ -77,7 +80,10 @@ fun AppSettingsContent() {
             text = {
                 Column {
                     listOf("Русский", "English", "Español", "Deutsch").forEach { lang ->
-                        Row(modifier = Modifier.fillMaxWidth().clickable { language = lang; showLanguageDialog = false }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { language = lang; showLanguageDialog = false }
+                            .padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(selected = language == lang, onClick = { language = lang; showLanguageDialog = false })
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(lang)
@@ -119,7 +125,9 @@ fun DataExportContent() {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(2.dp)
-                ) {                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                ) {                    Column(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Экспортируем данные...", fontWeight = FontWeight.Medium)
                     Spacer(modifier = Modifier.height(16.dp))
                     LinearProgressIndicator(progress = { exportProgress }, modifier = Modifier.fillMaxWidth())
@@ -144,7 +152,9 @@ fun DataManagementContent() {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             SettingsSectionCard(title = "Резервное копирование") {
-                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.CloudUpload,
                         contentDescription = null,
@@ -163,7 +173,9 @@ fun DataManagementContent() {
                     Switch(checked = true, onCheckedChange = {})
                 }
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                TextButton(onClick = { /* Manual backup */ }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                TextButton(onClick = { /* Manual backup */ }, modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Icon(Icons.Default.Backup, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Создать резервную копию сейчас")
@@ -185,7 +197,9 @@ fun DataManagementContent() {
                 StorageUsageItem(title = "Изображения", size = "124 МБ", percentage = 0.85f, color = Color(0xFF2196F3))
                 StorageUsageItem(title = "Кэш", size = "12 МБ", percentage = 0.15f, color = Color(0xFFFF9800))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Всего", fontWeight = FontWeight.Medium)
                     Text("181 МБ", fontWeight = FontWeight.Bold)
                 }
@@ -223,17 +237,50 @@ fun FeedbackContent() {
         }
         item {
             Text("Тип обращения", fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
-            Row(modifier = Modifier.padding(top = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier
+                .padding(top = 8.dp)
+                .fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FeedbackTypeChip(text = "Ошибка", icon = Icons.Default.BugReport, selected = feedbackType == "bug", onClick = { feedbackType = "bug" })
                 FeedbackTypeChip(text = "Идея", icon = Icons.Default.Lightbulb, selected = feedbackType == "suggestion", onClick = { feedbackType = "suggestion" })
             }
-            Row(modifier = Modifier.padding(top = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier
+                .padding(top = 8.dp)
+                .fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FeedbackTypeChip(text = "Вопрос", icon = Icons.Default.Help, selected = feedbackType == "question", onClick = { feedbackType = "question" })
                 FeedbackTypeChip(text = "Хвалю", icon = Icons.Default.Favorite, selected = feedbackType == "thanks", onClick = { feedbackType = "thanks" })
             }
         }
-        item { OutlinedTextField(value = feedbackText, onValueChange = { feedbackText = it }, label = { Text("Ваше сообщение") }, placeholder = { Text("Расскажите подробнее...") }, modifier = Modifier.fillMaxWidth().height(150.dp), maxLines = 6) }
-        item { OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email для ответа (необязательно)") }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
+        item {
+            OutlinedTextField(
+                value = feedbackText,
+                onValueChange = { feedbackText = it },
+                label = { Text("Ваше сообщение") },
+                placeholder = { Text("Расскажите подробнее...") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp),
+                maxLines = 6,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email для ответа (необязательно)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+        }
         item {
             Button(
                 onClick = { /* Send feedback */ },
@@ -263,13 +310,17 @@ fun AboutContent() {
     val uriHandler = LocalUriHandler.current
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         item {
-            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
                 val infiniteTransition = rememberInfiniteTransition(label = "logo-transition")
                 val scale by infiniteTransition.animateFloat(initialValue = 1f, targetValue = 1.1f, animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Reverse), label = "logo-scale")
                 Icon(
                     Icons.Default.Favorite,
                     contentDescription = null,
-                    modifier = Modifier.size(80.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+                    modifier = Modifier
+                        .size(80.dp)
+                        .graphicsLayer { scaleX = scale; scaleY = scale },
                     tint = MaterialTheme.colorScheme.onBackground
                 )
             }
@@ -487,21 +538,87 @@ fun BodySettingsContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Поля ввода
-        OutlinedTextField(value = height, onValueChange = { height = it.filter(Char::isDigit) }, label = { Text("Рост (см)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = weight, onValueChange = { weight = it.filter(Char::isDigit) }, label = { Text("Вес (кг)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = height,
+            onValueChange = { height = it.filter(Char::isDigit) },
+            label = { Text("Рост (см)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        )
+        OutlinedTextField(
+            value = weight,
+            onValueChange = { weight = it.filter(Char::isDigit) },
+            label = { Text("Вес (кг)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        )
 
         // Дата рождения
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = year, onValueChange = { if (it.length <= 4) year = it.filter(Char::isDigit) }, label = { Text("Год") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = month, onValueChange = { if (it.length <= 2) month = it.filter(Char::isDigit) }, label = { Text("Месяц") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = day, onValueChange = { if (it.length <= 2) day = it.filter(Char::isDigit) }, label = { Text("День") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(
+                value = year,
+                onValueChange = { if (it.length <= 4) year = it.filter(Char::isDigit) },
+                label = { Text("Год") },
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+            OutlinedTextField(
+                value = month,
+                onValueChange = { if (it.length <= 2) month = it.filter(Char::isDigit) },
+                label = { Text("Месяц") },
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+            OutlinedTextField(
+                value = day,
+                onValueChange = { if (it.length <= 2) day = it.filter(Char::isDigit) },
+                label = { Text("День") },
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
         }
 
         // Выпадающие списки для пола, активности и цели...
         // (Этот код можно скопировать из твоего старого SettingsScreen, он останется таким же)
         var genderExpanded by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = genderExpanded, onExpandedChange = { genderExpanded = !genderExpanded }) {
-            OutlinedTextField(value = when (gender) { "male" -> "Мужской"; "female" -> "Женский"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Пол") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+            OutlinedTextField(
+                value = when (gender) { "male" -> "Мужской"; "female" -> "Женский"; else -> "" },
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Пол") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
             ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
                 DropdownMenuItem(text = { Text("Мужской") }, onClick = { gender = "male"; genderExpanded = false })
                 DropdownMenuItem(text = { Text("Женский") }, onClick = { gender = "female"; genderExpanded = false })
@@ -510,7 +627,21 @@ fun BodySettingsContent(
 
         var conditionExpanded by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = conditionExpanded, onExpandedChange = { conditionExpanded = !conditionExpanded }) {
-            OutlinedTextField(value = when (condition) { "sedentary" -> "Малоподвижный"; "active" -> "Активный"; "very-active" -> "Очень активный"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Активность") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+            OutlinedTextField(
+                value = when (condition) { "sedentary" -> "Малоподвижный"; "active" -> "Активный"; "very-active" -> "Очень активный"; else -> "" },
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Активность") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
             ExposedDropdownMenu(expanded = conditionExpanded, onDismissRequest = { conditionExpanded = false }) {
                 DropdownMenuItem(text = { Text("Малоподвижный") }, onClick = { condition = "sedentary"; conditionExpanded = false })
                 DropdownMenuItem(text = { Text("Активный") }, onClick = { condition = "active"; conditionExpanded = false })
@@ -520,7 +651,21 @@ fun BodySettingsContent(
 
         var goalExpanded by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = goalExpanded, onExpandedChange = { goalExpanded = !goalExpanded }) {
-            OutlinedTextField(value = when (goal) { "lose" -> "Худеем"; "maintain" -> "Питаемся лучше"; "gain" -> "Набор массы"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Цель") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+            OutlinedTextField(
+                value = when (goal) { "lose" -> "Худеем"; "maintain" -> "Питаемся лучше"; "gain" -> "Набор массы"; else -> "" },
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Цель") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
             ExposedDropdownMenu(expanded = goalExpanded, onDismissRequest = { goalExpanded = false }) {
                 DropdownMenuItem(text = { Text("Худеем") }, onClick = { goal = "lose"; goalExpanded = false })
                 DropdownMenuItem(text = { Text("Питаемся лучше") }, onClick = { goal = "maintain"; goalExpanded = false })
@@ -585,8 +730,13 @@ fun ProfileSettingsContent(
                 onValueChange = { displayName = it },
                 label = { Text("Ваше имя") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                )
         }
 
         item {
@@ -600,6 +750,9 @@ fun ProfileSettingsContent(
                     disabledTextColor = LocalContentColor.current.copy(LocalContentColor.current.alpha),
                     disabledBorderColor = MaterialTheme.colorScheme.outline,
                     disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                 ),
                 enabled = false
             )
@@ -645,7 +798,7 @@ fun SettingsSectionCard(
             modifier = Modifier.padding(bottom = 8.dp)
         )
         Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             elevation = CardDefaults.cardElevation(0.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -656,7 +809,10 @@ fun SettingsSectionCard(
 
 @Composable
 private fun SwitchSettingItem(title: String, subtitle: String? = null, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = Modifier
+        .fillMaxWidth()
+        .clickable { onCheckedChange(!checked) }
+        .padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
             subtitle?.let { Text(it, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -667,7 +823,10 @@ private fun SwitchSettingItem(title: String, subtitle: String? = null, checked: 
 
 @Composable
 private fun ClickableSettingItem(title: String, subtitle: String? = null, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = Modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
             subtitle?.let { Text(it, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -707,7 +866,12 @@ fun ChangePasswordContent(
                 label = { Text("Текущий пароль") },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             )
         }
         item {
@@ -717,7 +881,12 @@ fun ChangePasswordContent(
                 label = { Text("Новый пароль") },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             )
         }
         item {
@@ -727,7 +896,12 @@ fun ChangePasswordContent(
                 label = { Text("Повторите пароль") },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             )
         }
         item { error?.let { Text(it, color = Color.Red) } }
@@ -774,7 +948,10 @@ private fun InfoCard(icon: ImageVector, text: String) {
 
 @Composable
 private fun ExportFormatItem(title: String, subtitle: String, icon: ImageVector, badge: String? = null, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = Modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {

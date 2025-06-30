@@ -62,13 +62,12 @@ fun SettingsScreenV2(
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToBodySettings: () -> Unit,
-    onNavigateToSubscription: () -> Unit,
     onSignOut: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val systemUiController = rememberSystemUiController()
-    SideEffect { systemUiController.setSystemBarsColor(color = Color(0xFFF8F9FA), darkIcons = true) }
+    SideEffect { systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true) }
 
     val currentUser by authManager.currentUser.collectAsState()
     var showSignOutDialog by remember { mutableStateOf(false) }
@@ -81,10 +80,10 @@ fun SettingsScreenV2(
 
     Scaffold(
         topBar = {
-            if (currentSection != SettingsSection.SUBSCRIPTION) {
-                TopAppBar(
-                    title = {
-                        Text(text = when (currentSection) {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = when (currentSection) {
                             SettingsSection.MAIN -> "Настройки"
                             SettingsSection.APP_SETTINGS -> "Настройки приложения"
                             SettingsSection.DATA_EXPORT -> "Выгрузка данных"
@@ -93,22 +92,28 @@ fun SettingsScreenV2(
                             SettingsSection.ABOUT -> "О нас"
                             SettingsSection.MISSION -> "Наша миссия"
                             SettingsSection.OTHER_APPS -> "Другие приложения"
+                            SettingsSection.SUBSCRIPTION -> "Планы подписок"
                             else -> "Настройки"
-                        }, fontWeight = FontWeight.Bold)
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            if (currentSection == SettingsSection.MAIN) onBack() else currentSection = SettingsSection.MAIN
-                        }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-                )
-            }
+                        },
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (currentSection == SettingsSection.MAIN) onBack() else currentSection = SettingsSection.MAIN
+                    }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black,
+                    navigationIconContentColor = Color.Black,
+                    actionIconContentColor = Color.White
+                ))
         },
-        containerColor = Color(0xFFF8F9FA)
+        containerColor = Color.White
     ) { paddingValues ->
         AnimatedContent(
             targetState = currentSection,
@@ -141,8 +146,7 @@ fun SettingsScreenV2(
                 SettingsSection.CHANGE_PASSWORD -> ChangePasswordContent(authManager = authManager) { currentSection = SettingsSection.MAIN }
                 SettingsSection.SUBSCRIPTION -> SubscriptionScreen(
                     currentPlan = currentUser?.subscriptionPlan ?: SubscriptionPlan.FREE,
-                    onSelectPlan = { /* TODO: Handle plan selection */ },
-                    onBack = { currentSection = SettingsSection.MAIN }
+                    onSelectPlan = { /* TODO: Handle plan selection */ }
                 )
                 else -> {}
             }

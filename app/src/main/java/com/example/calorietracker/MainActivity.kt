@@ -4,7 +4,9 @@ package com.example.calorietracker
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -26,6 +28,7 @@ import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.data.UserProfile
 import com.example.calorietracker.pages.*
+import com.example.calorietracker.ui.theme.CalorieTrackerTheme
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
 
@@ -44,7 +47,7 @@ class MainActivity : ComponentActivity() {
             val authManager = remember { AuthManager(this@MainActivity) }
             val viewModel: CalorieTrackerViewModel = remember { CalorieTrackerViewModel(repository, this@MainActivity) }
 
-            com.example.calorietracker.ui.theme.CalorieTrackerTheme {
+            CalorieTrackerTheme {
                 CalorieTrackerApp(authManager, viewModel, this@MainActivity)
             }
         }
@@ -56,7 +59,7 @@ class MainActivity : ComponentActivity() {
 fun CalorieTrackerApp(
     authManager: AuthManager,
     viewModel: CalorieTrackerViewModel,
-    context: android.content.Context
+    context: Context
 ) {
     val coroutineScope = rememberCoroutineScope()
     val authState by authManager.authState.collectAsState()
@@ -84,7 +87,7 @@ fun CalorieTrackerApp(
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             context.contentResolver.openInputStream(it)?.use { stream ->
-                val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
+                val bitmap = BitmapFactory.decodeStream(stream)
                 viewModel.onPhotoSelected(bitmap)
             }
         }
@@ -182,8 +185,7 @@ fun CalorieTrackerApp(
                             onBack = { showSettingsScreen = false },
                             onNavigateToProfile = {},
                             onNavigateToBodySettings = {},
-                            onNavigateToSubscription = {},
-                            onSignOut = { authManager.signOut() }
+                            onSignOut = { authManager.signOut() },
                         )
                     }
                     Screen.Main -> {

@@ -47,7 +47,7 @@ fun SettingsGroup(
             modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
         )
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             elevation = CardDefaults.cardElevation(0.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -249,8 +249,10 @@ fun CommitmentItem(text: String) {
 
 @Composable
 fun AppPreviewCard(title: String, subtitle: String, description: String, icon: ImageVector, accentColor: Color, launchDate: String) {
-    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {        Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(40.dp))
                 Spacer(Modifier.width(12.dp))
@@ -282,25 +284,12 @@ fun AppPreviewCard(title: String, subtitle: String, description: String, icon: I
 fun SubscriptionScreen(
     currentPlan: SubscriptionPlan,
     onSelectPlan: (SubscriptionPlan) -> Unit,
-    onBack: () -> Unit
+    modifier: Modifier = Modifier
 ) {
     var selectedPlan by remember { mutableStateOf(currentPlan) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Планы подписок", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад") // ИСПРАВЛЕНО
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -333,7 +322,6 @@ fun SubscriptionScreen(
                 }
             }
         }
-    }
 }
 
 @Composable
