@@ -361,7 +361,7 @@ class CalorieTrackerViewModel(
                         )
                         Toast.makeText(context, "На фото не обнаружено еды", Toast.LENGTH_LONG)
                             .show()
-                        showPhotoDialog = true // Предлагаем переснять
+                        showPhotoDialog = false
                     }
 
                     "да", "yes" -> {

@@ -36,6 +36,8 @@ import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.auth.SubscriptionPlan
 import com.example.calorietracker.auth.UserData
 import kotlinx.coroutines.launch
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+
 
 enum class SettingsSection {
     MAIN, PROFILE, BODY_SETTINGS, APP_SETTINGS, SUBSCRIPTION,
@@ -65,6 +67,8 @@ fun SettingsScreenV2(
 ) {
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
+    val systemUiController = rememberSystemUiController()
+    SideEffect { systemUiController.setSystemBarsColor(color = Color(0xFFF8F9FA), darkIcons = true) }
 
     val currentUser by authManager.currentUser.collectAsState()
     var showDeleteAccountDialog by remember { mutableStateOf(false) }

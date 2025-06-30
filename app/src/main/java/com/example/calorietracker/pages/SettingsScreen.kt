@@ -19,11 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.*
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +30,8 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val systemUiController = rememberSystemUiController()
+    SideEffect { systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true) }
     val isBirthdayValid = try {
         LocalDate.parse(viewModel.userProfile.birthday)
         true

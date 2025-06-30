@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.auth.AuthManager
 import kotlinx.coroutines.launch
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 @Composable
 fun AuthScreen(
@@ -23,6 +24,8 @@ fun AuthScreen(
     onAuthSuccess: () -> Unit // Лямбда, которая будет вызвана при успешном входе/регистрации
 ) {
     var showLogin by remember { mutableStateOf(true) }
+    val systemUiController = rememberSystemUiController()
+    SideEffect { systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true) }
 
     Column(
         modifier = Modifier
