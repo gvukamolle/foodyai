@@ -93,13 +93,13 @@ fun CalorieTrackerApp(
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        bitmap?.let { coroutineScope.launch { viewModel.analyzePhotoWithAI(it) } }
+        bitmap?.let { viewModel.onPhotoSelected(it) }
     }
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             context.contentResolver.openInputStream(it)?.use { stream ->
                 val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
-                coroutineScope.launch { viewModel.analyzePhotoWithAI(bitmap) }
+                viewModel.onPhotoSelected(bitmap)
             }
         }
     }
@@ -144,6 +144,17 @@ fun CalorieTrackerApp(
                 viewModel.handleManualInput(name, calories, proteins, fats, carbs, weight)
             }
         )
+    }
+    if (viewModel.showPhotoConfirmDialog) {
+        viewModel.pendingPhoto?.let { bmp ->
+            PhotoConfirmDialog(
+                bitmap = bmp,
+                caption = viewModel.photoCaption,
+                onCaptionChange = { viewModel.photoCaption = it },
+                onConfirm = { viewModel.confirmPhoto() },
+                onDismiss = { viewModel.showPhotoConfirmDialog = false }
+            )
+        }
     }
 
     when (authState) {

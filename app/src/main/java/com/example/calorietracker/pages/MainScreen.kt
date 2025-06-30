@@ -54,6 +54,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDateTime
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import android.graphics.Bitmap
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -347,6 +351,35 @@ fun PhotoUploadDialog(onDismiss: () -> Unit, onCameraClick: () -> Unit, onGaller
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена", color = Color.Black) } }
     )
 }
+
+@Composable
+fun PhotoConfirmDialog(
+    bitmap: Bitmap,
+    caption: String,
+    onCaptionChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Отправить фото", fontSize = 18.sp, fontWeight = FontWeight.Medium) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Image(bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+                OutlinedTextField(
+                    value = caption,
+                    onValueChange = onCaptionChange,
+                    label = { Text("Подпись") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Отправить", color = Color.Black) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена", color = Color.Gray) } }
+    )
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

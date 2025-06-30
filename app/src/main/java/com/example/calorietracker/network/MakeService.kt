@@ -273,7 +273,8 @@ interface MakeService {
         @Path("webhookId") webhookId: String,
         @Part photo: MultipartBody.Part,
         @Part("userProfile") userProfile: RequestBody,
-        @Part("userId") userId: RequestBody
+        @Part("userId") userId: RequestBody,
+        @Part("caption") caption: RequestBody
     ): FoodAnalysisResponse
 
 

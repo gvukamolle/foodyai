@@ -114,6 +114,9 @@ class CalorieTrackerViewModel(
     var isOnline by mutableStateOf(false)
     var showManualInputDialog by mutableStateOf(false)
     var showPhotoDialog by mutableStateOf(false)
+    var showPhotoConfirmDialog by mutableStateOf(false)
+    var pendingPhoto by mutableStateOf<Bitmap?>(null)
+    var photoCaption by mutableStateOf("")
 
     init {
         loadUserData()
@@ -280,7 +283,7 @@ class CalorieTrackerViewModel(
     }
 
     // Анализ фото с AI
-    suspend fun analyzePhotoWithAI(bitmap: Bitmap) {
+    suspend fun analyzePhotoWithAI(bitmap: Bitmap, caption: String = "") {
         isAnalyzing = true
         currentFoodSource = "ai_photo"
         messages = messages + ChatMessage(MessageType.USER, "Фото загружено")
@@ -319,6 +322,7 @@ class CalorieTrackerViewModel(
             val profileRequestBody =
                 profileJson.toRequestBody("application/json".toMediaTypeOrNull())
             val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
+            val captionRequestBody = caption.toRequestBody("text/plain".toMediaTypeOrNull())
 
             // 3. Отправляем запрос
             val response = safeApiCall {
@@ -326,7 +330,8 @@ class CalorieTrackerViewModel(
                     webhookId = MakeService.WEBHOOK_ID,
                     photo = photoPart,
                     userProfile = profileRequestBody,
-                    userId = userIdRequestBody
+                    userId = userIdRequestBody,
+                    caption = captionRequestBody
                 )
             }
 
@@ -496,6 +501,20 @@ class CalorieTrackerViewModel(
             saveUserData()
         }
     }
+
+    fun onPhotoSelected(bitmap: Bitmap) {
+        pendingPhoto = bitmap
+        photoCaption = ""
+        showPhotoConfirmDialog = true
+    }
+
+    fun confirmPhoto() {
+        val bitmap = pendingPhoto ?: return
+        showPhotoConfirmDialog = false
+        pendingPhoto = null
+        viewModelScope.launch { analyzePhotoWithAI(bitmap, photoCaption) }
+    }
+
 
     // Обновите sendFoodToServer чтобы использовать правильный источник:
     private suspend fun sendFoodToServer(food: FoodItem, mealType: MealType) {
