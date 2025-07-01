@@ -53,6 +53,7 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
+import androidx.compose.ui.draw.shadow
 import java.time.LocalDateTime
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.Image
@@ -326,6 +327,40 @@ fun ManualFoodInputDialog(initialFoodName: String = "", initialCalories: String 
 }
 
 @Composable
+fun DescribeFoodDialog(text: String, onTextChange: (String) -> Unit, onDismiss: () -> Unit, onSend: () -> Unit, isLoading: Boolean) {
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = { Text("Опишите блюдо", fontSize = 18.sp, fontWeight = FontWeight.Medium) },
+        text = {
+            if (isLoading) {
+                Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    placeholder = { Text("Я ел...") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                )
+            }
+        },
+        confirmButton = {
+            if (!isLoading) {
+                TextButton(onClick = onSend) { Text("Отправить", color = Color.Black) }
+            }
+        },
+        dismissButton = {
+            if (!isLoading) {
+                TextButton(onClick = onDismiss) { Text("Отмена", color = Color.Gray) }
+            }
+        }
+    )
+}
+
+@Composable
 fun PhotoUploadDialog(onDismiss: () -> Unit, onCameraClick: () -> Unit, onGalleryClick: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -418,7 +453,7 @@ fun PhotoConfirmDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdatedMainScreen(viewModel: CalorieTrackerViewModel, onCameraClick: () -> Unit, onGalleryClick: () -> Unit, onManualClick: () -> Unit, onSettingsClick: () -> Unit) {
+fun UpdatedMainScreen(viewModel: CalorieTrackerViewModel, onCameraClick: () -> Unit, onGalleryClick: () -> Unit, onManualClick: () -> Unit, onDescribeClick: () -> Unit, onSettingsClick: () -> Unit) {
     val systemUiController = rememberSystemUiController()
     SideEffect { systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true) }
 
@@ -478,9 +513,18 @@ fun UpdatedMainScreen(viewModel: CalorieTrackerViewModel, onCameraClick: () -> U
                                 }
                             }
                         }
-                        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }, offset = DpOffset(x = (-8).dp, y = 0.dp)) {
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                            offset = DpOffset(x = (-8).dp, y = 0.dp),
+                            modifier = Modifier
+                                .shadow(0.dp, RoundedCornerShape(20.dp))
+                                .background(Color.White, RoundedCornerShape(20.dp))
+                                .clip(RoundedCornerShape(20.dp))
+                        ) {
                             DropdownMenuItem(text = { Text("Отправить фото") }, onClick = { menuExpanded = false; onCameraClick() }, leadingIcon = { Icon(Icons.Default.CameraAlt, null) })
                             DropdownMenuItem(text = { Text("Загрузить фото") }, onClick = { menuExpanded = false; onGalleryClick() }, leadingIcon = { Icon(Icons.Default.Photo, null) })
+                            DropdownMenuItem(text = { Text("Рассказать") }, onClick = { menuExpanded = false; onDescribeClick() }, leadingIcon = { Icon(Icons.Default.Chat, null) })
                             DropdownMenuItem(text = { Text("Ввести вручную") }, onClick = { menuExpanded = false; onManualClick() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
                         }
                     }

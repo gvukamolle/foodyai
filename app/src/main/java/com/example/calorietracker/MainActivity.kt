@@ -134,6 +134,16 @@ fun CalorieTrackerApp(
             }
         )
     }
+    if (viewModel.showDescriptionDialog) {
+        var text by remember { mutableStateOf("") }
+        DescribeFoodDialog(
+            text = text,
+            onTextChange = { text = it },
+            onDismiss = { viewModel.showDescriptionDialog = false },
+            onSend = { viewModel.analyzeDescription(text) },
+            isLoading = viewModel.isAnalyzing
+        )
+    }
     if (viewModel.showPhotoConfirmDialog) {
         viewModel.pendingPhoto?.let { bmp ->
             PhotoConfirmDialog(
@@ -205,6 +215,9 @@ fun CalorieTrackerApp(
                             onManualClick = {
                                 viewModel.prefillFood = null
                                 viewModel.showManualInputDialog = true
+                            },
+                            onDescribeClick = {
+                                viewModel.showDescriptionDialog = true
                             },
                             onSettingsClick = { showSettingsScreen = true }
                         )

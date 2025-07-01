@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.calorietracker.analyzer.FoodAnalyzer
 import com.example.calorietracker.data.DailyIntake
 import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.data.UserProfile
@@ -110,9 +109,9 @@ class CalorieTrackerViewModel(
     var isAnalyzing by mutableStateOf(false)
 
     // AI и сетевые состояния
-    private val foodAnalyzer = FoodAnalyzer()
     var isOnline by mutableStateOf(false)
     var showManualInputDialog by mutableStateOf(false)
+    var showDescriptionDialog by mutableStateOf(false)
     var showPhotoDialog by mutableStateOf(false)
     var showPhotoConfirmDialog by mutableStateOf(false)
     var pendingPhoto by mutableStateOf<Bitmap?>(null)
@@ -409,6 +408,64 @@ class CalorieTrackerViewModel(
             isAnalyzing = false
         }
     }
+
+    fun analyzeDescription(text: String) {
+        viewModelScope.launch {
+            isAnalyzing = true
+            checkInternetConnection()
+            if (!isOnline) {
+                handleError("Нет подключения к интернету")
+                isAnalyzing = false
+                return@launch
+            }
+
+            try {
+                val request = FoodAnalysisRequest(
+                    name = text,
+                    weight = 100,
+                    userProfile = userProfile.toNetworkProfile()
+                )
+
+                val response = safeApiCall {
+                    NetworkModule.makeService.analyzeFood(
+                        webhookId = MakeService.WEBHOOK_ID,
+                        request = request
+                    )
+                }
+
+                if (!response.isSuccess) {
+                    handleError("Ошибка соединения")
+                    return@launch
+                }
+
+                val answer = response.getOrNull()?.answer
+                if (answer == null) {
+                    handleError("Сервер не вернул данные")
+                    return@launch
+                }
+
+                val foodData = Gson().fromJson(answer, FoodDataFromAnswer::class.java)
+                prefillFood = FoodItem(
+                    name = foodData.name,
+                    calories = foodData.calories,
+                    proteins = foodData.proteins,
+                    fats = foodData.fats,
+                    carbs = foodData.carbs,
+                    weight = foodData.weight
+                )
+
+                showDescriptionDialog = false
+                showManualInputDialog = true
+            } catch (e: Exception) {
+                Log.e("CalorieTracker", "Ошибка анализа описания", e)
+                handleError("Не удалось проанализировать")
+            } finally {
+                isAnalyzing = false
+            }
+        }
+    }
+
+
 
     // Вспомогательная функция для обработки ошибок
     private fun handleError(errorMessage: String) {
