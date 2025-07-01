@@ -61,6 +61,8 @@ import androidx.compose.ui.layout.ContentScale
 import android.graphics.Bitmap
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.calorietracker.pages.PlusDropdownMenu
+
 
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
@@ -513,20 +515,14 @@ fun UpdatedMainScreen(viewModel: CalorieTrackerViewModel, onCameraClick: () -> U
                                 }
                             }
                         }
-                        DropdownMenu(
+                        PlusDropdownMenu(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false },
-                            offset = DpOffset(x = (-8).dp, y = 0.dp),
-                            modifier = Modifier
-                                .shadow(0.dp, RoundedCornerShape(20.dp))
-                                .background(Color.White, RoundedCornerShape(20.dp))
-                                .clip(RoundedCornerShape(20.dp))
-                        ) {
-                            DropdownMenuItem(text = { Text("Отправить фото") }, onClick = { menuExpanded = false; onCameraClick() }, leadingIcon = { Icon(Icons.Default.CameraAlt, null) })
-                            DropdownMenuItem(text = { Text("Загрузить фото") }, onClick = { menuExpanded = false; onGalleryClick() }, leadingIcon = { Icon(Icons.Default.Photo, null) })
-                            DropdownMenuItem(text = { Text("Рассказать") }, onClick = { menuExpanded = false; onDescribeClick() }, leadingIcon = { Icon(Icons.Default.Chat, null) })
-                            DropdownMenuItem(text = { Text("Ввести вручную") }, onClick = { menuExpanded = false; onManualClick() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
-                        }
+                            onCameraClick = onCameraClick,
+                            onGalleryClick = onGalleryClick,
+                            onDescribeClick = onDescribeClick,
+                            onManualClick = onManualClick
+                        )
                     }
                 }
             }
