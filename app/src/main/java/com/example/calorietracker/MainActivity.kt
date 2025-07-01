@@ -31,6 +31,10 @@ import com.example.calorietracker.pages.*
 import com.example.calorietracker.ui.theme.CalorieTrackerTheme
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
+import com.example.calorietracker.pages.BeautifulManualFoodInputDialog
+import com.example.calorietracker.pages.BeautifulDescribeFoodDialog
+import com.example.calorietracker.pages.BeautifulPhotoUploadDialog
+import com.example.calorietracker.pages.BeautifulPhotoConfirmDialog
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
@@ -102,7 +106,7 @@ fun CalorieTrackerApp(
     }
 
     if (viewModel.showPhotoDialog) {
-        PhotoUploadDialog(
+        BeautifulPhotoUploadDialog(
             onDismiss = { viewModel.showPhotoDialog = false },
             onCameraClick = {
                 viewModel.showPhotoDialog = false
@@ -121,7 +125,7 @@ fun CalorieTrackerApp(
     }
     if (viewModel.showManualInputDialog) {
         val prefill = viewModel.prefillFood
-        ManualFoodInputDialog(
+        BeautifulManualFoodInputDialog(
             initialFoodName = prefill?.name ?: "",
             initialCalories = prefill?.calories?.toString() ?: "",
             initialProteins = prefill?.proteins?.toString() ?: "",
@@ -136,7 +140,7 @@ fun CalorieTrackerApp(
     }
     if (viewModel.showDescriptionDialog) {
         var text by remember { mutableStateOf("") }
-        DescribeFoodDialog(
+        BeautifulDescribeFoodDialog(
             text = text,
             onTextChange = { text = it },
             onDismiss = { viewModel.showDescriptionDialog = false },
@@ -146,7 +150,7 @@ fun CalorieTrackerApp(
     }
     if (viewModel.showPhotoConfirmDialog) {
         viewModel.pendingPhoto?.let { bmp ->
-            PhotoConfirmDialog(
+            BeautifulPhotoConfirmDialog(
                 bitmap = bmp,
                 caption = viewModel.photoCaption,
                 onCaptionChange = { viewModel.photoCaption = it },
