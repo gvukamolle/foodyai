@@ -104,7 +104,8 @@ class NetworkMonitor @Inject constructor(
             withTimeout(5000) {
                 // Исправлено: добавлен параметр webhookId
                 val response = makeService.checkHealth(
-                    webhookId = MakeService.WEBHOOK_ID
+                    webhookId = MakeService.WEBHOOK_ID,
+                    request = HealthCheckRequest()
                 )
                 val isAvailable = response.status == "ok"
 

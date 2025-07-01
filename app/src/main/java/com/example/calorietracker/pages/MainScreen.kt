@@ -510,9 +510,10 @@ fun UpdatedMainScreen(viewModel: CalorieTrackerViewModel, onCameraClick: () -> U
                                     Icon(Icons.Default.Send, "Отправить", tint = Color.White, modifier = Modifier.background(Color.Black, CircleShape).padding(8.dp))
                                 }
                             } else {
-                                IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(40.dp)) {
-                                    Icon(Icons.Default.Add, "Добавить", tint = Color.Black, modifier = Modifier.size(24.dp))
-                                }
+                                AnimatedPlusButton(
+                                    expanded = menuExpanded,
+                                    onClick = { menuExpanded = true }
+                                )
                             }
                         }
                         PlusDropdownMenu(

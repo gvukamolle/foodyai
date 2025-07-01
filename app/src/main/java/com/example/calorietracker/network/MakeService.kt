@@ -216,6 +216,10 @@ data class HealthResponse(
     val timestamp: Long
 )
 
+data class HealthCheckRequest(
+    val ping: String = "health"
+)
+
 // Make.com Service Interface
 interface MakeService {
     companion object {
@@ -294,8 +298,10 @@ interface MakeService {
         @Body request: AiChatRequest
     ): AiChatResponse
 
-    @GET("{webhookId}")
+    @Headers("Content-Type: application/json")
+    @POST("{webhookId}")
     suspend fun checkHealth(
-        @Path("webhookId") webhookId: String
+        @Path("webhookId") webhookId: String,
+        @Body request: HealthCheckRequest = HealthCheckRequest()
     ): HealthResponse
 }
