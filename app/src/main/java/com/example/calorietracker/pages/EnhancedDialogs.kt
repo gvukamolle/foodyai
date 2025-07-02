@@ -257,9 +257,8 @@ internal fun AnimatedDialogContainer(
                 .widthIn(max = 360.dp)
                 .fancyShadow(
                     borderRadius = 24.dp,
-                    shadowRadius = 20.dp,
-                    offsetY = 10.dp,
-                    alpha = 0.2f,
+                    shadowRadius = 8.dp,
+                    alpha = 0.3f,
                     color = accentColor
                 ),
             shape = RoundedCornerShape(24.dp),

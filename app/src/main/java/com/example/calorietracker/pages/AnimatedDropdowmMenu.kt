@@ -35,6 +35,8 @@ import androidx.compose.ui.window.PopupProperties
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalTime
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 // Data class для пунктов меню
 private data class AnimatedDropdowmMenu(
@@ -66,19 +68,8 @@ fun AnimatedPlusDropdownMenu(
 
     AnimatedVisibility(
         visible = expanded,
-        enter = fadeIn(animationSpec = tween(150)) +
-                scaleIn(
-                    transformOrigin = TransformOrigin(0.9f, 0.1f),
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                ),
-        exit = fadeOut(animationSpec = tween(100)) +
-                scaleOut(
-                    transformOrigin = TransformOrigin(0.9f, 0.1f),
-                    animationSpec = tween(100)
-                )
+        enter = fadeIn(tween(200)) + scaleIn(initialScale = 0.9f),
+        exit = fadeOut(tween(150)) + scaleOut(targetScale = 0.9f)
     ) {
         val density = LocalDensity.current
         Popup(
@@ -133,21 +124,13 @@ private fun AnimatedMenuContent(
     onDescribeClick: () -> Unit,
     onManualClick: () -> Unit
 ) {
-    var showItems by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        delay(50)
-        showItems = true
-    }
-
     Card(
         modifier = Modifier
             .width(250.dp)
             .fancyShadow(
                 borderRadius = 20.dp,
-                shadowRadius = 20.dp,
-                offsetY = 8.dp,
-                alpha = 0.25f
+                shadowRadius = 8.dp,
+                alpha = 0.15f
             ),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -167,39 +150,26 @@ private fun AnimatedMenuContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Контекстная подсказка с анимацией
-            AnimatedVisibility(
-                visible = showItems,
-                enter = fadeIn() + expandVertically()
-            ) {
-                ContextualHintCard(hint = contextualHint)
-            }
+// Контекстная подсказка
+            ContextualHintCard(hint = contextualHint)
 
             // Недавно использованное действие
             lastAction?.let { action ->
-                AnimatedVisibility(
-                    visible = showItems,
-                    enter = fadeIn(tween(200)) + slideInVertically(
-                        initialOffsetY = { -20 },
-                        animationSpec = tween(200)
-                    )
-                ) {
-                    Column {
-                        RecentActionItem(
-                            action = action,
-                            onClick = {
-                                when (action) {
-                                    "camera" -> onCameraClick()
-                                    "gallery" -> onGalleryClick()
-                                    "describe" -> onDescribeClick()
-                                    "manual" -> onManualClick()
-                                }
+                Column {
+                    RecentActionItem(
+                        action = action,
+                        onClick = {
+                            when (action) {
+                                "camera" -> onCameraClick()
+                                "gallery" -> onGalleryClick()
+                                "describe" -> onDescribeClick()
+                                "manual" -> onManualClick()
                             }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        AnimatedDivider()
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AnimatedDivider()
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
@@ -211,17 +181,13 @@ private fun AnimatedMenuContent(
                 onDescribeClick = onDescribeClick,
                 onManualClick = onManualClick
             )
-
-            menuItems.forEachIndexed { index, item ->
-                AnimatedMenuItem(
-                    item = item,
-                    delay = 100 + (index * 50),
-                    visible = showItems
-                )
+            menuItems.forEach { item ->
+                DropdownMenuItem(item = item)
+                }
             }
         }
     }
-}
+
 
 // Контекстная подсказка
 @Composable
@@ -314,34 +280,25 @@ private fun RecentActionItem(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                Text(
+                    text,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1A1A1A)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = color.copy(alpha = 0.15f)
                 ) {
                     Text(
-                        text,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1A1A1A)
+                        "Недавнее",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        fontSize = 11.sp,
+                        color = color,
+                        fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = color.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            "Недавно",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            fontSize = 11.sp,
-                            color = color,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
                 }
-                Text(
-                    "Использовано недавно",
-                    fontSize = 12.sp,
-                    color = color.copy(alpha = 0.8f)
-                )
             }
             Spacer(modifier = Modifier.weight(1f))
             Icon(
@@ -354,104 +311,80 @@ private fun RecentActionItem(
     }
 }
 
-// Анимированный пункт меню
+// Элемент выпадающего меню
 @Composable
-private fun AnimatedMenuItem(
-    item: AnimatedDropdowmMenu,
-    delay: Int,
-    visible: Boolean
-) {
-    var itemVisible by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
+private fun DropdownMenuItem(item: AnimatedDropdowmMenu) {
+    var isPressed by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(visible) {
-        if (visible) {
-            kotlinx.coroutines.delay(delay.toLong())
-            itemVisible = true
-        } else {
-            itemVisible = false
-        }
-    }
-
-    AnimatedVisibility(
-        visible = itemVisible,
-        enter = fadeIn() + slideInHorizontally(
-            initialOffsetX = { 50 },
-            animationSpec = tween(200)
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
         ),
-        exit = fadeOut()
+        label = "scale"
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = rememberRipple(color = item.color)
+            ) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                isPressed = true
+                scope.launch {
+                    delay(100)
+                    item.onClick()
+                }
+            },
+        shape = RoundedCornerShape(12.dp),
+        color = Color.Transparent
     ) {
-        var isPressed by remember { mutableStateOf(false) }
-
-        val scale by animateFloatAsState(
-            targetValue = if (isPressed) 0.95f else 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
-            label = "scale"
-        )
-
-        Surface(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .clip(RoundedCornerShape(12.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = rememberRipple(color = item.color)
-                ) {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    isPressed = true
-                    coroutineScope.launch {
-                        delay(100)
-                        item.onClick()
-                    }
-                },
-            shape = RoundedCornerShape(12.dp),
-            color = Color.Transparent
+                .background(item.color.copy(alpha = 0.08f))
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(item.color.copy(alpha = 0.08f))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .size(40.dp)
+                    .background(
+                        color = item.color.copy(alpha = 0.15f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            color = item.color.copy(alpha = 0.15f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        item.icon,
-                        contentDescription = null,
-                        tint = item.color,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        item.text,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF1A1A1A)
-                    )
-                    Text(
-                        item.subtitle,
-                        fontSize = 12.sp,
-                        color = Color(0xFF757575)
-                    )
-                }
+                Icon(
+                    item.icon,
+                    contentDescription = null,
+                    tint = item.color,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    item.text,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF1A1A1A)
+                )
+                Text(
+                    item.subtitle,
+                    fontSize = 12.sp,
+                    color = Color(0xFF757575)
+                )
             }
         }
     }
@@ -518,8 +451,11 @@ private fun getMenuItems(
 }
 
 private fun saveLastAction(context: Context, action: String) {
-    context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        .edit()
-        .putString("last_food_action", action)
-        .apply()
+    CoroutineScope(Dispatchers.IO).launch {
+        delay(1000)
+        context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putString("last_food_action", action)
+            .apply()
+    }
 }

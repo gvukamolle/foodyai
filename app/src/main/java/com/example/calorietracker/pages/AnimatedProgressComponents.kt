@@ -625,11 +625,8 @@ private fun AnimatedMealButton(
     )
 
     val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        targetValue = 1f,
+        animationSpec = tween(0),
         label = "scale"
     )
 

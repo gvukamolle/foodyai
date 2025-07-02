@@ -443,10 +443,10 @@ private fun AnimatedBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(56.dp)
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(modifier = Modifier.width(16.dp))
 
             // Анимированное поле ввода
             AnimatedInputField(
@@ -458,7 +458,7 @@ private fun AnimatedBottomBar(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Box(modifier = Modifier.padding(end = 12.dp)) {
+            Box {
                 AnimatedContent(
                     targetState = viewModel.inputMessage.isNotBlank(),
                     transitionSpec = {

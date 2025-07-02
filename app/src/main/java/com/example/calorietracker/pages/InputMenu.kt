@@ -110,10 +110,9 @@ fun PlusDropdownMenuV2(
             Card(
                 modifier = Modifier
                     .fancyShadow(
-                        borderRadius = 20.dp, // Должен совпадать с радиусом Card
-                        shadowRadius = 10.dp, // Насколько сильно размывать
-                        offsetY = 4.dp,       // Насколько опустить тень вниз
-                        alpha = 0.12f         // Насколько тень прозрачная (ключевой параметр!)
+                        borderRadius = 20.dp,
+                        shadowRadius = 8.dp,
+                        alpha = 0.25f
                     )
                     .width(230.dp), // Остальные модификаторы оставляем
 
@@ -233,10 +232,10 @@ internal data class MenuItemData(
 
 fun Modifier.fancyShadow(
     color: Color = Color.Black,
-    alpha: Float = 0.1f, // Прозрачность тени
+    alpha: Float = 0.2f, // Яркость ободки
     borderRadius: Dp = 0.dp,
-    shadowRadius: Dp = 12.dp, // "Размытие" или blur radius
-    offsetY: Dp = 4.dp, // Смещение по вертикали
+    shadowRadius: Dp = 8.dp, // Меньшее размытие
+    offsetY: Dp = 0.dp, // Центрированное свечение
     offsetX: Dp = 0.dp // Смещение по горизонтали
 ) = this.drawBehind {
     // Конвертируем цвет тени в нативный формат с нужной прозрачностью

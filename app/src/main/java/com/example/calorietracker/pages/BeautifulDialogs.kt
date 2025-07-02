@@ -195,9 +195,8 @@ fun BeautifulManualFoodInputDialog(
                 .widthIn(max = 360.dp)
                 .fancyShadow(
                     borderRadius = 24.dp,
-                    shadowRadius = 16.dp,
-                    offsetY = 8.dp,
-                    alpha = 0.15f
+                    shadowRadius = 8.dp,
+                    alpha = 0.25f
                 )
                 .graphicsLayer {
                     clip = true
@@ -502,9 +501,8 @@ fun BeautifulDescribeFoodDialog(
                 .widthIn(max = 340.dp)
                 .fancyShadow(
                     borderRadius = 24.dp,
-                    shadowRadius = 16.dp,
-                    offsetY = 8.dp,
-                    alpha = 0.15f
+                    shadowRadius = 8.dp,
+                    alpha = 0.25f
                 ),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
@@ -703,9 +701,8 @@ fun BeautifulPhotoUploadDialog(
                 .widthIn(max = 340.dp)
                 .fancyShadow(
                     borderRadius = 24.dp,
-                    shadowRadius = 16.dp,
-                    offsetY = 8.dp,
-                    alpha = 0.15f
+                    shadowRadius = 8.dp,
+                    alpha = 0.25f
                 ),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
@@ -853,9 +850,8 @@ fun BeautifulPhotoConfirmDialog(
                 .widthIn(max = 340.dp)
                 .fancyShadow(
                     borderRadius = 24.dp,
-                    shadowRadius = 16.dp,
-                    offsetY = 8.dp,
-                    alpha = 0.15f
+                    shadowRadius = 8.dp,
+                    alpha = 0.25f
                 ),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
