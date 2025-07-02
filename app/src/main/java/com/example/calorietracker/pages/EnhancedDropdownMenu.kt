@@ -42,6 +42,7 @@ import androidx.core.view.drawToBitmap
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalTime
+import com.example.calorietracker.extensions.fancyShadow
 
 // Улучшенное выпадающее меню с размытием фона
 @OptIn(ExperimentalAnimationApi::class)
@@ -103,7 +104,7 @@ fun EnhancedPlusDropdownMenu(
                 // Размытый фон
                 AnimatedVisibility(
                     visible = isVisible && backgroundBitmap != null,
-                    enter = fadeIn(tween(150)),
+                    enter = fadeIn(tween(200, easing = FastOutSlowInEasing)),
                     exit = fadeOut(tween(100))
                 ) {
                     backgroundBitmap?.let { bitmap ->
@@ -131,7 +132,7 @@ fun EnhancedPlusDropdownMenu(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.White.copy(alpha = 0.3f))
+                                    .background(Color.White.copy(alpha = 0.6f))
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -146,7 +147,7 @@ fun EnhancedPlusDropdownMenu(
                 val density = LocalDensity.current
                 AnimatedVisibility(
                     visible = isVisible,
-                    enter = fadeIn(tween(150)) + scaleIn(
+                    enter = fadeIn(tween(350, easing = FastOutSlowInEasing)) + scaleIn(
                         initialScale = 0.8f,
                         transformOrigin = TransformOrigin(0.9f, 0.9f),
                         animationSpec = spring(
@@ -160,7 +161,7 @@ fun EnhancedPlusDropdownMenu(
                             stiffness = Spring.StiffnessLow
                         )
                     ),
-                    exit = fadeOut(tween(100)) + scaleOut(
+                    exit = fadeOut(tween(150)) + scaleOut(
                         targetScale = 0.9f,
                         transformOrigin = TransformOrigin(0.9f, 0.9f)
                     ),
@@ -209,9 +210,12 @@ private fun EnhancedMenuContent(
     Card(
         modifier = Modifier
             .width(260.dp)
-            .height(320.dp)
+            .fancyShadow(
+                borderRadius = 24.dp,
+                shadowRadius = 14.dp,
+                alpha = 0.25f
+            )
             .graphicsLayer {
-                shadowElevation = 24.dp.toPx()
                 shape = RoundedCornerShape(24.dp)
                 clip = true
             },
@@ -219,19 +223,19 @@ private fun EnhancedMenuContent(
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box {
             // Градиентный фон
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .matchParentSize()
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color.White,
-                                Color(0xFFFBFBFB),
-                                Color(0xFFF8F8F8)
+                                Color(0xFFFDFDFD),
+                                Color(0xFFFAFAFA)
                             )
                         )
                     )
@@ -365,7 +369,7 @@ private fun AnimatedRecentAction(
                 // Градиент для красоты
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .background(
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
@@ -494,7 +498,7 @@ private fun EnhancedMenuItem(
                 // Фоновый градиент
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .background(
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
@@ -541,13 +545,6 @@ private fun EnhancedMenuItem(
                             color = Color(0xFF757575)
                         )
                     }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Icon(
-                        Icons.Default.ArrowForwardIos,
-                        contentDescription = null,
-                        tint = item.color.copy(alpha = 0.5f),
-                        modifier = Modifier.size(16.dp)
-                    )
                 }
             }
         }
@@ -604,7 +601,7 @@ private fun getActionDetails(action: String): Triple<String, ImageVector, Color>
         "camera" -> Triple("Сфоткать", Icons.Default.PhotoCamera, Color(0xFF4CAF50))
         "gallery" -> Triple("Выбрать фото", Icons.Default.Image, Color(0xFF2196F3))
         "describe" -> Triple("Расскажите", Icons.Default.AutoAwesome, Color(0xFFFF9800))
-        "manual" -> Triple("Ввести данные", Icons.Default.Keyboard, Color(0xFF9C27B0))
+        "manual" -> Triple("Вручную", Icons.Default.Keyboard, Color(0xFF9C27B0))
         else -> Triple("", Icons.Default.Add, Color.Black)
     }
 }
@@ -616,13 +613,16 @@ private fun getMenuItems(
     onDescribeClick: () -> Unit,
     onManualClick: () -> Unit
 ): List<MenuItemData> {
+
     val allItems = listOf(
-        MenuItemData("camera", "Сфоткать", "Быстрый снимок", Icons.Default.PhotoCamera, Color(0xFF4CAF50), onCameraClick),
-        MenuItemData("gallery", "Выбрать фото", "Из вашей галереи", Icons.Default.Image, Color(0xFF2196F3), onGalleryClick),
-        MenuItemData("describe", "Расскажите", "А мы поймем", Icons.Default.AutoAwesome, Color(0xFFFF9800), onDescribeClick),
-        MenuItemData("manual", "Ввести данные", "Полный контроль", Icons.Default.Keyboard, Color(0xFF9C27B0), onManualClick)
+        MenuItemData("camera",   "Сфоткать",      "Быстрый снимок",  Icons.Default.PhotoCamera, Color(0xFF4CAF50), onCameraClick),
+        MenuItemData("gallery",  "Выбрать фото",  "Из вашей галереи",Icons.Default.Image,       Color(0xFF2196F3), onGalleryClick),
+        MenuItemData("describe", "Рассказать",    "А мы поймём",     Icons.Default.AutoAwesome, Color(0xFFFF9800), onDescribeClick),
+        MenuItemData("manual",   "Вручную", "Полный контроль", Icons.Default.Keyboard,    Color(0xFF9C27B0), onManualClick)
     )
-    return allItems.filter { it.id != lastAction }
+
+    return if (lastAction == null) allItems
+    else allItems.filter { it.id != lastAction }   // показывает ровно 3
 }
 
 private fun saveLastAction(context: Context, action: String) {
