@@ -222,7 +222,7 @@ fun PlusDropdownMenuV2(
 }
 
 // Вспомогательная data class для элементов меню
-private data class MenuItemData(
+internal data class MenuItemData(
     val id: String,
     val text: String,
     val subtitle: String,

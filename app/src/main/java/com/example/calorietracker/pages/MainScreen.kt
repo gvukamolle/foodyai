@@ -197,20 +197,6 @@ fun WaveProgressSection(label: String, current: Int, target: Int, unit: String, 
 }
 
 @Composable
-fun AnimatedRingIndicator(label: String, current: Int, target: Int, color: Color, delay: Int, visible: Boolean) {
-    val progress = if (target > 0) current.toFloat() / target.toFloat() else 0f
-    val scale by animateFloatAsState(targetValue = if (visible) 1f else 0.3f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow), label = "")
-    val rotation by animateFloatAsState(targetValue = if (visible) 0f else -90f, animationSpec = tween(durationMillis = 400, delayMillis = delay), label = "")
-
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(60.dp).graphicsLayer { scaleX = scale; scaleY = scale; rotationZ = rotation }) {
-        CircularProgressIndicator(progress = { 1f }, color = Color(0xFFE5E7EB).copy(alpha = 0.5f), strokeWidth = 6.dp, strokeCap = StrokeCap.Round, modifier = Modifier.fillMaxSize()) // ИСПРАВЛЕНО
-        val animatedProgress by animateFloatAsState(targetValue = if (visible) progress else 0f, animationSpec = tween(durationMillis = 1000, delayMillis = if (visible) delay else 0), label = "")
-        CircularProgressIndicator(progress = { animatedProgress }, color = color, strokeWidth = 6.dp, strokeCap = StrokeCap.Round, modifier = Modifier.fillMaxSize()) // ИСПРАВЛЕНО
-        Text(text = label, fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
 fun ChatMessageCard(message: ChatMessage) {
     val alignment = if (message.type == MessageType.USER) Alignment.CenterEnd else Alignment.CenterStart
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
