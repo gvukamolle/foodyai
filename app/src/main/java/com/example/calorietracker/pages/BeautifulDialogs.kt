@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -37,7 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.drawToBitmap
+import androidx.compose.ui.draw.blur
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -55,27 +58,13 @@ fun AnimatedPopup(
     var isVisible by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Управление системными барами
-    val systemUiController = rememberSystemUiController()
-
-    // Сохраняем оригинальные цвета системных баров
-    val originalStatusBarColor = remember { systemUiController.statusBarDarkContentEnabled }
-    val originalNavigationBarColor = remember { systemUiController.navigationBarDarkContentEnabled }
-
-    // Применяем темный фон к системным барам при показе диалога
-    DisposableEffect(Unit) {
-        systemUiController.setSystemBarsColor(
-            color = Color.Black.copy(alpha = 0.4f),
-            darkIcons = false
-        )
-
-        onDispose {
-            // Восстанавливаем оригинальные цвета при закрытии
-            systemUiController.setSystemBarsColor(
-                color = Color.White,
-                darkIcons = true
-            )
-        }
+    // Снимаем скриншот текущего экрана, чтобы размыть его под диалогом
+    val view = LocalView.current
+    var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(view) {
+        // Даем вью отрисоваться перед захватом
+        kotlinx.coroutines.delay(10)
+        backgroundBitmap = view.drawToBitmap()
     }
 
     // Функция, которая запускает анимацию закрытия и только потом вызывает onDismissRequest
@@ -106,23 +95,51 @@ fun AnimatedPopup(
         label = "scale"
     )
 
+    // Радиус размытия фона анимируем синхронно с появлением
+    val blurRadius by animateDpAsState(
+        targetValue = if (isVisible) 16.dp else 0.dp,
+        animationSpec = tween(
+            durationMillis = if (isVisible) 150 else 100,
+            easing = FastOutSlowInEasing
+        ),
+        label = "blur"
+    )
+
     Popup(
         onDismissRequest = { dismiss() },
         properties = PopupProperties(focusable = true)
     ) {
-        // Затемнение фона
+        // Контейнер для затемнения и контента
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f * animatedAlpha))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { dismiss() }
-                ),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Применяем анимацию непосредственно к контейнеру контента
+            // Размытый фон из скриншота
+            backgroundBitmap?.let { bmp ->
+                Image(
+                    bitmap = bmp.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .blur(blurRadius),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            // Светлый оверлей, по нажатию закрывающий диалог
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Color.White.copy(alpha = 0.6f * animatedAlpha))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { dismiss() }
+                    )
+            )
+
+            // Анимированный контейнер для содержимого
+
+            // Анимированный контейнер для содержимого
             Box(
                 modifier = Modifier
                     .graphicsLayer {
