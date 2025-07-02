@@ -45,7 +45,7 @@ fun AnimatedProgressBars(viewModel: CalorieTrackerViewModel) {
     }
 
     val containerHeight by animateDpAsState(
-        targetValue = if (expanded) 180.dp else 80.dp,
+        targetValue = if (expanded) 220.dp else 100.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -90,7 +90,7 @@ fun AnimatedProgressBars(viewModel: CalorieTrackerViewModel) {
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 4.dp)
+                .padding(bottom = 0.dp)
         ) {
             val rotation by animateFloatAsState(
                 targetValue = if (expanded) 0f else 180f,
@@ -119,7 +119,7 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         val nutrients = listOf(
@@ -231,7 +231,7 @@ private fun AnimatedProgressBar(nutrient: NutrientData) {
                 )
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
 
             Box(
                 modifier = Modifier
@@ -297,14 +297,42 @@ private fun CollapsedProgressView(viewModel: CalorieTrackerViewModel) {
         )
 
         nutrients.forEachIndexed { index, (label, current, target) ->
-            AnimatedRingIndicator(
-                label = label,
-                current = current,
-                target = target,
-                color = viewModel.getProgressColor(current, target),
-                delay = index * 75,
-                visible = true
-            )
+            // <<< ИЗМЕНЕНО: Оборачиваем каждый индикатор в Column, чтобы разместить текст под ним
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp) // <<< Расстояние между кольцом и текстом
+            ) {
+                // Кольцевой индикатор теперь будет без текста процентов внутри
+                AnimatedRingIndicator(
+                    label = label,
+                    current = current,
+                    target = target,
+                    color = viewModel.getProgressColor(current, target),
+                    delay = index * 75,
+                    visible = true
+                )
+
+                // <<< ИЗМЕНЕНО: Текст с процентами вынесен сюда, под кольцо
+                // Анимация прогресса для синхронизации с кольцом
+                val progress = if (target > 0) current.toFloat() / target.toFloat() else 0f
+                var isVisible by remember { mutableStateOf(false) }
+                LaunchedEffect(true) {
+                    delay((index * 75).toLong())
+                    isVisible = true
+                }
+                val animatedProgress by animateFloatAsState(
+                    targetValue = if (isVisible) progress else 0f,
+                    animationSpec = tween(durationMillis = 1000, delayMillis = index * 75),
+                    label = "progress_text"
+                )
+
+                Text(
+                    text = "${(animatedProgress.coerceIn(0f, 1f) * 100).toInt()}%",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
@@ -353,7 +381,7 @@ fun AnimatedRingIndicator(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(60.dp)
+            .size(60.dp) // Размер кольца
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -363,7 +391,7 @@ fun AnimatedRingIndicator(
         CircularProgressIndicator(
             progress = { 1f },
             color = Color(0xFFE5E7EB).copy(alpha = 0.5f),
-            strokeWidth = 6.dp,
+            strokeWidth = 6.dp, // Толщина кольца
             strokeCap = StrokeCap.Round,
             modifier = Modifier.fillMaxSize()
         )
@@ -372,27 +400,19 @@ fun AnimatedRingIndicator(
         CircularProgressIndicator(
             progress = { animatedProgress.coerceIn(0f, 1f) },
             color = color,
-            strokeWidth = 6.dp,
+            strokeWidth = 6.dp, // Толщина кольца
             strokeCap = StrokeCap.Round,
             modifier = Modifier.fillMaxSize()
         )
 
-        // Текст
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = label,
-                fontSize = 18.sp,
-                color = Color.Black,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "${(animatedProgress * 100).toInt()}%",
-                fontSize = 10.sp,
-                color = Color.Gray
-            )
-        }
+        // <<< ИЗМЕНЕНО: Убрали Column и текст с процентами. Осталась только буква.
+        // Box уже центрирует ее благодаря contentAlignment = Alignment.Center
+        Text(
+            text = label,
+            fontSize = 18.sp,
+            color = Color.Black,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 

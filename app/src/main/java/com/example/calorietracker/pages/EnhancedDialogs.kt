@@ -20,11 +20,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.drawToBitmap
 import com.example.calorietracker.ui.animations.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
 
 // Цветовая схема для диалогов
 object DialogColors {

@@ -2,6 +2,7 @@ package com.example.calorietracker.pages
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,7 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -28,6 +31,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
@@ -246,6 +250,41 @@ private fun AnimatedOnlineStatus(isOnline: Boolean) {
             color = color,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+// Кастомный Divider с закругленными краями
+@Composable
+fun RoundedDivider(
+    modifier: Modifier = Modifier,
+    color: Color = Color(0xFFE5E5E5),
+    thickness: Dp = 1.dp,
+    curveDown: Boolean = true,
+    curveHeight: Dp = 10.dp
+) {
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(curveHeight)
+    ) {
+        val path = Path().apply {
+            val curveHeightPx = curveHeight.toPx()
+            val thicknessPx = thickness.toPx()
+            val halfThickness = thicknessPx / 2f
+
+            if (curveDown) {
+                moveTo(0f, curveHeightPx)
+                quadraticBezierTo(curveHeightPx * 0.7f, halfThickness, curveHeightPx * 1.5f, halfThickness)
+                lineTo(size.width - curveHeightPx * 1.5f, halfThickness)
+                quadraticBezierTo(size.width - curveHeightPx * 0.7f, halfThickness, size.width, curveHeightPx)
+            } else {
+                moveTo(0f, halfThickness)
+                quadraticBezierTo(curveHeightPx * 0.7f, curveHeightPx, curveHeightPx * 1.5f, curveHeightPx)
+                lineTo(size.width - curveHeightPx * 1.5f, curveHeightPx)
+                quadraticBezierTo(size.width - curveHeightPx * 0.7f, curveHeightPx, size.width, halfThickness)
+            }
+        }
+        drawPath(path = path, color = color, style = Stroke(width = thickness.toPx()))
     }
 }
 
@@ -477,7 +516,7 @@ private fun AnimatedInputField(
         decorationBox = { innerTextField ->
             Box {
                 if (value.isEmpty()) {
-                    TypewriterText(
+                    Text(
                         text = if (isOnline) {
                             "Спросите у AI-диетолога..."
                         } else {

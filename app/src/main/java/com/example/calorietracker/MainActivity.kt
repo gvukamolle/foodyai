@@ -3,7 +3,6 @@
 package com.example.calorietracker
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
@@ -31,10 +30,6 @@ import com.example.calorietracker.pages.*
 import com.example.calorietracker.ui.theme.CalorieTrackerTheme
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
-import com.example.calorietracker.pages.BeautifulManualFoodInputDialog
-import com.example.calorietracker.pages.BeautifulDescribeFoodDialog
-import com.example.calorietracker.pages.BeautifulPhotoUploadDialog
-import com.example.calorietracker.pages.BeautifulPhotoConfirmDialog
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
@@ -105,61 +100,6 @@ fun CalorieTrackerApp(
         showSettingsScreen = false
     }
 
-    if (viewModel.showPhotoDialog) {
-        BeautifulPhotoUploadDialog(
-            onDismiss = { viewModel.showPhotoDialog = false },
-            onCameraClick = {
-                viewModel.showPhotoDialog = false
-                val permission = Manifest.permission.CAMERA
-                if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
-                    cameraLauncher.launch(null)
-                } else {
-                    permissionLauncher.launch(permission)
-                }
-            },
-            onGalleryClick = {
-                viewModel.showPhotoDialog = false
-                galleryLauncher.launch("image/*")
-            }
-        )
-    }
-    if (viewModel.showManualInputDialog) {
-        val prefill = viewModel.prefillFood
-        BeautifulManualFoodInputDialog(
-            initialFoodName = prefill?.name ?: "",
-            initialCalories = prefill?.calories?.toString() ?: "",
-            initialProteins = prefill?.proteins?.toString() ?: "",
-            initialFats = prefill?.fats?.toString() ?: "",
-            initialCarbs = prefill?.carbs?.toString() ?: "",
-            initialWeight = prefill?.weight ?: "100",
-            onDismiss = { viewModel.showManualInputDialog = false },
-            onConfirm = { name, calories, proteins, fats, carbs, weight ->
-                viewModel.handleManualInput(name, calories, proteins, fats, carbs, weight)
-            }
-        )
-    }
-    if (viewModel.showDescriptionDialog) {
-        var text by remember { mutableStateOf("") }
-        BeautifulDescribeFoodDialog(
-            text = text,
-            onTextChange = { text = it },
-            onDismiss = { viewModel.showDescriptionDialog = false },
-            onSend = { viewModel.analyzeDescription(text) },
-            isLoading = viewModel.isAnalyzing
-        )
-    }
-    if (viewModel.showPhotoConfirmDialog) {
-        viewModel.pendingPhoto?.let { bmp ->
-            BeautifulPhotoConfirmDialog(
-                bitmap = bmp,
-                caption = viewModel.photoCaption,
-                onCaptionChange = { viewModel.photoCaption = it },
-                onConfirm = { viewModel.confirmPhoto() },
-                onDismiss = { viewModel.showPhotoConfirmDialog = false }
-            )
-        }
-    }
-
     when (authState) {
         AuthManager.AuthState.LOADING -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -203,7 +143,7 @@ fun CalorieTrackerApp(
                         )
                     }
                     Screen.Main -> {
-                        UpdatedMainScreen(
+                        AnimatedMainScreen(
                             viewModel = viewModel,
                             onCameraClick = {
                                 val permission = Manifest.permission.CAMERA
