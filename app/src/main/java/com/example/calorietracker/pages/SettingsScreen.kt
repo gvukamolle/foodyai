@@ -31,7 +31,9 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val systemUiController = rememberSystemUiController()
-    SideEffect { systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true) }
+    LaunchedEffect(Unit) {
+        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
+    }
     val isBirthdayValid = try {
         LocalDate.parse(viewModel.userProfile.birthday)
         true

@@ -64,6 +64,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.calorietracker.pages.PlusDropdownMenu
 
 
+
 @Composable
 fun OnlineStatus(isOnline: Boolean) {
     Row(
@@ -457,8 +458,9 @@ fun PhotoConfirmDialog(
 @Composable
 fun UpdatedMainScreen(viewModel: CalorieTrackerViewModel, onCameraClick: () -> Unit, onGalleryClick: () -> Unit, onManualClick: () -> Unit, onDescribeClick: () -> Unit, onSettingsClick: () -> Unit) {
     val systemUiController = rememberSystemUiController()
-    SideEffect { systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true) }
-
+    LaunchedEffect(Unit) {
+        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
+    }
     LaunchedEffect(key1 = Unit) {
         while (true) {
             val now = LocalDateTime.now()

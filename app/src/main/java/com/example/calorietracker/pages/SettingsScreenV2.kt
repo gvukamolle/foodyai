@@ -67,8 +67,9 @@ fun SettingsScreenV2(
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val systemUiController = rememberSystemUiController()
-    SideEffect { systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true) }
-
+    LaunchedEffect(Unit) {
+        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
+    }
     val currentUser by authManager.currentUser.collectAsState()
     var showSignOutDialog by remember { mutableStateOf(false) }
     var deleteDialogStep by remember { mutableStateOf(0) }

@@ -25,8 +25,9 @@ fun AuthScreen(
 ) {
     var showLogin by remember { mutableStateOf(true) }
     val systemUiController = rememberSystemUiController()
-    SideEffect { systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true) }
-
+    LaunchedEffect(Unit) {
+        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()

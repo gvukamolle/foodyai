@@ -29,7 +29,7 @@ fun SetupScreen(
 
     val systemBarColor = MaterialTheme.colorScheme.background
 
-    SideEffect {
+    LaunchedEffect(Unit) {
         systemUiController.setSystemBarsColor(
             color = systemBarColor,
             darkIcons = true

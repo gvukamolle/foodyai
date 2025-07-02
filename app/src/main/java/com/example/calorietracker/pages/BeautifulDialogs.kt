@@ -2,6 +2,7 @@ package com.example.calorietracker.pages
 
 import android.graphics.Bitmap
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -49,33 +51,57 @@ fun AnimatedPopup(
     onDismissRequest: () -> Unit,
     content: @Composable (onDismiss: () -> Unit) -> Unit
 ) {
-    var isVisible by remember { mutableStateOf(false) }
+    // Сразу начинаем с видимого состояния для мгновенной анимации
+    var isVisible by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
+
+    // Управление системными барами
+    val systemUiController = rememberSystemUiController()
+
+    // Сохраняем оригинальные цвета системных баров
+    val originalStatusBarColor = remember { systemUiController.statusBarDarkContentEnabled }
+    val originalNavigationBarColor = remember { systemUiController.navigationBarDarkContentEnabled }
+
+    // Применяем темный фон к системным барам при показе диалога
+    DisposableEffect(Unit) {
+        systemUiController.setSystemBarsColor(
+            color = Color.Black.copy(alpha = 0.4f),
+            darkIcons = false
+        )
+
+        onDispose {
+            // Восстанавливаем оригинальные цвета при закрытии
+            systemUiController.setSystemBarsColor(
+                color = Color.White,
+                darkIcons = true
+            )
+        }
+    }
 
     // Функция, которая запускает анимацию закрытия и только потом вызывает onDismissRequest
     fun dismiss() {
         coroutineScope.launch {
             isVisible = false
-            delay(200) // Длительность анимации исчезновения
+            delay(150) // Сократили время анимации исчезновения
             onDismissRequest()
         }
     }
 
-    LaunchedEffect(Unit) {
-        isVisible = true
-    }
-
+    // Более быстрая и плавная анимация
     val animatedAlpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = tween(
+            durationMillis = if (isVisible) 150 else 100, // Быстрее появление
+            easing = FastOutSlowInEasing
+        ),
         label = "alpha"
     )
 
     val animatedScale by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0.9f,
+        targetValue = if (isVisible) 1f else 0.95f, // Меньший диапазон для более тонкой анимации
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = Spring.DampingRatioNoBouncy, // Убираем отскок для скорости
+            stiffness = Spring.StiffnessHigh // Высокая жесткость для быстрой анимации
         ),
         label = "scale"
     )
