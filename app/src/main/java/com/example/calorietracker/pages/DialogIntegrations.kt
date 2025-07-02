@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.FoodItem
+import com.example.calorietracker.ui.animations.EnhancedAILoadingIndicator
+import com.example.calorietracker.pages.AIAnimatedInputFields
 
 // Обертка для всех диалогов с анимациями
 @Composable
@@ -49,7 +51,7 @@ fun AnimatedDialogs(
         )
     }
 
-    // Диалог ручного ввода
+    // Диалог ручного ввода с AI анимацией заполнения
     if (viewModel.showManualInputDialog) {
         val prefill = viewModel.prefillFood
         val initialData = if (prefill != null) {
@@ -83,7 +85,7 @@ fun AnimatedDialogs(
         )
     }
 
-    // Диалог описания блюда
+    // Диалог описания блюда с улучшенным AI индикатором
     if (viewModel.showDescriptionDialog) {
         EnhancedDescribeDialog(
             onDismiss = {

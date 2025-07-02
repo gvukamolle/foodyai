@@ -45,54 +45,49 @@ fun EnhancedManualInputDialog(
     onDismiss: () -> Unit,
     onConfirm: (ManualInputData) -> Unit
 ) {
-    var showContent by remember { mutableStateOf(false) }
     var data by remember { mutableStateOf(initialData ?: ManualInputData()) }
-
-    LaunchedEffect(Unit) {
-        delay(50)
-        showContent = true
-    }
+    val isFromAI = initialData != null
 
     AnimatedDialogContainer(
         onDismiss = onDismiss,
         accentColor = DialogColors.ManualInput
     ) {
-        AnimatedVisibility(
-            visible = showContent,
-            enter = fadeIn() + scaleIn(initialScale = 0.95f)
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            // Заголовок с иконкой
+            DialogHeader(
+                icon = Icons.Default.Restaurant,
+                title = if (isFromAI) "Проверьте данные от AI" else "Добавить продукт",
+                subtitle = if (isFromAI) "AI распознал продукт" else "Заполните информацию",
+                accentColor = DialogColors.ManualInput
+            )
+
+            // Поля ввода с AI анимацией заполнения
+            AIAnimatedInputFields(
+                data = data,
+                onDataChange = { data = it },
+                isFromAI = isFromAI
+            )
+
+            // Анимированная сводка
+            AnimatedVisibility(
+                visible = data.weight.isNotBlank() && data.weight != "100",
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
-                // Заголовок с иконкой
-                DialogHeader(
-                    icon = Icons.Default.Restaurant,
-                    title = if (initialData != null) "Проверьте данные" else "Добавить продукт",
-                    subtitle = "Заполните информацию о продукте",
-                    accentColor = DialogColors.ManualInput
-                )
-
-                // Поля ввода с анимацией появления
-                AnimatedInputFields(
-                    data = data,
-                    onDataChange = { data = it },
-                    animatePrefill = initialData != null
-                )
-
-                // Анимированная сводка
-                if (data.weight != "100") {
-                    AnimatedNutritionSummary(data = data)
-                }
-
-                // Кнопки действий
-                DialogActions(
-                    onCancel = onDismiss,
-                    onConfirm = { onConfirm(data) },
-                    confirmEnabled = data.isValid(),
-                    accentColor = DialogColors.ManualInput
-                )
+                AnimatedNutritionSummary(data = data)
             }
+
+            // Кнопки действий
+            DialogActions(
+                onCancel = onDismiss,
+                onConfirm = { onConfirm(data) },
+                confirmEnabled = data.isValid(),
+                confirmText = if (isFromAI) "Подтвердить" else "Добавить",
+                accentColor = DialogColors.ManualInput
+            )
         }
     }
 }
@@ -184,8 +179,10 @@ private fun AIAnalyzingView() {
         AIAnimatedLogo()
 
         // Анимированный текст состояния
-        AIThinkingIndicator(text = "AI анализирует описание")
-
+        EnhancedAILoadingIndicator(
+            text = "AI анализирует",
+            accentColor = DialogColors.AIAnalysis
+        )
         // Прогресс-индикатор
         AnimatedLoadingDots(color = DialogColors.AIAnalysis)
     }

@@ -43,6 +43,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDateTime
+import com.example.calorietracker.pages.EnhancedPlusDropdownMenu
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -478,7 +480,7 @@ private fun AnimatedBottomBar(
                     }
                 }
 
-                AnimatedPlusDropdownMenu(
+                EnhancedPlusDropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { onMenuToggle(false) },
                     onCameraClick = onCameraClick,
