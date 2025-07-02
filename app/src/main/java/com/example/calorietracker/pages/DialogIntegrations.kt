@@ -137,7 +137,7 @@ fun EnhancedPhotoUploadDialog(
         androidx.compose.animation.AnimatedVisibility(
             visible = showContent,
             enter = androidx.compose.animation.fadeIn() +
-                    androidx.compose.animation.slideInVertically(initialOffsetY = { 50 })
+                    androidx.compose.animation.scaleIn(initialScale = 0.95f)
         ) {
             androidx.compose.foundation.layout.Column(
                 modifier = androidx.compose.ui.Modifier.padding(24.dp),
@@ -289,7 +289,7 @@ private fun PhotoOptionCard(
     androidx.compose.animation.AnimatedVisibility(
         visible = visible,
         enter = androidx.compose.animation.fadeIn() +
-                androidx.compose.animation.slideInHorizontally(initialOffsetX = { 50 })
+                androidx.compose.animation.scaleIn(initialScale = 0.95f)
     ) {
         androidx.compose.material3.Surface(
             modifier = androidx.compose.ui.Modifier

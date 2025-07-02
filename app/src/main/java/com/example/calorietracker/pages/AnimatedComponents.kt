@@ -41,15 +41,32 @@ fun AnimatedTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     accentColor: Color = Color.Black,
     singleLine: Boolean = false,
-    maxLines: Int = if (singleLine) 1 else 5
-) {
+    maxLines: Int = if (singleLine) 1 else 5,
+    appearDelay: Int = 150,
+    animatePrefill: Boolean = false
+    ) {
     var isFocused by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
+    var internalText by remember(value) { mutableStateOf(if (animatePrefill) "" else value) }
 
     LaunchedEffect(Unit) {
-        delay(150)
+        delay(appearDelay.toLong())
         isVisible = true
     }
+
+    LaunchedEffect(value) {
+        if (animatePrefill) {
+            internalText = ""
+            value.forEachIndexed { index, _ ->
+                delay(30)
+                internalText = value.substring(0, index + 1)
+                onValueChange(internalText)
+            }
+        } else {
+            internalText = value
+        }
+    }
+
 
     val borderColor by animateColorAsState(
         targetValue = if (isFocused) accentColor else Color(0xFFE0E0E0),
@@ -68,8 +85,11 @@ fun AnimatedTextField(
         enter = fadeIn() + scaleIn(initialScale = 0.95f)
     ) {
         BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
+            value = internalText,
+            onValueChange = {
+                internalText = it
+                onValueChange(it)
+            },
             modifier = modifier
                 .fillMaxWidth()
                 .onFocusChanged { isFocused = it.isFocused },
@@ -127,8 +147,9 @@ fun AnimatedTextField(
 @Composable
 fun AnimatedInputFields(
     data: ManualInputData,
-    onDataChange: (ManualInputData) -> Unit
-) {
+    onDataChange: (ManualInputData) -> Unit,
+    animatePrefill: Boolean = false
+    ) {
     StaggeredAnimatedList(
         items = listOf(
             InputFieldData(
@@ -145,7 +166,7 @@ fun AnimatedInputFields(
                 onChange = { onDataChange(data.copy(weight = it.filter { ch -> ch.isDigit() })) }
             )
         ),
-        delayBetweenItems = 80
+        delayBetweenItems = 0
     ) { field, _ ->
         AnimatedTextField(
             value = field.value,
@@ -154,7 +175,9 @@ fun AnimatedInputFields(
             icon = field.icon,
             keyboardOptions = KeyboardOptions(keyboardType = field.keyboardType),
             accentColor = DialogColors.ManualInput,
-            singleLine = true
+            singleLine = true,
+            appearDelay = 0,
+            animatePrefill = animatePrefill
         )
     }
 

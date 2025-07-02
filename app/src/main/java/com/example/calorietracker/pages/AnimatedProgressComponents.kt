@@ -435,8 +435,8 @@ fun AnimatedPendingFoodCard(
 
     AnimatedVisibility(
         visible = isVisible,
-        enter = fadeIn() + slideInVertically(initialOffsetY = { 50 }) + expandVertically(),
-        exit = fadeOut() + slideOutVertically(targetOffsetY = { 50 }) + shrinkVertically()
+        enter = fadeIn() + scaleIn(initialScale = 0.95f),
+        exit = fadeOut() + scaleOut(targetScale = 0.95f)
     ) {
         Card(
             modifier = Modifier

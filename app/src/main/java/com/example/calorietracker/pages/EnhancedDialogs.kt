@@ -59,7 +59,7 @@ fun EnhancedManualInputDialog(
     ) {
         AnimatedVisibility(
             visible = showContent,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { 50 })
+            enter = fadeIn() + scaleIn(initialScale = 0.95f)
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -76,7 +76,8 @@ fun EnhancedManualInputDialog(
                 // Поля ввода с анимацией появления
                 AnimatedInputFields(
                     data = data,
-                    onDataChange = { data = it }
+                    onDataChange = { data = it },
+                    animatePrefill = initialData != null
                 )
 
                 // Анимированная сводка
@@ -144,8 +145,8 @@ fun EnhancedDescribeDialog(
 
                         AnimatedVisibility(
                             visible = showHint && text.isEmpty(),
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
+                            enter = fadeIn() + scaleIn(initialScale = 0.95f),
+                            exit = fadeOut() + scaleOut(targetScale = 0.95f)
                         ) {
                             HintCard(
                                 text = "Опишите подробно: ингредиенты, способ приготовления, размер порции",
@@ -256,7 +257,6 @@ internal fun AnimatedDialogContainer(
             modifier = Modifier
                 .widthIn(max = 360.dp)
                 .fancyShadow(
-                    borderRadius = 24.dp,
                     shadowRadius = 8.dp,
                     alpha = 0.3f,
                     color = accentColor
@@ -299,7 +299,7 @@ internal fun DialogHeader(
 
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn() + slideInHorizontally(initialOffsetX = { -50 })
+        enter = fadeIn() + scaleIn(initialScale = 0.95f)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
