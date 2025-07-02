@@ -43,6 +43,7 @@ import androidx.core.view.drawToBitmap
 import androidx.compose.ui.draw.blur
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.calorietracker.extensions.fancyShadow
 
 
 // =========================================================================

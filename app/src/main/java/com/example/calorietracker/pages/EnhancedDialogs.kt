@@ -28,6 +28,7 @@ import androidx.core.view.drawToBitmap
 import com.example.calorietracker.ui.animations.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.calorietracker.extensions.fancyShadow
 
 
 // Цветовая схема для диалогов

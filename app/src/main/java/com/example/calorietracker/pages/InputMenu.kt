@@ -47,12 +47,8 @@ import androidx.compose.foundation.clickable
 import java.time.LocalTime
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.unit.Dp
+import com.example.calorietracker.extensions.fancyShadow
+
 
 // Вариант 2: С градиентом и современными иконками (БЕЗ СЕРЫХ ОБЛАСТЕЙ)
 @OptIn(ExperimentalAnimationApi::class)
@@ -229,51 +225,6 @@ internal data class MenuItemData(
     val color: Color,
     val onClick: () -> Unit
 )
-
-fun Modifier.fancyShadow(
-    color: Color = Color.Black,
-    alpha: Float = 0.2f, // Яркость ободки
-    borderRadius: Dp = 0.dp,
-    shadowRadius: Dp = 8.dp, // Меньшее размытие
-    offsetY: Dp = 0.dp, // Центрированное свечение
-    offsetX: Dp = 0.dp // Смещение по горизонтали
-) = this.drawBehind {
-    // Конвертируем цвет тени в нативный формат с нужной прозрачностью
-    val shadowColor = color.copy(alpha = alpha).toArgb()
-    val transparentColor = color.copy(alpha = 0f).toArgb()
-
-    // Создаем "кисть" для рисования
-    val paint = Paint()
-
-    // Превращаем кисть в фреймворк для рисования теней
-    val frameworkPaint = paint.asFrameworkPaint()
-
-    // Убираем цвет кисти, т.к. цвет будет задан в тени
-    frameworkPaint.color = transparentColor
-
-    // Устанавливаем параметры тени
-    frameworkPaint.setShadowLayer(
-        shadowRadius.toPx(), // Радиус размытия
-        offsetX.toPx(),      // Смещение по X
-        offsetY.toPx(),      // Смещение по Y
-        shadowColor          // Цвет тени
-    )
-
-    // Рисуем на холсте прямоугольник с закругленными углами,
-    // который и будет отбрасывать нашу кастомную тень.
-    // Сам прямоугольник прозрачный, видна будет только тень.
-    drawIntoCanvas {
-        it.drawRoundRect(
-            left = 0f,
-            top = 0f,
-            right = this.size.width,
-            bottom = this.size.height,
-            radiusX = borderRadius.toPx(),
-            radiusY = borderRadius.toPx(),
-            paint = paint
-        )
-    }
-}
 
 // Компактный вариант элемента меню с ripple эффектом (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 @Composable

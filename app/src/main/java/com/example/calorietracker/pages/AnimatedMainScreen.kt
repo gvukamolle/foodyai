@@ -6,7 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
@@ -35,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.ChatMessage
 import com.example.calorietracker.MessageType
 import com.example.calorietracker.ui.animations.*
 import com.example.calorietracker.utils.DailyResetUtils
@@ -43,7 +43,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDateTime
-import com.example.calorietracker.pages.EnhancedPlusDropdownMenu
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,7 +123,7 @@ fun AnimatedMainScreen(
                 onSettingsClick = onSettingsClick
             )
 
-            // Анимированные прогресс-бары
+            // Прогресс-бары
             AnimatedProgressBars(viewModel = viewModel)
 
             // Разделитель с анимацией
@@ -330,12 +329,14 @@ private fun AnimatedChatContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            items(viewModel.messages) { message ->
+            val lastIndex = viewModel.messages.lastIndex
+            itemsIndexed(viewModel.messages) { index, message ->
                 AnimatedMessage(
                     visible = true,
                     isUserMessage = message.type == MessageType.USER
                 ) {
-                    AnimatedChatMessageCard(message = message)
+                    val animateText = index == lastIndex && message.type == MessageType.AI
+                    AnimatedChatMessageCard(message = message, animateText = animateText)
                 }
             }
         }
@@ -352,17 +353,11 @@ private fun AnimatedChatContent(
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Column(
+                EnhancedAILoadingIndicator(
                     modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    AIAnimatedLogo()
-                    AIThinkingIndicator(
-                        text = if (viewModel.isOnline) "AI анализирует" else "Обрабатываем"
-                    )
-                    AnimatedLoadingDots(color = Color.Black)
-                }
+                    text = if (viewModel.isOnline) "AI анализирует" else "Обрабатываем",
+                    accentColor = Color(0xFFFF9800)
+                )
             }
         }
     }
@@ -370,7 +365,10 @@ private fun AnimatedChatContent(
 
 // Анимированная карточка сообщения
 @Composable
-private fun AnimatedChatMessageCard(message: com.example.calorietracker.ChatMessage) {
+private fun AnimatedChatMessageCard(
+    message: com.example.calorietracker.ChatMessage,
+    animateText: Boolean
+) {
     val alignment = if (message.type == MessageType.USER) {
         Alignment.CenterEnd
     } else {
@@ -398,14 +396,23 @@ private fun AnimatedChatMessageCard(message: com.example.calorietracker.ChatMess
             )
         ) {
             if (message.type == MessageType.AI) {
-                TypewriterText(
-                    text = message.content,
-                    style = TextStyle(
+                if (animateText) {
+                    TypewriterText(
+                        text = message.content,
+                        style = TextStyle(
+                            color = Color.Black,
+                            fontSize = 14.sp
+                        ),
+                        modifier = Modifier.padding(12.dp)
+                    )
+                } else {
+                    Text(
+                        text = message.content,
                         color = Color.Black,
-                        fontSize = 14.sp
-                    ),
-                    modifier = Modifier.padding(12.dp)
-                )
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             } else {
                 Text(
                     text = message.content,

@@ -127,11 +127,11 @@ fun EnhancedPlusDropdownMenu(
                                     ),
                                 contentScale = ContentScale.Crop
                             )
-                            // Темный оверлей
+                            // Светлый оверлей
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.4f))
+                                    .background(Color.White.copy(alpha = 0.3f))
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -209,6 +209,7 @@ private fun EnhancedMenuContent(
     Card(
         modifier = Modifier
             .width(260.dp)
+            .height(320.dp)
             .graphicsLayer {
                 shadowElevation = 24.dp.toPx()
                 shape = RoundedCornerShape(24.dp)
