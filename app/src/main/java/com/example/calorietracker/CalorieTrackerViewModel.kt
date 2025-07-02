@@ -22,18 +22,17 @@ import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.round
 import okhttp3.RequestBody.Companion.toRequestBody
-import com.example.calorietracker.network.FoodDataFromAnswer
 import android.widget.Toast
+import androidx.compose.ui.graphics.Color
 import com.example.calorietracker.auth.UserData
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import com.example.calorietracker.network.LogFoodRequest
 import com.example.calorietracker.network.FoodItemData
-import com.example.calorietracker.utils.calculateAge
-import com.example.calorietracker.utils.getOrCreateUserId
 import com.example.calorietracker.utils.DailyResetUtils
-import com.example.calorietracker.extensions.toNetworkProfile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import java.time.LocalDate
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -136,7 +135,7 @@ class CalorieTrackerViewModel(
     private fun startPeriodicReset() {
         viewModelScope.launch {
             while (true) {
-                kotlinx.coroutines.delay(5 * 60 * 1000) // 5 минут
+                delay(5 * 60 * 1000) // 5 минут
                 // Перезагружаем данные, что автоматически проверит обнуление
                 dailyIntake = repository.getDailyIntake()
             }
@@ -227,7 +226,7 @@ class CalorieTrackerViewModel(
         )
     }
 
-    fun getProgressColor(current: Int, target: Int): androidx.compose.ui.graphics.Color {
+    fun getProgressColor(current: Int, target: Int): Color {
         val percentage = (current.toFloat() / target.toFloat()) * 100
 
         // Пастельные мягкие цвета для разных зон
@@ -241,7 +240,7 @@ class CalorieTrackerViewModel(
     }
 
     // Функция для плавного перехода между цветами
-    private fun lerpColor(start: androidx.compose.ui.graphics.Color, end: androidx.compose.ui.graphics.Color, fraction: Float): androidx.compose.ui.graphics.Color {
+    private fun lerpColor(start: Color, end: Color, fraction: Float): Color {
         return androidx.compose.ui.graphics.Color(
             red = lerp(start.red, end.red, fraction),
             green = lerp(start.green, end.green, fraction),
@@ -421,9 +420,11 @@ class CalorieTrackerViewModel(
 
             try {
                 val request = FoodAnalysisRequest(
-                    name = text,
                     weight = 100,
-                    userProfile = userProfile.toNetworkProfile()
+                    userProfile = userProfile.toNetworkProfile(),
+                    message = text,
+                    userId = userId,
+                    messageType = "analysis",
                 )
 
                 val response = safeApiCall {
@@ -663,7 +664,8 @@ class CalorieTrackerViewModel(
                                 request = AiChatRequest(
                                     message = userMessage,
                                     userProfile = profileData,
-                                    userId = userId
+                                    userId = userId,
+                                    messageType = "chat"
                                 )
                             )
                         }
@@ -700,7 +702,7 @@ class CalorieTrackerViewModel(
     private fun getOfflineResponse(question: String): String {
         return when {
             question.contains("вчера", ignoreCase = true) -> {
-                val yesterday = java.time.LocalDate.now().minusDays(1).toString()
+                val yesterday = LocalDate.now().minusDays(1).toString()
                 val yesterdayIntake = repository.getIntakeHistory(yesterday)
                 if (yesterdayIntake != null && yesterdayIntake.calories > 0) {
                     "Вчера вы употребили: ${yesterdayIntake.calories} ккал, " +

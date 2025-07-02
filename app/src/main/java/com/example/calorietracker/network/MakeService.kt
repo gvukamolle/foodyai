@@ -7,9 +7,11 @@ import retrofit2.http.*
 
 // Data classes for requests
 data class FoodAnalysisRequest(
-    val name: String,
     val weight: Int,
-    val userProfile: UserProfileData
+    val userProfile: UserProfileData,
+    val message: String,
+    val userId: String,
+    val messageType: String = "analysis",
 )
 
 data class ImageAnalysisRequest(
@@ -90,7 +92,8 @@ data class LogFoodResponse(
 data class AiChatRequest(
     val message: String,
     val userProfile: UserProfileData,
-    val userId: String
+    val userId: String,
+    val messageType: String = "chat"
 )
 
 data class AiChatResponse(
