@@ -36,7 +36,7 @@ class SimpleAIClient {
             val url = URL("https://www.google.com")
             val connection = url.openConnection() as HttpURLConnection
             connection.apply {
-                connectTimeout = 3000
+                connectTimeout = 6000
                 connect()
             }
             connection.responseCode == 200
@@ -73,8 +73,8 @@ class SimpleAIClient {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
                 doOutput = true
-                connectTimeout = 30000
-                readTimeout = 30000
+                connectTimeout = 60000
+                readTimeout = 60000
             }
 
             // Отправляем данные

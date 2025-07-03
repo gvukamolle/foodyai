@@ -101,7 +101,7 @@ class NetworkMonitor @Inject constructor(
 
     private suspend fun checkMakeComAvailability() {
         try {
-            withTimeout(5000) {
+            withTimeout(10000) {
                 // Исправлено: добавлен параметр webhookId
                 val response = makeService.checkHealth(
                     webhookId = MakeService.WEBHOOK_ID,

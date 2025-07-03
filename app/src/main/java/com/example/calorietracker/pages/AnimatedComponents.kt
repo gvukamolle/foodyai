@@ -385,7 +385,7 @@ private fun AnimatedNutrientChip(nutrient: NutrientInfo) {
 
 // Кнопки действий с анимацией
 @Composable
-fun DialogActions(
+fun AnimatedDialogActions(
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
     confirmEnabled: Boolean,
@@ -436,7 +436,7 @@ fun DialogActions(
 
 // Карточка подсказки
 @Composable
-fun HintCard(
+fun AnimatedHintCard(
     text: String,
     icon: ImageVector,
     backgroundColor: Color,

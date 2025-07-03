@@ -43,7 +43,7 @@ fun AnimatedProgressBars(viewModel: CalorieTrackerViewModel) {
     }
 
     val containerHeight by animateDpAsState(
-        targetValue = if (expanded) 220.dp else 100.dp,
+        targetValue = if (expanded) 220.dp else 110.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -150,6 +150,15 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
 // Компактный бар для нутриента
 @Composable
 private fun CompactNutrientBar(nutrient: NutrientData) {
+    val progress = if (nutrient.target > 0) {
+        nutrient.current.toFloat() / nutrient.target.toFloat()
+    } else 0f
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "progress"
+    )
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -183,10 +192,7 @@ private fun CompactNutrientBar(nutrient: NutrientData) {
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(
-                        (nutrient.current.toFloat() / nutrient.target.toFloat())
-                            .coerceIn(0f, 1f)
-                    )
+                    .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(4.dp))
                     .background(nutrient.color)
@@ -359,6 +365,12 @@ fun SimpleRingIndicator(
 ) {
     val progress = if (target > 0) current.toFloat() / target.toFloat() else 0f
 
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "ring"
+    )
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier.size(60.dp) // Уменьшили размер с 60dp
@@ -372,9 +384,9 @@ fun SimpleRingIndicator(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Прогресс без анимации
+        // Прогресс с плавной анимацией
         CircularProgressIndicator(
-            progress = { progress.coerceIn(0f, 1f) },
+            progress = { animatedProgress.coerceIn(0f, 1f) },
             color = color,
             strokeWidth = 6.dp,
             strokeCap = StrokeCap.Round,

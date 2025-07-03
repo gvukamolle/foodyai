@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -266,33 +265,28 @@ fun EnhancedDescribeDialog(
             Spacer(Modifier.height(16.dp))
 
             // Поле ввода текста
-            BasicTextField(
+            OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
-                    .background(
-                        Color(0xFFF5F5F5),
-                        RoundedCornerShape(12.dp)
+                    .height(120.dp),
+                label = { Text("Описание блюда") },
+                placeholder = {
+                    Text(
+                        "Например: Овсяная каша с бананом и орехами, примерно 300 грамм",
+                        fontSize = 16.sp
                     )
-                    .padding(16.dp),
+                },
                 textStyle = TextStyle(
                     fontSize = 16.sp,
                     color = Color.Black
                 ),
-                decorationBox = { innerTextField ->
-                    Box {
-                        if (text.isEmpty()) {
-                            Text(
-                                "Например: Овсяная каша с бананом и орехами, примерно 300 грамм",
-                                color = Color.Gray,
-                                fontSize = 16.sp
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = DialogColors.AIAnalysis,
+                focusedLabelColor = DialogColors.AIAnalysis,
+                cursorColor = DialogColors.AIAnalysis
+            ),
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences
                 )
@@ -399,7 +393,8 @@ fun EnhancedPhotoConfirmDialog(
                         contentDescription = null,
                         tint = DialogColors.Photo
                     )
-                }
+                },
+                singleLine = true
             )
 
             Spacer(Modifier.height(16.dp))

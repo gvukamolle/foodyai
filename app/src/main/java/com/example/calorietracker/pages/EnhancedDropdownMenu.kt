@@ -75,11 +75,12 @@ fun EnhancedPlusDropdownMenu(
         }
     }
 
-    fun animatedDismiss() {
+    fun animatedDismiss(onFinished: (() -> Unit)? = null) {
         coroutineScope.launch {
             isVisible = false
             delay(200)
             onDismissRequest()
+            onFinished?.invoke()
         }
     }
 
@@ -150,23 +151,19 @@ fun EnhancedPlusDropdownMenu(
                             lastAction = lastAction,
                             onCameraClick = {
                                 saveLastAction(context, "camera")
-                                animatedDismiss()
-                                onCameraClick()
+                                animatedDismiss { onCameraClick() }
                             },
                             onGalleryClick = {
                                 saveLastAction(context, "gallery")
-                                animatedDismiss()
-                                onGalleryClick()
+                                animatedDismiss { onGalleryClick() }
                             },
                             onDescribeClick = {
                                 saveLastAction(context, "describe")
-                                animatedDismiss()
-                                onDescribeClick()
+                                animatedDismiss { onDescribeClick() }
                             },
                             onManualClick = {
                                 saveLastAction(context, "manual")
-                                animatedDismiss()
-                                onManualClick()
+                                animatedDismiss { onManualClick() }
                             }
                         )
                     }
