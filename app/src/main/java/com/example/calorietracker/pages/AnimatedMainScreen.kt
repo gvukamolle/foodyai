@@ -42,6 +42,7 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
+import com.example.calorietracker.ui.animations.TypewriterText
 import java.time.LocalDateTime
 
 

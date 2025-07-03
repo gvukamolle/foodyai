@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,9 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -30,7 +27,8 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.FoodItem
 import com.example.calorietracker.MealType
-import com.example.calorietracker.ui.animations.*
+import com.example.calorietracker.ui.animations.StaggeredAnimatedList
+import com.example.calorietracker.ui.animations.TypewriterText
 import kotlinx.coroutines.delay
 
 // Анимированные прогресс-бары с коллапсом
@@ -90,7 +88,7 @@ fun AnimatedProgressBars(viewModel: CalorieTrackerViewModel) {
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 0.dp)
+                .padding(bottom = 8.dp)
         ) {
             val rotation by animateFloatAsState(
                 targetValue = if (expanded) 0f else 180f,
@@ -113,14 +111,14 @@ fun AnimatedProgressBars(viewModel: CalorieTrackerViewModel) {
     }
 }
 
-// Развернутый вид прогресса
+// Развернутый вид прогресса БЕЗ ИКОНОК ЕДЫ
 @Composable
 private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(12.dp), // Уменьшили отступы с 16dp
+        verticalArrangement = Arrangement.spacedBy(10.dp) // Уменьшили с 16dp
     ) {
         val nutrients = listOf(
             NutrientData(
@@ -128,7 +126,6 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
                 current = viewModel.dailyIntake.calories,
                 target = viewModel.userProfile.dailyCalories,
                 unit = "ккал",
-                icon = Icons.Default.LocalFireDepartment,
                 color = viewModel.getProgressColor(
                     viewModel.dailyIntake.calories,
                     viewModel.userProfile.dailyCalories
@@ -139,7 +136,6 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
                 current = viewModel.dailyIntake.proteins,
                 target = viewModel.userProfile.dailyProteins,
                 unit = "г",
-                icon = Icons.Default.FitnessCenter,
                 color = viewModel.getProgressColor(
                     viewModel.dailyIntake.proteins,
                     viewModel.userProfile.dailyProteins
@@ -150,7 +146,6 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
                 current = viewModel.dailyIntake.fats,
                 target = viewModel.userProfile.dailyFats,
                 unit = "г",
-                icon = Icons.Default.WaterDrop,
                 color = viewModel.getProgressColor(
                     viewModel.dailyIntake.fats,
                     viewModel.userProfile.dailyFats
@@ -161,7 +156,6 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
                 current = viewModel.dailyIntake.carbs,
                 target = viewModel.userProfile.dailyCarbs,
                 unit = "г",
-                icon = Icons.Default.Grain,
                 color = viewModel.getProgressColor(
                     viewModel.dailyIntake.carbs,
                     viewModel.userProfile.dailyCarbs
@@ -169,109 +163,166 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
             )
         )
 
-        StaggeredAnimatedList(
-            items = nutrients,
-            delayBetweenItems = 50
-        ) { nutrient, _ ->
-            AnimatedProgressBar(nutrient = nutrient)
+        nutrients.forEach { nutrient ->
+            CompactNutrientBar(nutrient = nutrient) // Новый компактный компонент
         }
     }
 }
 
-// Анимированная полоса прогресса
+// Компактный бар для нутриента
 @Composable
-private fun AnimatedProgressBar(nutrient: NutrientData) {
-    val progress = if (nutrient.target > 0) {
-        (nutrient.current.toFloat() / nutrient.target.toFloat()).coerceIn(0f, 1.5f)
-    } else 0f
+private fun CompactNutrientBar(nutrient: NutrientData) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Название слева
+        Text(
+            text = nutrient.label,
+            fontSize = 13.sp, // Уменьшили размер
+            fontWeight = FontWeight.Medium,
+            color = Color.Black,
+            modifier = Modifier.width(60.dp) // Фиксированная ширина
+        )
+
+        // Прогресс-бар по центру
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(6.dp) // Уменьшили высоту
+                .clip(RoundedCornerShape(5.dp))
+                .background(Color(0xFFE5E7EB).copy(alpha = 0.2f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(
+                        (nutrient.current.toFloat() / nutrient.target)
+                            .coerceIn(0f, 1f)
+                    )
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(nutrient.color)
+            )
+        }
+
+        // Значения справа
+        Text(
+            text = "${nutrient.current}/${nutrient.target}",
+            fontSize = 12.sp, // Уменьшили размер
+            color = Color.Gray,
+            modifier = Modifier.width(70.dp), // Фиксированная ширина
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+// Улучшенный компонент для отображения нутриента БЕЗ ИКОНОК
+@Composable
+private fun AnimatedNutrientBar(nutrient: NutrientData) {
+    val progress = if (nutrient.target > 0) nutrient.current.toFloat() / nutrient.target.toFloat() else 0f
+
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(100)
+        isVisible = true
+    }
 
     val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        targetValue = if (isVisible) progress else 0f,
+        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
         label = "progress"
     )
 
     val animatedColor by animateColorAsState(
         targetValue = nutrient.color,
-        animationSpec = tween(500),
+        animationSpec = tween(durationMillis = 300),
         label = "color"
     )
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(
-            nutrient.icon,
-            contentDescription = null,
-            tint = animatedColor,
-            modifier = Modifier.size(20.dp)
-        )
-
-        Spacer(Modifier.width(8.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            // Название и значение
+            Column {
                 Text(
-                    nutrient.label,
+                    text = nutrient.label,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.Black
                 )
-                Text(
-                    "${nutrient.current}/${nutrient.target}${nutrient.unit}",
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "${nutrient.current}",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = animatedColor
+                    )
+                    Text(
+                        text = "/ ${nutrient.target} ${nutrient.unit}",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
             }
 
-            Spacer(Modifier.height(2.dp))
+            // Процент с анимацией
+            Text(
+                text = "${(animatedProgress.coerceIn(0f, 2f) * 100).toInt()}%",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (progress > 1f) Color(0xFFE53935) else animatedColor
+            )
+        }
 
+        // Прогресс-бар
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0xFFE5E7EB).copy(alpha = 0.3f))
+        ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
+                    .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                    .fillMaxHeight()
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFE5E7EB).copy(alpha = 0.5f))
-            ) {
+                    .background(animatedColor)
+            )
+
+            // Индикатор переедания
+            if (progress > 1f) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                        .fillMaxWidth()
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(animatedColor)
-                )
-
-                // Индикатор переедания
-                if (progress > 1f) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight()
-                            .graphicsLayer { alpha = 0.3f }
-                    ) {
-                        val infiniteTransition = rememberInfiniteTransition(label = "overeating")
-                        val animatedAlpha by infiniteTransition.animateFloat(
-                            initialValue = 0.3f,
-                            targetValue = 0.6f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1000),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "alpha"
+                        .graphicsLayer { alpha = 0.3f }
+                ) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "overeating")
+                    val animatedAlpha by infiniteTransition.animateFloat(
+                        initialValue = 0.3f,
+                        targetValue = 0.6f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1000),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "alpha"
+                    )
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawRect(
+                            color = Color.Red.copy(alpha = animatedAlpha),
+                            size = size
                         )
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            drawRect(
-                                color = Color.Red.copy(alpha = animatedAlpha),
-                                size = size
-                            )
-                        }
                     }
                 }
             }
@@ -285,7 +336,7 @@ private fun CollapsedProgressView(viewModel: CalorieTrackerViewModel) {
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp), // Добавили вертикальные отступы
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -297,124 +348,88 @@ private fun CollapsedProgressView(viewModel: CalorieTrackerViewModel) {
         )
 
         nutrients.forEachIndexed { index, (label, current, target) ->
-            // <<< ИЗМЕНЕНО: Оборачиваем каждый индикатор в Column, чтобы разместить текст под ним
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp) // <<< Расстояние между кольцом и текстом
+            Box( // Используем Box для фиксированного размера
+                modifier = Modifier
+                    .weight(1f)
+                    .height(180.dp), // Фиксированная высота
+                contentAlignment = Alignment.Center
             ) {
-                // Кольцевой индикатор теперь будет без текста процентов внутри
-                AnimatedRingIndicator(
-                    label = label,
-                    current = current,
-                    target = target,
-                    color = viewModel.getProgressColor(current, target),
-                    delay = index * 75,
-                    visible = true
-                )
-
-                // <<< ИЗМЕНЕНО: Текст с процентами вынесен сюда, под кольцо
-                // Анимация прогресса для синхронизации с кольцом
-                val progress = if (target > 0) current.toFloat() / target.toFloat() else 0f
-                var isVisible by remember { mutableStateOf(false) }
-                LaunchedEffect(true) {
-                    delay((index * 75).toLong())
-                    isVisible = true
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Кольцо БЕЗ анимации масштаба
+                    SimpleRingIndicator(
+                        label = label,
+                        current = current,
+                        target = target,
+                        color = viewModel.getProgressColor(current, target)
+                    )
                 }
-                val animatedProgress by animateFloatAsState(
-                    targetValue = if (isVisible) progress else 0f,
-                    animationSpec = tween(durationMillis = 1000, delayMillis = index * 75),
-                    label = "progress_text"
-                )
-
-                Text(
-                    text = "${(animatedProgress.coerceIn(0f, 1f) * 100).toInt()}%",
-                    fontSize = 12.sp,
-                    color = Color.Gray,
-                    fontWeight = FontWeight.Medium
-                )
             }
         }
     }
 }
 
-// Анимированный кольцевой индикатор
+// Простое кольцо без анимации масштабирования
 @Composable
-fun AnimatedRingIndicator(
+fun SimpleRingIndicator(
     label: String,
     current: Int,
     target: Int,
-    color: Color,
-    delay: Int,
-    visible: Boolean
+    color: Color
 ) {
     val progress = if (target > 0) current.toFloat() / target.toFloat() else 0f
 
-    var isVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(visible) {
-        if (visible) {
-            kotlinx.coroutines.delay(delay.toLong())
-            isVisible = true
-        } else {
-            isVisible = false
-        }
-    }
-
-    val scale by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0.3f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale"
-    )
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = if (isVisible) progress else 0f,
-        animationSpec = tween(
-            durationMillis = 1000,
-            delayMillis = if (isVisible) delay else 0
-        ),
-        label = "progress"
-    )
-
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(60.dp) // Размер кольца
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+        modifier = Modifier.size(60.dp) // Уменьшили размер с 60dp
     ) {
         // Фоновое кольцо
         CircularProgressIndicator(
             progress = { 1f },
-            color = Color(0xFFE5E7EB).copy(alpha = 0.5f),
-            strokeWidth = 6.dp, // Толщина кольца
+            color = Color(0xFFE5E7EB).copy(alpha = 0.3f),
+            strokeWidth = 6.dp, // Уменьшили толщину
             strokeCap = StrokeCap.Round,
             modifier = Modifier.fillMaxSize()
         )
 
-        // Прогресс
+        // Прогресс с плавной анимацией
+        val animatedProgress by animateFloatAsState(
+            targetValue = progress,
+            animationSpec = tween(
+                durationMillis = 600,
+                easing = FastOutSlowInEasing
+            ),
+            label = "progress"
+        )
+
         CircularProgressIndicator(
             progress = { animatedProgress.coerceIn(0f, 1f) },
             color = color,
-            strokeWidth = 6.dp, // Толщина кольца
+            strokeWidth = 6.dp,
             strokeCap = StrokeCap.Round,
             modifier = Modifier.fillMaxSize()
         )
 
-        // <<< ИЗМЕНЕНО: Убрали Column и текст с процентами. Осталась только буква.
-        // Box уже центрирует ее благодаря contentAlignment = Alignment.Center
+        // Буква в центре
         Text(
             text = label,
-            fontSize = 18.sp,
+            fontSize = 18.sp, // Уменьшили размер
             color = Color.Black,
             fontWeight = FontWeight.Bold
         )
     }
 }
+
+// Модель данных для нутриента БЕЗ ИКОНКИ
+data class NutrientData(
+    val label: String,
+    val current: Int,
+    val target: Int,
+    val unit: String,
+    val color: Color
+)
 
 // Анимированная карточка подтверждения еды
 @Composable
@@ -658,13 +673,3 @@ private fun AnimatedMealButton(
         )
     }
 }
-
-// Вспомогательные data классы
-private data class NutrientData(
-    val label: String,
-    val current: Int,
-    val target: Int,
-    val unit: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val color: Color
-)
