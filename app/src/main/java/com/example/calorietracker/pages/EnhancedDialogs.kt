@@ -10,6 +10,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.runtime.derivedStateOf
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +51,10 @@ import com.example.calorietracker.extensions.fancyShadow
 import com.example.calorietracker.ui.animations.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 
 // Цветовая схема для диалогов
 object DialogColors {
@@ -55,8 +64,7 @@ object DialogColors {
     val Gallery = Color(0xFF2196F3) // Синий
 }
 
-// Базовый контейнер для всех диалогов с анимацией как в EnhancedDropdownMenu
-@OptIn(ExperimentalAnimationApi::class)
+@OptIn(ExperimentalAnimationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun AnimatedDialogContainer(
     onDismiss: () -> Unit,
@@ -65,6 +73,12 @@ fun AnimatedDialogContainer(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val view = LocalView.current
+    val density = LocalDensity.current
+    val focusManager = LocalFocusManager.current
+    val ime = WindowInsets.ime
+    val imeVisible by remember {
+        derivedStateOf { ime.getBottom(density) > 0 }
+    }
     var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isVisible by remember { mutableStateOf(false) }
 
@@ -78,89 +92,95 @@ fun AnimatedDialogContainer(
 
     fun animatedDismiss() {
         coroutineScope.launch {
+            focusManager.clearFocus() // Скрываем клавиатуру перед выходом
             isVisible = false
             delay(200)
             onDismiss()
         }
     }
 
+    // Обработка системной кнопки "назад" - работает правильно
+    BackHandler {
+        if (imeVisible) {
+            focusManager.clearFocus()
+        } else {
+            animatedDismiss()
+        }
+    }
+
     Popup(
         onDismissRequest = { animatedDismiss() },
-        properties = PopupProperties(
-            focusable = true,
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
-        )
+        properties = PopupProperties(focusable = true)
     ) {
+        // Слой 1: Внешний контейнер. Реагирует на клики ЗА пределами диалога.
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    // Этот код сработает ТОЛЬКО если кликнуть на фон,
+                    // т.к. клик по карточке будет перехвачен и "съеден".
+                    if (imeVisible) {
+                        focusManager.clearFocus()
+                    } else {
+                        animatedDismiss()
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
-            // Размытый фон
+            // Визуальная часть фона (размытие, затемнение)
             AnimatedVisibility(
                 visible = isVisible && backgroundBitmap != null,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(100))
             ) {
                 backgroundBitmap?.let { bitmap ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .blur(
-                                    radiusX = animateDpAsState(
-                                        if (isVisible) 20.dp else 0.dp,
-                                        tween(200),
-                                        "blur"
-                                    ).value,
-                                    radiusY = animateDpAsState(
-                                        if (isVisible) 20.dp else 0.dp,
-                                        tween(200),
-                                        "blur"
-                                    ).value
-                                ),
-                            contentScale = ContentScale.Crop
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.White.copy(alpha = 0.7f))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { animatedDismiss() }
-                                )
-                        )
-                    }
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .blur(
+                                radiusX = animateDpAsState(if (isVisible) 20.dp else 0.dp, tween(200), "blur").value,
+                                radiusY = animateDpAsState(if (isVisible) 20.dp else 0.dp, tween(200), "blur").value
+                            ),
+                        contentScale = ContentScale.Crop
+                    )
+                    Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.7f)))
                 }
             }
 
-            // Контент диалога
+            // Слой 2: Контейнер для контента диалога
             AnimatedVisibility(
                 visible = isVisible,
                 enter = fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing)) +
-                        scaleIn(
-                            initialScale = 0.9f,
-                            transformOrigin = TransformOrigin.Center,
-                            animationSpec = tween(200, easing = FastOutSlowInEasing)
-                        ),
-                exit = fadeOut(tween(150)) + scaleOut(
-                    targetScale = 0.9f,
-                    transformOrigin = TransformOrigin.Center
-                )
+                        scaleIn(initialScale = 0.9f, transformOrigin = TransformOrigin.Center, animationSpec = tween(200, easing = FastOutSlowInEasing)),
+                exit = fadeOut(tween(150)) + scaleOut(targetScale = 0.9f, transformOrigin = TransformOrigin.Center)
             ) {
-                Box(modifier = Modifier.padding(24.dp)) {
+                Box(
+                    // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: pointerInput вместо clickable
+                    // Он "съедает" событие нажатия, не давая ему "провалиться" на фон.
+                    modifier = Modifier
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = {
+                                // Этот код сработает при клике на карточку.
+                                // И событие на этом закончится.
+                                if (imeVisible) {
+                                    // Нужно запускать в корутине, т.к. мы в suspend-контексте
+                                    coroutineScope.launch {
+                                        focusManager.clearFocus()
+                                    }
+                                }
+                            })
+                        }
+                ) {
                     Card(
                         modifier = Modifier
+                            .padding(24.dp) // padding теперь внутри, чтобы область нажатия была больше
                             .widthIn(max = 360.dp)
-                            .fancyShadow(
-                                borderRadius = 24.dp,
-                                shadowRadius = 12.dp,
-                                alpha = 0.35f,
-                                color = accentColor
-                            ),
+                            .fancyShadow(borderRadius = 24.dp, shadowRadius = 12.dp, alpha = 0.35f, color = accentColor),
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -243,6 +263,7 @@ fun EnhancedDescribeDialog(
     isAnalyzing: Boolean
 ) {
     var text by remember { mutableStateOf("") }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val haptic = LocalHapticFeedback.current
 
     AnimatedDialogContainer(
@@ -282,14 +303,16 @@ fun EnhancedDescribeDialog(
                     fontSize = 16.sp,
                     color = Color.Black
                 ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = DialogColors.AIAnalysis,
-                focusedLabelColor = DialogColors.AIAnalysis,
-                cursorColor = DialogColors.AIAnalysis
-            ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = DialogColors.AIAnalysis,
+                    focusedLabelColor = DialogColors.AIAnalysis,
+                    cursorColor = DialogColors.AIAnalysis
+                ),
                 keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences
-                )
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() })
             )
 
             // AI индикатор анализа
@@ -324,7 +347,7 @@ fun EnhancedDescribeDialog(
                     onAnalyze(text)
                 },
                 confirmEnabled = text.isNotBlank() && !isAnalyzing,
-                confirmText = if (isAnalyzing) "Анализ..." else "Анализировать",
+                confirmText = if (isAnalyzing) "Анализ..." else "Отправить",
                 accentColor = DialogColors.AIAnalysis
             )
         }
@@ -344,6 +367,7 @@ fun EnhancedPhotoConfirmDialog(
         onDismiss = onDismiss,
         accentColor = DialogColors.Photo
     ) {
+        val keyboardController = LocalSoftwareKeyboardController.current
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -394,6 +418,8 @@ fun EnhancedPhotoConfirmDialog(
                         tint = DialogColors.Photo
                     )
                 },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                 singleLine = true
             )
 
@@ -418,6 +444,7 @@ private fun InputFields(
     data: ManualInputData,
     onDataChange: (ManualInputData) -> Unit
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
     val fields = listOf(
         Triple("Название", data.name) { value: String ->
             onDataChange(data.copy(name = value))
@@ -450,8 +477,10 @@ private fun InputFields(
                 focusedLabelColor = DialogColors.ManualInput
             ),
             keyboardOptions = KeyboardOptions(
-                keyboardType = if (label == "Название") KeyboardType.Text else KeyboardType.Number
+                keyboardType = if (label == "Название") KeyboardType.Text else KeyboardType.Number,
+                imeAction = ImeAction.Done
             ),
+            keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
             singleLine = true
         )
     }

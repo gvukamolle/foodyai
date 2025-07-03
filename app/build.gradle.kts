@@ -103,6 +103,9 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
+    // Image metadata
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
     // Images
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("com.github.bumptech.glide:glide:4.16.0")
