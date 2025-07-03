@@ -60,22 +60,17 @@ fun EnhancedPlusDropdownMenu(
     val lastAction = prefs.getString("last_food_action", null)
     val contextualHint = getContextualHint()
 
-    // Состояние для анимации
-    var isVisible by remember(expanded) { mutableStateOf(expanded) }
     val coroutineScope = rememberCoroutineScope()
-
-    // Снимаем скриншот для размытия
     val view = LocalView.current
     var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(expanded) {
         if (expanded) {
             delay(10)
             try {
                 backgroundBitmap = view.drawToBitmap()
-            } catch (e: Exception) {
-                // Игнорируем ошибки скриншота
-            }
+            } catch (e: Exception) { /* ignore */ }
             isVisible = true
         }
     }
@@ -101,10 +96,9 @@ fun EnhancedPlusDropdownMenu(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.BottomEnd
             ) {
-                // Размытый фон
                 AnimatedVisibility(
                     visible = isVisible && backgroundBitmap != null,
-                    enter = fadeIn(tween(200, easing = FastOutSlowInEasing)),
+                    enter = fadeIn(tween(200)),
                     exit = fadeOut(tween(100))
                 ) {
                     backgroundBitmap?.let { bitmap ->
@@ -115,20 +109,11 @@ fun EnhancedPlusDropdownMenu(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .blur(
-                                        radiusX = animateDpAsState(
-                                            targetValue = if (isVisible) 20.dp else 0.dp,
-                                            animationSpec = tween(200),
-                                            label = "blur"
-                                        ).value,
-                                        radiusY = animateDpAsState(
-                                            targetValue = if (isVisible) 20.dp else 0.dp,
-                                            animationSpec = tween(200),
-                                            label = "blur"
-                                        ).value
+                                        radiusX = animateDpAsState(if (isVisible) 20.dp else 0.dp, tween(200), "blur").value,
+                                        radiusY = animateDpAsState(if (isVisible) 20.dp else 0.dp, tween(200), "blur").value
                                     ),
                                 contentScale = ContentScale.Crop
                             )
-                            // Светлый оверлей
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -143,55 +128,48 @@ fun EnhancedPlusDropdownMenu(
                     }
                 }
 
-                // Меню
-                val density = LocalDensity.current
                 AnimatedVisibility(
                     visible = isVisible,
-                    enter = fadeIn(tween(350, easing = FastOutSlowInEasing)) + scaleIn(
-                        initialScale = 0.8f,
-                        transformOrigin = TransformOrigin(0.9f, 0.9f),
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    ) + slideInVertically(
-                        initialOffsetY = { with(density) { 20.dp.roundToPx() } },
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    ),
+                    enter = fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing)) +
+                            scaleIn(
+                                initialScale = 0.9f,
+                                transformOrigin = TransformOrigin(0.9f, 0.9f),
+                                animationSpec = tween(200, easing = FastOutSlowInEasing)
+                            ),
                     exit = fadeOut(tween(150)) + scaleOut(
                         targetScale = 0.9f,
                         transformOrigin = TransformOrigin(0.9f, 0.9f)
                     ),
-                    modifier = Modifier
-                        .padding(bottom = 80.dp, end = 16.dp)
+                    modifier = Modifier.padding(bottom = 80.dp, end = 16.dp)
                 ) {
-                    EnhancedMenuContent(
-                        contextualHint = contextualHint,
-                        lastAction = lastAction,
-                        onCameraClick = {
-                            saveLastAction(context, "camera")
-                            animatedDismiss()
-                            onCameraClick()
-                        },
-                        onGalleryClick = {
-                            saveLastAction(context, "gallery")
-                            animatedDismiss()
-                            onGalleryClick()
-                        },
-                        onDescribeClick = {
-                            saveLastAction(context, "describe")
-                            animatedDismiss()
-                            onDescribeClick()
-                        },
-                        onManualClick = {
-                            saveLastAction(context, "manual")
-                            animatedDismiss()
-                            onManualClick()
-                        }
-                    )
+                    // *** ВОТ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ***
+                    // Этот Box создает "воздушную подушку" для тени, чтобы она не обрезалась
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        EnhancedMenuContent(
+                            contextualHint = contextualHint,
+                            lastAction = lastAction,
+                            onCameraClick = {
+                                saveLastAction(context, "camera")
+                                animatedDismiss()
+                                onCameraClick()
+                            },
+                            onGalleryClick = {
+                                saveLastAction(context, "gallery")
+                                animatedDismiss()
+                                onGalleryClick()
+                            },
+                            onDescribeClick = {
+                                saveLastAction(context, "describe")
+                                animatedDismiss()
+                                onDescribeClick()
+                            },
+                            onManualClick = {
+                                saveLastAction(context, "manual")
+                                animatedDismiss()
+                                onManualClick()
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -208,17 +186,14 @@ private fun EnhancedMenuContent(
     onManualClick: () -> Unit
 ) {
     Card(
+        // Тень снова здесь, на самой карточке, где ей и место
         modifier = Modifier
             .width(260.dp)
             .fancyShadow(
                 borderRadius = 24.dp,
-                shadowRadius = 14.dp,
+                shadowRadius = 14.dp, // Радиус тени меньше отступа в Box (16.dp), это важно
                 alpha = 0.25f
-            )
-            .graphicsLayer {
-                shape = RoundedCornerShape(24.dp)
-                clip = true
-            },
+            ),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -226,7 +201,6 @@ private fun EnhancedMenuContent(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box {
-            // Градиентный фон
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -245,10 +219,8 @@ private fun EnhancedMenuContent(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Контекстная подсказка с анимацией
                 AnimatedHintCard(hint = contextualHint)
 
-                // Недавнее действие
                 lastAction?.let { action ->
                     AnimatedRecentAction(
                         action = action,
@@ -261,11 +233,9 @@ private fun EnhancedMenuContent(
                             }
                         }
                     )
-
                     AnimatedDivider()
                 }
 
-                // Основные пункты меню
                 val menuItems = getMenuItems(
                     lastAction = lastAction,
                     onCameraClick = onCameraClick,
@@ -273,62 +243,33 @@ private fun EnhancedMenuContent(
                     onDescribeClick = onDescribeClick,
                     onManualClick = onManualClick
                 )
-
-                menuItems.forEachIndexed { index, item ->
-                    EnhancedMenuItem(
-                        item = item,
-                        delay = (index + 1) * 50
-                    )
+                menuItems.forEach { item ->
+                    EnhancedMenuItem(item = item)
                 }
             }
         }
     }
 }
 
+// ... остальной код без изменений ...
 @Composable
 private fun AnimatedHintCard(hint: String) {
-    var visible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        visible = true
-    }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(tween(300)) + expandVertically()
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFF0F4FF)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = Color(0xFFF0F4FF)
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                val infiniteTransition = rememberInfiniteTransition(label = "hint")
-                val scale by infiniteTransition.animateFloat(
-                    initialValue = 0.95f,
-                    targetValue = 1.05f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "scale"
-                )
-
-                Text(
-                    text = hint,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1976D2),
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                )
-            }
+            Text(
+                text = hint,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1976D2)
+            )
         }
     }
 }
@@ -339,106 +280,93 @@ private fun AnimatedRecentAction(
     onClick: () -> Unit
 ) {
     val (text, icon, color) = getActionDetails(action)
-    var visible by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
 
-    LaunchedEffect(Unit) {
-        delay(50)
-        visible = true
-    }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + scaleIn(initialScale = 0.9f) + slideInHorizontally(initialOffsetX = { -20 })
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = rememberRipple(color = color)
+            ) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            },
+        shape = RoundedCornerShape(16.dp),
+        color = color.copy(alpha = 0.15f)
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = rememberRipple(color = color)
-                ) {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onClick()
-                },
-            shape = RoundedCornerShape(16.dp),
-            color = color.copy(alpha = 0.15f)
-        ) {
-            Box {
-                // Градиент для красоты
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    color.copy(alpha = 0.05f)
-                                )
+        Box {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                color.copy(alpha = 0.05f)
                             )
                         )
-                )
-
-                Row(
+                    )
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        color.copy(alpha = 0.3f),
-                                        color.copy(alpha = 0.1f)
-                                    )
-                                ),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = color,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column {
-                        Text(
-                            text,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1A1A1A)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = color.copy(alpha = 0.2f)
-                            ) {
-                                Text(
-                                    "Недавнее",
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                    fontSize = 11.sp,
-                                    color = color,
-                                    fontWeight = FontWeight.Bold
+                        .size(44.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    color.copy(alpha = 0.3f),
+                                    color.copy(alpha = 0.1f)
                                 )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        Icons.Default.Schedule,
+                        icon,
                         contentDescription = null,
                         tint = color,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A1A1A)
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = color.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                "Недавнее",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                fontSize = 11.sp,
+                                color = color,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    Icons.Default.Schedule,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -447,104 +375,71 @@ private fun AnimatedRecentAction(
 @Composable
 private fun EnhancedMenuItem(
     item: MenuItemData,
-    delay: Int
 ) {
-    var visible by remember { mutableStateOf(false) }
-    var isPressed by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
 
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(delay.toLong())
-        visible = true
-    }
-
-    val scale by animateFloatAsState(
-        targetValue = when {
-            isPressed -> 0.95f
-            visible -> 1f
-            else -> 0.8f
-        },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale"
-    )
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + scaleIn(initialScale = 0.9f) + slideInHorizontally(initialOffsetX = { -30 })
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = rememberRipple(color = item.color)
+            ) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                item.onClick()
+            },
+        shape = RoundedCornerShape(14.dp),
+        color = Color.Transparent
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .clip(RoundedCornerShape(14.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = rememberRipple(color = item.color)
-                ) {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    isPressed = true
-                    item.onClick()
-                },
-            shape = RoundedCornerShape(14.dp),
-            color = Color.Transparent
-        ) {
-            Box {
-                // Фоновый градиент
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    item.color.copy(alpha = 0.08f),
-                                    item.color.copy(alpha = 0.04f)
-                                )
+        Box {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                item.color.copy(alpha = 0.08f),
+                                item.color.copy(alpha = 0.04f)
                             )
                         )
-                )
-
-                Row(
+                    )
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .size(42.dp)
+                        .background(
+                            color = item.color.copy(alpha = 0.12f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .background(
-                                color = item.color.copy(alpha = 0.12f),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            item.icon,
-                            contentDescription = null,
-                            tint = item.color,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column {
-                        Text(
-                            item.text,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF1A1A1A)
-                        )
-                        Text(
-                            item.subtitle,
-                            fontSize = 13.sp,
-                            color = Color(0xFF757575)
-                        )
-                    }
+                    Icon(
+                        item.icon,
+                        contentDescription = null,
+                        tint = item.color,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column {
+                    Text(
+                        item.text,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1A1A1A)
+                    )
+                    Text(
+                        item.subtitle,
+                        fontSize = 13.sp,
+                        color = Color(0xFF757575)
+                    )
                 }
             }
         }
@@ -553,22 +448,9 @@ private fun EnhancedMenuItem(
 
 @Composable
 private fun AnimatedDivider() {
-    var width by remember { mutableStateOf(0f) }
-
-    LaunchedEffect(Unit) {
-        delay(200)
-        width = 1f
-    }
-
-    val animatedWidth by animateFloatAsState(
-        targetValue = width,
-        animationSpec = tween(400, easing = FastOutSlowInEasing),
-        label = "divider"
-    )
-
     Box(
         modifier = Modifier
-            .fillMaxWidth(animatedWidth)
+            .fillMaxWidth()
             .height(1.dp)
             .padding(vertical = 4.dp)
             .background(
@@ -584,7 +466,6 @@ private fun AnimatedDivider() {
     )
 }
 
-// Вспомогательные функции
 private fun getContextualHint(): String {
     val hour = LocalTime.now().hour
     return when (hour) {
@@ -622,7 +503,7 @@ private fun getMenuItems(
     )
 
     return if (lastAction == null) allItems
-    else allItems.filter { it.id != lastAction }   // показывает ровно 3
+    else allItems.filter { it.id != lastAction }
 }
 
 private fun saveLastAction(context: Context, action: String) {
@@ -631,4 +512,3 @@ private fun saveLastAction(context: Context, action: String) {
         .putString("last_food_action", action)
         .apply()
 }
-

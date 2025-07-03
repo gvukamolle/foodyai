@@ -69,8 +69,8 @@ fun AnimatedProgressBars(viewModel: CalorieTrackerViewModel) {
         // Развернутый вид
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
+            enter = fadeIn(),
+            exit = fadeOut()
         ) {
             ExpandedProgressView(viewModel = viewModel)
         }
@@ -78,36 +78,13 @@ fun AnimatedProgressBars(viewModel: CalorieTrackerViewModel) {
         // Свернутый вид
         AnimatedVisibility(
             visible = !expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
+            enter = fadeIn(),
+            exit = fadeOut()
         ) {
             CollapsedProgressView(viewModel = viewModel)
         }
 
-        // Индикатор состояния
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 8.dp)
-        ) {
-            val rotation by animateFloatAsState(
-                targetValue = if (expanded) 0f else 180f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                ),
-                label = "indicator"
-            )
-
-            Icon(
-                Icons.Default.ExpandLess,
-                contentDescription = null,
-                tint = Color.Gray.copy(alpha = 0.3f),
-                modifier = Modifier
-                    .size(20.dp)
-                    .graphicsLayer { rotationZ = rotation }
-            )
-        }
+        // *** ИЗМЕНЕНИЕ: СТРЕЛКА-ИНДИКАТОР ПОЛНОСТЬЮ УДАЛЕНА ***
     }
 }
 
@@ -117,8 +94,9 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp), // Уменьшили отступы с 16dp
-        verticalArrangement = Arrangement.spacedBy(10.dp) // Уменьшили с 16dp
+            // *** ИЗМЕНЕНИЕ: Отступы сделаны симметричными, так как стрелки больше нет ***
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.SpaceAround
     ) {
         val nutrients = listOf(
             NutrientData(
@@ -164,7 +142,7 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
         )
 
         nutrients.forEach { nutrient ->
-            CompactNutrientBar(nutrient = nutrient) // Новый компактный компонент
+            CompactNutrientBar(nutrient = nutrient)
         }
     }
 }
@@ -172,48 +150,48 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
 // Компактный бар для нутриента
 @Composable
 private fun CompactNutrientBar(nutrient: NutrientData) {
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Название слева
-        Text(
-            text = nutrient.label,
-            fontSize = 13.sp, // Уменьшили размер
-            fontWeight = FontWeight.Medium,
-            color = Color.Black,
-            modifier = Modifier.width(60.dp) // Фиксированная ширина
-        )
+        // Верхний ряд с подписями
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Text(
+                text = nutrient.label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+            Text(
+                text = "${nutrient.current}/${nutrient.target}",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+        }
 
-        // Прогресс-бар по центру
+        // Прогресс-бар
         Box(
             modifier = Modifier
-                .weight(1f)
-                .height(6.dp) // Уменьшили высоту
-                .clip(RoundedCornerShape(5.dp))
-                .background(Color(0xFFE5E7EB).copy(alpha = 0.2f))
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFFE5E7EB).copy(alpha = 0.3f))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(
-                        (nutrient.current.toFloat() / nutrient.target)
+                        (nutrient.current.toFloat() / nutrient.target.toFloat())
                             .coerceIn(0f, 1f)
                     )
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .background(nutrient.color)
             )
         }
-
-        // Значения справа
-        Text(
-            text = "${nutrient.current}/${nutrient.target}",
-            fontSize = 12.sp, // Уменьшили размер
-            color = Color.Gray,
-            modifier = Modifier.width(70.dp), // Фиксированная ширина
-            textAlign = TextAlign.End
-        )
     }
 }
 
@@ -394,18 +372,9 @@ fun SimpleRingIndicator(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Прогресс с плавной анимацией
-        val animatedProgress by animateFloatAsState(
-            targetValue = progress,
-            animationSpec = tween(
-                durationMillis = 600,
-                easing = FastOutSlowInEasing
-            ),
-            label = "progress"
-        )
-
+        // Прогресс без анимации
         CircularProgressIndicator(
-            progress = { animatedProgress.coerceIn(0f, 1f) },
+            progress = { progress.coerceIn(0f, 1f) },
             color = color,
             strokeWidth = 6.dp,
             strokeCap = StrokeCap.Round,
@@ -529,7 +498,7 @@ fun AnimatedPendingFoodCard(
     }
 }
 
-// Анимированные детали о еде
+// ИЗМЕНЕНО: StaggeredAnimatedList заменен на обычный Column
 @Composable
 private fun AnimatedFoodDetails(food: FoodItem) {
     val details = listOf(
@@ -541,17 +510,18 @@ private fun AnimatedFoodDetails(food: FoodItem) {
         "Вес: ${food.weight} г"
     )
 
-    StaggeredAnimatedList(
-        items = details,
-        delayBetweenItems = 30
-    ) { detail, _ ->
-        Text(
-            text = detail,
-            fontSize = 14.sp,
-            color = Color.Black
-        )
+    // Используем Column и forEach для мгновенного отображения всех элементов
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { // Добавим небольшой отступ
+        details.forEach { detail ->
+            Text(
+                text = detail,
+                fontSize = 14.sp,
+                color = Color.Black
+            )
+        }
     }
 }
+
 
 // Анимированный селектор приема пищи
 @Composable

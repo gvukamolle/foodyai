@@ -56,11 +56,10 @@ fun EnhancedManualInputDialog(
         onDismiss = onDismiss,
         accentColor = DialogColors.ManualInput
     ) {
-        // ИЗМЕНЕНО: Структура Column изменена для поддержки прокрутки
         Column(
-            modifier = Modifier.padding(top = 24.dp, start = 24.dp, end = 24.dp) // Убрали нижний padding
+            modifier = Modifier.padding(top = 24.dp, start = 24.dp, end = 24.dp)
         ) {
-            // Заголовок с иконкой (не скроллится)
+            // Заголовок с иконкой (теперь без собственной анимации)
             DialogHeader(
                 icon = Icons.Default.Restaurant,
                 title = if (isFromAI) "Проверьте данные от AI" else "Добавить продукт",
@@ -70,11 +69,9 @@ fun EnhancedManualInputDialog(
 
             Spacer(Modifier.height(16.dp))
 
-            // ДОБАВЛЕНО: Скроллящаяся колонка для полей ввода и сводки
-            // Это решает проблему сжатия кнопок на маленьких экранах
             Column(
                 modifier = Modifier
-                    .weight(1f, fill = false) // Занимает доступное место, но не растягивается сверх меры
+                    .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -85,7 +82,6 @@ fun EnhancedManualInputDialog(
                     isFromAI = isFromAI
                 )
 
-                // Анимированная сводка (удалена из AIAnimatedInputFields и помещена сюда)
                 AnimatedVisibility(
                     visible = data.isValid() && data.weight.toFloatOrNull() != null,
                     enter = expandVertically() + fadeIn(),
@@ -97,7 +93,7 @@ fun EnhancedManualInputDialog(
 
             Spacer(Modifier.height(16.dp))
 
-            // Кнопки действий (не скроллятся)
+            // Кнопки действий
             DialogActions(
                 onCancel = onDismiss,
                 onConfirm = { onConfirm(data) },
@@ -105,7 +101,7 @@ fun EnhancedManualInputDialog(
                 confirmText = if (isFromAI) "Подтвердить" else "Добавить",
                 accentColor = DialogColors.ManualInput
             )
-            Spacer(Modifier.height(24.dp)) // Добавляем нижний отступ здесь
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -129,6 +125,7 @@ fun EnhancedDescribeDialog(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Заголовок (теперь без собственной анимации)
             DialogHeader(
                 icon = Icons.Default.AutoAwesome,
                 title = "Расскажите о блюде",
@@ -260,7 +257,7 @@ internal fun AIAnimatedLogo() {
     }
 }
 
-// Базовые компоненты для диалогов
+// ИЗМЕНЕНИЕ 1: Контейнер теперь сам анимирует появление своего содержимого
 @Composable
 internal fun AnimatedDialogContainer(
     onDismiss: () -> Unit,
@@ -268,6 +265,12 @@ internal fun AnimatedDialogContainer(
     content: @Composable () -> Unit
 ) {
     AnimatedPopup(onDismissRequest = onDismiss) { animatedDismiss ->
+        var contentVisible by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+            contentVisible = true
+        }
+
         Card(
             modifier = Modifier
                 .widthIn(max = 360.dp)
@@ -281,24 +284,36 @@ internal fun AnimatedDialogContainer(
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White,
-                                accentColor.copy(alpha = 0.03f)
+            // Эта AnimatedVisibility плавно покажет все содержимое целиком
+            AnimatedVisibility(
+                visible = contentVisible,
+                enter = fadeIn(animationSpec = tween(250)) +
+                        expandVertically(
+                            animationSpec = tween(350),
+                            expandFrom = Alignment.CenterVertically
+                        ),
+                exit = fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White,
+                                    accentColor.copy(alpha = 0.03f)
+                                )
                             )
                         )
-                    )
-            ) {
-                content()
+                ) {
+                    content()
+                }
             }
         }
     }
 }
 
+// ИЗМЕНЕНИЕ 2: Заголовок теперь не имеет собственной анимации
 @Composable
 internal fun DialogHeader(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -306,51 +321,40 @@ internal fun DialogHeader(
     subtitle: String,
     accentColor: Color
 ) {
-    var visible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        delay(100)
-        visible = true
-    }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + scaleIn(initialScale = 0.95f)
+    // Убрали LaunchedEffect, remember { mutableStateOf(false) } и AnimatedVisibility
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    color = accentColor.copy(alpha = 0.1f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = accentColor.copy(alpha = 0.1f),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text(
-                    title,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-                Text(
-                    subtitle,
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-            }
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Column {
+            Text(
+                title,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Text(
+                subtitle,
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
         }
     }
 }
