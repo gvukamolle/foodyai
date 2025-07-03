@@ -29,6 +29,9 @@ import com.example.calorietracker.ui.animations.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.calorietracker.extensions.fancyShadow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
 
 
 // Цветовая схема для диалогов
@@ -39,7 +42,7 @@ object DialogColors {
     val Gallery = Color(0xFF2196F3) // Синий
 }
 
-// Улучшенный диалог ручного ввода с анимациями
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun EnhancedManualInputDialog(
     initialData: ManualInputData? = null,
@@ -53,11 +56,11 @@ fun EnhancedManualInputDialog(
         onDismiss = onDismiss,
         accentColor = DialogColors.ManualInput
     ) {
+        // ИЗМЕНЕНО: Структура Column изменена для поддержки прокрутки
         Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.padding(top = 24.dp, start = 24.dp, end = 24.dp) // Убрали нижний padding
         ) {
-            // Заголовок с иконкой
+            // Заголовок с иконкой (не скроллится)
             DialogHeader(
                 icon = Icons.Default.Restaurant,
                 title = if (isFromAI) "Проверьте данные от AI" else "Добавить продукт",
@@ -65,23 +68,36 @@ fun EnhancedManualInputDialog(
                 accentColor = DialogColors.ManualInput
             )
 
-            // Поля ввода с AI анимацией заполнения
-            AIAnimatedInputFields(
-                data = data,
-                onDataChange = { data = it },
-                isFromAI = isFromAI
-            )
+            Spacer(Modifier.height(16.dp))
 
-            // Анимированная сводка
-            AnimatedVisibility(
-                visible = data.weight.isNotBlank() && data.weight != "100",
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
+            // ДОБАВЛЕНО: Скроллящаяся колонка для полей ввода и сводки
+            // Это решает проблему сжатия кнопок на маленьких экранах
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false) // Занимает доступное место, но не растягивается сверх меры
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                AnimatedNutritionSummary(data = data)
+                // Поля ввода с AI анимацией заполнения
+                AIAnimatedInputFields(
+                    data = data,
+                    onDataChange = { data = it },
+                    isFromAI = isFromAI
+                )
+
+                // Анимированная сводка (удалена из AIAnimatedInputFields и помещена сюда)
+                AnimatedVisibility(
+                    visible = data.isValid() && data.weight.toFloatOrNull() != null,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    AnimatedNutritionSummary(data = data)
+                }
             }
 
-            // Кнопки действий
+            Spacer(Modifier.height(16.dp))
+
+            // Кнопки действий (не скроллятся)
             DialogActions(
                 onCancel = onDismiss,
                 onConfirm = { onConfirm(data) },
@@ -89,6 +105,7 @@ fun EnhancedManualInputDialog(
                 confirmText = if (isFromAI) "Подтвердить" else "Добавить",
                 accentColor = DialogColors.ManualInput
             )
+            Spacer(Modifier.height(24.dp)) // Добавляем нижний отступ здесь
         }
     }
 }

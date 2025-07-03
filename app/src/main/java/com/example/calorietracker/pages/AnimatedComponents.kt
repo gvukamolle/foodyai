@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.calorietracker.pages.NutrientChip
 import com.example.calorietracker.ui.animations.StaggeredAnimatedList
 import com.example.calorietracker.ui.animations.TypewriterText
 import kotlinx.coroutines.delay
@@ -323,66 +324,32 @@ private fun CompactNutrientField(
     }
 }
 
-// Анимированная сводка питательности
 @Composable
 fun AnimatedNutritionSummary(data: ManualInputData) {
-    var isVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(data.weight) {
-        isVisible = false
-        delay(100)
-        isVisible = true
-    }
-
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically()
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            // ИЗМЕНЕНО: Используем тот самый серый цвет
+            containerColor = Color(0xFFF5F5F5)
+        )
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
-            ),
-            shape = RoundedCornerShape(16.dp)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Text(
+                "Итого на ${data.weight}г:",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Calculate,
-                        contentDescription = null,
-                        tint = Color(0xFF4CAF50),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    TypewriterText(
-                        text = "Итого на ${data.weight}г:",
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
-                        )
-                    )
-                }
-
-                StaggeredAnimatedList(
-                    items = listOf(
-                        NutrientInfo("Калории", "${data.totalCalories} ккал", Color(0xFFFF5722)),
-                        NutrientInfo("Белки", "${data.totalProteins}г", Color(0xFF2196F3)),
-                        NutrientInfo("Жиры", "${data.totalFats}г", Color(0xFFFFC107)),
-                        NutrientInfo("Углеводы", "${data.totalCarbs}г", Color(0xFF9C27B0))
-                    ),
-                    delayBetweenItems = 50
-                ) { nutrient, _ ->
-                    AnimatedNutrientChip(nutrient)
-                }
+                NutrientChip("Калории", "${data.totalCalories} ккал", Color(0xFFFF5722))
+                NutrientChip("Белки", "${data.totalProteins}г", Color(0xFF9C27B0))
+                NutrientChip("Жиры", "${data.totalFats}г", Color(0xFFFFC107))
+                NutrientChip("Углеводы", "${data.totalCarbs}г", Color(0xFF795548))
             }
         }
     }
