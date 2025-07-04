@@ -64,9 +64,9 @@ data class DailyIntakeData(
 data class FoodItemData(
     val name: String,
     val calories: Int,
-    val proteins: Int,
-    val fats: Int,
-    val carbs: Int,
+    val protein: Double,
+    val fat: Double,
+    val carbs: Double,
     val weight: Int
 )
 
@@ -112,11 +112,11 @@ data class FoodAnalysisResponse(
 data class FoodDataFromAnswer(
     val food: String,      // "да" или "нет"
     val name: String,      // название продукта
-    val calories: Int,     // Gson автоматически распарсит число
-    val proteins: Int,     // Gson автоматически распарсит число
-    val fats: Int,         // Gson автоматически распарсит число
-    val carbs: Int,        // Gson автоматически распарсит число
-    val weight: String     // оставляем String (может быть "100" или "100г")
+    val calories: Int,
+    val protein: Double,
+    val fat: Double,
+    val carbs: Double,
+    val weight: String
 )
 
 data class EnhancedFoodData(

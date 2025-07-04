@@ -52,9 +52,9 @@ enum class MessageType {
 data class FoodItem(
     val name: String,
     val calories: Int,
-    val protein: Int,    // было proteins
-    val fat: Int,        // было fats
-    val carbs: Int,
+    val protein: Double,    // поддержка дробных значений
+    val fat: Double,
+    val carbs: Double,
     val weight: String
 )
 
@@ -552,9 +552,9 @@ class CalorieTrackerViewModel(
         val food: String,      // "да" или "нет"
         val name: String,      // название продукта
         val calories: Int,     // калории
-        val protein: Int,     // белки
-        val fat: Int,         // жиры
-        val carbs: Int,        // углеводы
+        val protein: Double,   // белки могут быть дробными
+        val fat: Double,       // жиры могут быть дробными
+        val carbs: Double,     // углеводы могут быть дробными
         val weight: String     // вес (строка, т.к. может быть "100г")
     )
 
@@ -574,9 +574,9 @@ class CalorieTrackerViewModel(
         pendingFood = FoodItem(
             name = name,
             calories = calories.toIntOrNull() ?: 0,
-            protein = proteins.toIntOrNull() ?: 0,    // параметр proteins -> поле protein
-            fat = fats.toIntOrNull() ?: 0,           // параметр fats -> поле fat
-            carbs = carbs.toIntOrNull() ?: 0,
+            protein = proteins.toDoubleOrNull() ?: 0.0,
+            fat = fats.toDoubleOrNull() ?: 0.0,
+            carbs = carbs.toDoubleOrNull() ?: 0.0,
             weight = (weight.toIntOrNull() ?: 100).toString()
         )
 
@@ -671,8 +671,8 @@ class CalorieTrackerViewModel(
             val foodItemData = FoodItemData(
                 name = food.name,
                 calories = food.calories,
-                proteins = food.protein,    // было food.proteins
-                fats = food.fat,           // было food.fats
+                protein = food.protein,
+                fat = food.fat,
                 carbs = food.carbs,
                 weight = food.weight.toIntOrNull() ?: 100
             )

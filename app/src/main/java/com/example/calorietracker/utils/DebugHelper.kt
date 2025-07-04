@@ -41,8 +41,8 @@ object DebugHelper {
         val foodItemData = FoodItemData(
             name = food.name,
             calories = food.calories,
-            proteins = food.protein,
-            fats = food.fat,
+            protein = food.protein,
+            fat = food.fat,
             carbs = food.carbs,
             weight = food.weight.toIntOrNull() ?: 100
         )
