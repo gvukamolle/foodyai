@@ -23,16 +23,16 @@ class DataRepository(context: Context) {
         date: LocalDate = DailyResetUtils.getFoodLocalDate(),
         calories: Int,
         protein: Float,
-        carbs: Float,
         fat: Float,
+        carbs: Float,
         mealsCount: Int
     ) {
         val summary = DailyNutritionSummary(
             date = date,
             totalCalories = calories,
             totalProtein = protein,
-            totalCarbs = carbs,
             totalFat = fat,
+            totalCarbs = carbs,
             mealsCount = mealsCount
         )
         val json = gson.toJson(summary)

@@ -371,15 +371,32 @@ fun SimpleRingIndicator(
         label = "ring"
     )
 
+    var animateScale by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (animateScale) 1f else 0f,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "ring_scale"
+    )
+
+    LaunchedEffect(animatedProgress) {
+        animateScale = true
+    }
+
+
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(60.dp) // Уменьшили размер с 60dp
+        modifier = Modifier
+            .size(60.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
     ) {
         // Фоновое кольцо
         CircularProgressIndicator(
             progress = { 1f },
             color = Color(0xFFE5E7EB).copy(alpha = 0.3f),
-            strokeWidth = 6.dp, // Уменьшили толщину
+            strokeWidth = 6.dp,
             strokeCap = StrokeCap.Round,
             modifier = Modifier.fillMaxSize()
         )
@@ -396,7 +413,7 @@ fun SimpleRingIndicator(
         // Буква в центре
         Text(
             text = label,
-            fontSize = 18.sp, // Уменьшили размер
+            fontSize = 18.sp,
             color = Color.Black,
             fontWeight = FontWeight.Bold
         )
