@@ -4,6 +4,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,99 +20,143 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.data.DataRepository
+import com.example.calorietracker.data.DailyIntake
+import com.example.calorietracker.data.DailyNutritionSummary
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle as DateTextStyle
-import java.util.*
+import java.util.Locale
 
-data class DayData(
-    val date: LocalDate,
-    val calories: Int = 0,
-    val protein: Int = 0,
-    val carbs: Int = 0,
-    val fat: Int = 0,
-    val hasData: Boolean = false
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
     viewModel: CalorieTrackerViewModel,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val systemUiController = rememberSystemUiController()
-    var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
-    var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
-    var visible by remember { mutableStateOf(false) }
-
-    // Данные из viewModel
     val calendarData by viewModel.calendarData.collectAsState()
     val currentIntake = viewModel.dailyIntake
+    val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
-        delay(50)
-        visible = true
+    // Состояние календаря
+    var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
+    var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
+    var showDayHistory by remember { mutableStateOf(false) }
+    var dayHistoryData by remember { mutableStateOf<DailyIntake?>(null) }
+
+    // Состояние масштабирования
+    var scale by remember { mutableStateOf(1f) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    // Анимация масштабирования
+    val animatedScale by animateFloatAsState(
+        targetValue = scale,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    // Репозиторий для получения данных
+    val repository = remember { DataRepository(context) }
+
+    DisposableEffect(systemUiController) {
+        systemUiController.setSystemBarsColor(
+            color = Color.White,
+            darkIcons = true
+        )
+        onDispose { }
     }
 
-    Scaffold(
-        topBar = {
-            CalendarTopBar(
-                currentMonth = selectedMonth,
-                onBack = onBack,
-                onPreviousMonth = {
-                    selectedMonth = selectedMonth.minusMonths(1)
-                },
-                onNextMonth = {
-                    if (selectedMonth < YearMonth.now()) {
-                        selectedMonth = selectedMonth.plusMonths(1)
-                    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5))
+    ) {
+        CalendarTopBar(
+            currentMonth = selectedMonth,
+            onBack = onBack,
+            onPreviousMonth = {
+                selectedMonth = selectedMonth.minusMonths(1)
+                selectedDay = null
+            },
+            onNextMonth = {
+                if (selectedMonth < YearMonth.now()) {
+                    selectedMonth = selectedMonth.plusMonths(1)
+                    selectedDay = null
                 }
-            )
-        },
-        containerColor = Color(0xFFF8F9FA)
-    ) { paddingValues ->
-        Column(
+            }
+        )
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn() + slideInVertically { -20 }
+            // Трансформируемый календарь
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer(
+                        scaleX = animatedScale,
+                        scaleY = animatedScale,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    )
+                    .transformable(
+                        state = rememberTransformableState { zoomChange, offsetChange, _ ->
+                            scale = (scale * zoomChange).coerceIn(0.8f, 2f)
+                            offsetX += offsetChange.x
+                            offsetY += offsetChange.y
+
+                            // Ограничиваем смещение при масштабировании
+                            val maxOffset = 200f * (scale - 1f)
+                            offsetX = offsetX.coerceIn(-maxOffset, maxOffset)
+                            offsetY = offsetY.coerceIn(-maxOffset, maxOffset)
+                        }
+                    )
             ) {
                 CalendarGrid(
                     selectedMonth = selectedMonth,
                     selectedDay = selectedDay,
-                    onDayClick = { date ->
-                        selectedDay = if (selectedDay == date) null else date
+                    onDayClick = { day ->
+                        selectedDay = day
+
+                        // Загружаем данные для выбранного дня
+                        coroutineScope.launch {
+                            val dateString = day.toString()
+                            dayHistoryData = repository.getIntakeHistory(dateString)
+                            showDayHistory = true
+                        }
                     },
                     currentIntake = currentIntake,
                     calendarData = calendarData
                 )
             }
-
-            selectedDay?.let { day ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    DayDetailsCard(
-                        dayData = getDayData(day, currentIntake, calendarData),
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
         }
+    }
+
+    // Диалог истории дня
+    if (showDayHistory && selectedDay != null) {
+        DayHistoryDialog(
+            date = selectedDay!!,
+            dailyIntake = dayHistoryData ?: DailyIntake(),
+            nutritionSummary = calendarData[selectedDay],
+            onDismiss = { showDayHistory = false }
+        )
     }
 }
 
@@ -180,9 +226,9 @@ private fun CalendarGrid(
     selectedMonth: YearMonth,
     selectedDay: LocalDate?,
     onDayClick: (LocalDate) -> Unit,
-    currentIntake: com.example.calorietracker.data.DailyIntake,
-    calendarData: Map<LocalDate, com.example.calorietracker.data.DailyNutritionSummary>
-    ) {
+    currentIntake: DailyIntake,
+    calendarData: Map<LocalDate, DailyNutritionSummary>
+) {
     val daysOfWeek = listOf("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")
     val firstDayOfMonth = selectedMonth.atDay(1)
     val lastDayOfMonth = selectedMonth.atEndOfMonth()
@@ -217,7 +263,7 @@ private fun CalendarGrid(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Сетка дней
             val totalCells = (firstDayOfWeek - 1) + daysInMonth
@@ -251,7 +297,7 @@ private fun CalendarGrid(
                 }
 
                 if (week < rows - 1) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         }
@@ -282,11 +328,25 @@ private fun DayCell(
         else -> Color.Black
     }
 
+    // Анимация при выборе
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isSelected) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "cellScale"
+    )
+
     Box(
         modifier = modifier
-            .padding(2.dp)
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
+            .padding(horizontal = 4.dp, vertical = 6.dp)
+            .height(56.dp) // Увеличенная высота для "таблетки"
+            .graphicsLayer {
+                scaleX = animatedScale
+                scaleY = animatedScale
+            }
+            .clip(RoundedCornerShape(50)) // Полностью закругленные края
             .background(backgroundColor)
             .clickable(enabled = !isFuture) { onClick() },
         contentAlignment = Alignment.Center
@@ -297,146 +357,67 @@ private fun DayCell(
         ) {
             Text(
                 text = date.dayOfMonth.toString(),
-                fontSize = 16.sp,
-                fontWeight = if (isToday || isSelected) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 18.sp,
+                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
                 color = textColor
             )
 
             if (dayData.hasData && !isSelected) {
                 Text(
-                    text = "${dayData.calories}",
+                    text = "${dayData.calories} ккал",
                     fontSize = 10.sp,
-                    color = textColor.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.Medium
+                    color = Color(0xFF4CAF50),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
         }
-    }
-}
 
-@Composable
-private fun DayDetailsCard(
-    dayData: DayData,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            val dayOfWeek = dayData.date.dayOfWeek.getDisplayName(DateTextStyle.FULL, Locale("ru"))
-            val month = dayData.date.month.getDisplayName(java.time.format.TextStyle.FULL, Locale("ru"))
-
-            Text(
-                text = "${dayData.date.dayOfMonth} $month, $dayOfWeek",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (dayData.hasData) {
-                MacroRow(
-                    label = "Калории",
-                    value = "${dayData.calories} ккал",
-                    color = MaterialTheme.colorScheme.primary
-                )
-                MacroRow(
-                    label = "Белки",
-                    value = "${dayData.protein} г",
-                    color = Color(0xFF4CAF50)
-                )
-                MacroRow(
-                    label = "Углеводы",
-                    value = "${dayData.carbs} г",
-                    color = Color(0xFFFF9800)
-                )
-                MacroRow(
-                    label = "Жиры",
-                    value = "${dayData.fat} г",
-                    color = Color(0xFFF44336)
-                )
-            } else {
-                Text(
-                    text = "Нет данных за этот день",
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MacroRow(
-    label: String,
-    value: String,
-    color: Color
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Индикатор для сегодняшнего дня
+        if (isToday && !isSelected) {
             Box(
                 modifier = Modifier
-                    .size(12.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(color)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = label,
-                fontSize = 14.sp,
-                color = Color.Gray
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 4.dp)
+                    .size(4.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(50)
+                    )
             )
         }
-        Text(
-            text = value,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
     }
 }
 
-// Вспомогательная функция для получения данных дня
+private data class DayData(
+    val hasData: Boolean,
+    val calories: String,
+    val protein: Float,
+    val fat: Float,
+    val carbs: Float
+)
+
 private fun getDayData(
     date: LocalDate,
-    currentIntake: com.example.calorietracker.data.DailyIntake,
-    calendarData: Map<LocalDate, com.example.calorietracker.data.DailyNutritionSummary>
+    currentIntake: DailyIntake,
+    calendarData: Map<LocalDate, DailyNutritionSummary>
 ): DayData {
-
-    return when {
-        date == LocalDate.now() -> DayData(
-            date = date,
-            calories = currentIntake.calories,
-            protein = currentIntake.protein.toInt(),
-            carbs = currentIntake.carbs.toInt(),
-            fat = currentIntake.fat.toInt(),
-            hasData = currentIntake.calories > 0
+    return if (date == LocalDate.now()) {
+        DayData(
+            hasData = currentIntake.calories > 0,
+            calories = currentIntake.calories.toString(),
+            protein = currentIntake.protein,
+            fat = currentIntake.fat,
+            carbs = currentIntake.carbs
         )
-        calendarData[date] != null -> {
-            val summary = calendarData[date]!!
-            DayData(
-                date = date,
-                calories = summary.totalCalories,
-                protein = summary.totalProtein.toInt(),
-                carbs = summary.totalCarbs.toInt(),
-                fat = summary.totalFat.toInt(),
-                hasData = true
-            )
-        }
-        else -> DayData(date = date)
+    } else {
+        val summary = calendarData[date]
+        DayData(
+            hasData = summary != null,
+            calories = (summary?.totalCalories ?: 0).toString(),
+            protein = summary?.totalProtein ?: 0f,
+            fat = summary?.totalFat ?: 0f,
+            carbs = summary?.totalCarbs ?: 0f
+        )
     }
 }
