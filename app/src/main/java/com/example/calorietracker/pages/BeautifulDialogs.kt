@@ -46,6 +46,8 @@ import kotlinx.coroutines.launch
 import com.example.calorietracker.extensions.fancyShadow
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
+import com.example.calorietracker.utils.capitalizeFirst
+import com.example.calorietracker.utils.filterDecimal
 
 // =========================================================================
 // НОВАЯ УНИВЕРСАЛЬНАЯ ОБЕРТКА ДЛЯ ПРАВИЛЬНОЙ АНИМАЦИИ
@@ -276,7 +278,7 @@ fun BeautifulManualFoodInputDialog(
                 // Название продукта
                 BeautifulTextField(
                     value = foodName,
-                    onValueChange = { foodName = it },
+                    onValueChange = { foodName = it.capitalizeFirst() },
                     label = "Название продукта",
                     icon = Icons.Default.FoodBank,
                     iconColor = Color(0xFF9C27B0),
@@ -286,11 +288,11 @@ fun BeautifulManualFoodInputDialog(
                 // Вес порции
                 BeautifulTextField(
                     value = weight,
-                    onValueChange = { weight = it.filter { ch -> ch.isDigit() } },
+                    onValueChange = { weight = filterDecimal(it) },
                     label = "Вес порции (г)",
                     icon = Icons.Default.Scale,
                     iconColor = Color(0xFF2196F3),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -333,11 +335,11 @@ fun BeautifulManualFoodInputDialog(
                 // Калории
                 BeautifulTextField(
                     value = caloriesPer100g,
-                    onValueChange = { caloriesPer100g = it.filter { ch -> ch.isDigit() } },
+                    onValueChange = { caloriesPer100g = filterDecimal(it) },
                     label = "Калории (ккал)",
                     icon = Icons.Default.LocalFireDepartment,
                     iconColor = Color(0xFFFF5722),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -348,23 +350,23 @@ fun BeautifulManualFoodInputDialog(
                 ) {
                     BeautifulTextField(
                         value = proteinsPer100g,
-                        onValueChange = { proteinsPer100g = it.filter { ch -> ch.isDigit() } },
+                        onValueChange = { proteinsPer100g = filterDecimal(it) },
                         label = "Белки",
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f)
                     )
                     BeautifulTextField(
                         value = fatsPer100g,
-                        onValueChange = { fatsPer100g = it.filter { ch -> ch.isDigit() } },
+                        onValueChange = { fatsPer100g = filterDecimal(it) },
                         label = "Жиры",
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f)
                     )
                     BeautifulTextField(
                         value = carbsPer100g,
-                        onValueChange = { carbsPer100g = it.filter { ch -> ch.isDigit() } },
+                        onValueChange = { carbsPer100g = filterDecimal(it) },
                         label = "Углеводы",
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f)
                     )
                 }

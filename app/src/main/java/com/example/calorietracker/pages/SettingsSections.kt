@@ -32,10 +32,8 @@ import com.example.calorietracker.auth.AuthManager
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.MaterialTheme
-
-
-
-
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import com.example.calorietracker.utils.capitalizeFirst
 
 // Настройки приложения
 @Composable
@@ -253,13 +251,14 @@ fun FeedbackContent() {
         item {
             OutlinedTextField(
                 value = feedbackText,
-                onValueChange = { feedbackText = it },
+                onValueChange = { feedbackText = it.capitalizeFirst() },
                 label = { Text("Ваше сообщение") },
                 placeholder = { Text("Расскажите подробнее...") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp),
                 maxLines = 6,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -727,8 +726,9 @@ fun ProfileSettingsContent(
         item {
             OutlinedTextField(
                 value = displayName,
-                onValueChange = { displayName = it },
+                onValueChange = { displayName = it.capitalizeFirst() },
                 label = { Text("Ваше имя") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(

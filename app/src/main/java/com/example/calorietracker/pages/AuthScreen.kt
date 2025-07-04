@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.auth.AuthManager
 import kotlinx.coroutines.launch
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import com.example.calorietracker.utils.capitalizeFirst
+
 
 @Composable
 fun AuthScreen(
@@ -112,7 +115,12 @@ fun SignUpView(
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Регистрация", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        OutlinedTextField(value = displayName, onValueChange = { displayName = it }, label = { Text("Ваше имя") })
+        OutlinedTextField(
+            value = displayName,
+            onValueChange = { displayName = it.capitalizeFirst() },
+            label = { Text("Ваше имя") },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+        )
         OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
         OutlinedTextField(
             value = password,

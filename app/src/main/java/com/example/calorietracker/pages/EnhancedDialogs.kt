@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.runtime.derivedStateOf
@@ -54,7 +53,8 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
+import com.example.calorietracker.utils.capitalizeFirst
+import com.example.calorietracker.utils.filterDecimal
 
 // Цветовая схема для диалогов
 object DialogColors {
@@ -447,22 +447,22 @@ private fun InputFields(
     val keyboardController = LocalSoftwareKeyboardController.current
     val fields = listOf(
         Triple("Название", data.name) { value: String ->
-            onDataChange(data.copy(name = value))
+            onDataChange(data.copy(name = value.capitalizeFirst()))
         },
         Triple("Калории на 100г", data.caloriesPer100g) { value: String ->
-            onDataChange(data.copy(caloriesPer100g = value))
+            onDataChange(data.copy(caloriesPer100g = filterDecimal(value)))
         },
         Triple("Белки на 100г", data.proteinsPer100g) { value: String ->
-            onDataChange(data.copy(proteinsPer100g = value))
+            onDataChange(data.copy(proteinsPer100g = filterDecimal(value)))
         },
         Triple("Жиры на 100г", data.fatsPer100g) { value: String ->
-            onDataChange(data.copy(fatsPer100g = value))
+            onDataChange(data.copy(fatsPer100g = filterDecimal(value)))
         },
         Triple("Углеводы на 100г", data.carbsPer100g) { value: String ->
-            onDataChange(data.copy(carbsPer100g = value))
+            onDataChange(data.copy(carbsPer100g = filterDecimal(value)))
         },
         Triple("Вес (грамм)", data.weight) { value: String ->
-            onDataChange(data.copy(weight = value))
+            onDataChange(data.copy(weight = filterDecimal(value)))
         }
     )
 
@@ -477,7 +477,8 @@ private fun InputFields(
                 focusedLabelColor = DialogColors.ManualInput
             ),
             keyboardOptions = KeyboardOptions(
-                keyboardType = if (label == "Название") KeyboardType.Text else KeyboardType.Number,
+                keyboardType = if (label == "Название") KeyboardType.Text else KeyboardType.Decimal,
+                capitalization = if (label == "Название") KeyboardCapitalization.Sentences else KeyboardCapitalization.None,
                 imeAction = ImeAction.Done
             ),
             keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),

@@ -23,6 +23,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import com.example.calorietracker.utils.filterDecimal
+
 
 // Enum для определения порядка заполнения полей
 enum class FieldType {
@@ -89,11 +91,11 @@ fun AIAnimatedInputFields(
         // Вес порции
         AIAnimatedTextField(
             value = data.weight,
-            onValueChange = { onDataChange(data.copy(weight = it)) },
+            onValueChange = { onDataChange(data.copy(weight = filterDecimal(it))) },
             label = "Вес порции (г)",
             icon = Icons.Default.MonitorWeight,
             accentColor = Color(0xFF2196F3),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             fieldType = FieldType.WEIGHT,
             currentFillingField = currentFillingField,
             isFieldFilled = filledFields.contains(FieldType.WEIGHT),
@@ -103,11 +105,11 @@ fun AIAnimatedInputFields(
         // Калории на 100г
         AIAnimatedTextField(
             value = data.caloriesPer100g,
-            onValueChange = { onDataChange(data.copy(caloriesPer100g = it)) },
+            onValueChange = { onDataChange(data.copy(caloriesPer100g = filterDecimal(it))) },
             label = "Калории на 100г",
             icon = Icons.Default.LocalFireDepartment,
             accentColor = Color(0xFFFF5722),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             fieldType = FieldType.CALORIES,
             currentFillingField = currentFillingField,
             isFieldFilled = filledFields.contains(FieldType.CALORIES),
@@ -117,11 +119,11 @@ fun AIAnimatedInputFields(
         // Белки на 100г
         AIAnimatedTextField(
             value = data.proteinsPer100g,
-            onValueChange = { onDataChange(data.copy(proteinsPer100g = it)) },
+            onValueChange = { onDataChange(data.copy(proteinsPer100g = filterDecimal(it))) },
             label = "Белки на 100г",
             icon = Icons.Default.FitnessCenter,
             accentColor = Color(0xFF9C27B0),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             fieldType = FieldType.PROTEINS,
             currentFillingField = currentFillingField,
             isFieldFilled = filledFields.contains(FieldType.PROTEINS),
@@ -131,11 +133,11 @@ fun AIAnimatedInputFields(
         // Жиры на 100г
         AIAnimatedTextField(
             value = data.fatsPer100g,
-            onValueChange = { onDataChange(data.copy(fatsPer100g = it)) },
+            onValueChange = { onDataChange(data.copy(fatsPer100g = filterDecimal(it))) },
             label = "Жиры на 100г",
             icon = Icons.Default.Opacity,
             accentColor = Color(0xFFFFC107),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             fieldType = FieldType.FATS,
             currentFillingField = currentFillingField,
             isFieldFilled = filledFields.contains(FieldType.FATS),
@@ -145,11 +147,11 @@ fun AIAnimatedInputFields(
         // Углеводы на 100г
         AIAnimatedTextField(
             value = data.carbsPer100g,
-            onValueChange = { onDataChange(data.copy(carbsPer100g = it)) },
+            onValueChange = { onDataChange(data.copy(carbsPer100g = filterDecimal(it))) },
             label = "Углеводы на 100г",
             icon = Icons.Default.Grain,
             accentColor = Color(0xFF795548),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             fieldType = FieldType.CARBS,
             currentFillingField = currentFillingField,
             isFieldFilled = filledFields.contains(FieldType.CARBS),

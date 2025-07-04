@@ -1,7 +1,8 @@
 package com.example.calorietracker.pages
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -31,17 +32,18 @@ import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.data.DailyIntake
 import com.example.calorietracker.data.DailyNutritionSummary
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.TextStyle as DateTextStyle
+import java.time.format.TextStyle
 import java.util.Locale
 
+// НОВЫЙ ПАРАМЕТР onShowHistory ДЛЯ НАВИГАЦИИ
 @Composable
 fun CalendarScreen(
     viewModel: CalorieTrackerViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onShowHistory: () -> Unit // <--- ДОБАВЛЕНА ФУНКЦИЯ ДЛЯ НАВИГАЦИИ
 ) {
     val context = LocalContext.current
     val systemUiController = rememberSystemUiController()
@@ -60,7 +62,6 @@ fun CalendarScreen(
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
 
-    // Анимация масштабирования
     val animatedScale by animateFloatAsState(
         targetValue = scale,
         animationSpec = spring(
@@ -70,7 +71,6 @@ fun CalendarScreen(
         label = "scale"
     )
 
-    // Репозиторий для получения данных
     val repository = remember { DataRepository(context) }
 
     DisposableEffect(systemUiController) {
@@ -81,6 +81,7 @@ fun CalendarScreen(
         onDispose { }
     }
 
+    // ИЗМЕНЕНА СТРУКТУРА ДЛЯ КНОПКИ ВНИЗУ
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -101,55 +102,72 @@ fun CalendarScreen(
             }
         )
 
+        // Этот Box занимает все доступное место, оставляя пространство для кнопки внизу
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+            modifier = Modifier.weight(1f)
         ) {
-            // Трансформируемый календарь
-            Box(
+            // Вся прокручиваемая и масштабируемая часть теперь внутри этого Box
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer(
-                        scaleX = animatedScale,
-                        scaleY = animatedScale,
-                        translationX = offsetX,
-                        translationY = offsetY
-                    )
-                    .transformable(
-                        state = rememberTransformableState { zoomChange, offsetChange, _ ->
-                            scale = (scale * zoomChange).coerceIn(0.8f, 2f)
-                            offsetX += offsetChange.x
-                            offsetY += offsetChange.y
-
-                            // Ограничиваем смещение при масштабировании
-                            val maxOffset = 200f * (scale - 1f)
-                            offsetX = offsetX.coerceIn(-maxOffset, maxOffset)
-                            offsetY = offsetY.coerceIn(-maxOffset, maxOffset)
-                        }
-                    )
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
             ) {
-                CalendarGrid(
-                    selectedMonth = selectedMonth,
-                    selectedDay = selectedDay,
-                    onDayClick = { day ->
-                        selectedDay = day
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer(
+                            scaleX = animatedScale,
+                            scaleY = animatedScale,
+                            translationX = offsetX,
+                            translationY = offsetY
+                        )
+                        .transformable(
+                            state = rememberTransformableState { zoomChange, offsetChange, _ ->
+                                scale = (scale * zoomChange).coerceIn(0.8f, 2f)
+                                offsetX += offsetChange.x
+                                offsetY += offsetChange.y
 
-                        // Загружаем данные для выбранного дня
-                        coroutineScope.launch {
-                            val dateString = day.toString()
-                            dayHistoryData = repository.getIntakeHistory(dateString)
-                            showDayHistory = true
-                        }
-                    },
-                    currentIntake = currentIntake,
-                    calendarData = calendarData
-                )
+                                val maxOffset = 200f * (scale - 1f)
+                                offsetX = offsetX.coerceIn(-maxOffset, maxOffset)
+                                offsetY = offsetY.coerceIn(-maxOffset, maxOffset)
+                            }
+                        )
+                ) {
+                    CalendarGrid(
+                        selectedMonth = selectedMonth,
+                        selectedDay = selectedDay,
+                        onDayClick = { day ->
+                            selectedDay = day
+                            coroutineScope.launch {
+                                val dateString = day.toString()
+                                dayHistoryData = repository.getIntakeHistory(dateString)
+                                showDayHistory = true
+                            }
+                        },
+                        currentIntake = currentIntake,
+                        calendarData = calendarData
+                    )
+                }
             }
+        }
+
+        // НОВАЯ КНОПКА ВНИЗУ ЭКРАНА
+        Button(
+            onClick = onShowHistory, // <--- ВЫЗЫВАЕМ НАВИГАЦИЮ
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .height(50.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Text(
+                text = "Показать историю питания",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 
-    // Диалог истории дня
     if (showDayHistory && selectedDay != null) {
         DayHistoryDialog(
             date = selectedDay!!,
@@ -168,7 +186,7 @@ private fun CalendarTopBar(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit
 ) {
-    val month = currentMonth.month.getDisplayName(DateTextStyle.FULL_STANDALONE, Locale("ru"))
+    val month = currentMonth.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale("ru"))
         .replaceFirstChar { it.uppercase() }
     val year = currentMonth.year
 
@@ -246,7 +264,6 @@ private fun CalendarGrid(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Дни недели
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -265,7 +282,6 @@ private fun CalendarGrid(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Сетка дней
             val totalCells = (firstDayOfWeek - 1) + daysInMonth
             val rows = (totalCells + 6) / 7
 
@@ -304,10 +320,13 @@ private fun CalendarGrid(
     }
 }
 
+// =========================================================================
+// === ОБНОВЛЕННЫЙ КОМПОНЕНТ DayCell ========================================
+// =========================================================================
 @Composable
 private fun DayCell(
     date: LocalDate,
-    dayData: DayData,
+    dayData: DayData, // Используется твой существующий data class
     isSelected: Boolean,
     isToday: Boolean,
     isFuture: Boolean,
@@ -328,7 +347,6 @@ private fun DayCell(
         else -> Color.Black
     }
 
-    // Анимация при выборе
     val animatedScale by animateFloatAsState(
         targetValue = if (isSelected) 0.95f else 1f,
         animationSpec = spring(
@@ -341,59 +359,82 @@ private fun DayCell(
     Box(
         modifier = modifier
             .padding(horizontal = 4.dp, vertical = 6.dp)
-            .height(56.dp) // Увеличенная высота для "таблетки"
+            .height(56.dp)
             .graphicsLayer {
                 scaleX = animatedScale
                 scaleY = animatedScale
             }
-            .clip(RoundedCornerShape(50)) // Полностью закругленные края
+            .clip(RoundedCornerShape(50))
             .background(backgroundColor)
             .clickable(enabled = !isFuture) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = date.dayOfMonth.toString(),
-                fontSize = 18.sp,
-                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-                color = textColor,
-                modifier = Modifier.offset(y = 2.dp)
-            )
-
-            if (dayData.hasData && !isSelected) {
+        // Разделяем логику для выбранного и невыбранного состояния
+        if (isSelected) {
+            // --- ЛОГИКА ДЛЯ ВЫБРАННОГО ДНЯ ---
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // 1. Число месяца (сверху)
                 Text(
-                    text = "${dayData.calories} ккал",
-                    fontSize = 10.sp,
-                    color = Color(0xFF4CAF50),
+                    text = date.dayOfMonth.toString(),
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
+                    color = textColor
+                )
+
+                // 2. Информация о калориях (в центре)
+                if (dayData.hasData) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        // Используем dayData.calories, который уже является String
+                        text = "${dayData.calories} ккал",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
+                    )
+                }
+
+                // 3. Точка-индикатор (снизу)
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
                     modifier = Modifier
-                        .padding(top = 2.dp)
-                        .align(Alignment.CenterHorizontally),
-                    textAlign = TextAlign.Center
+                        .size(4.dp)
+                        .background(color = textColor, shape = RoundedCornerShape(50))
                 )
             }
-        }
+        } else {
+            // --- ЛОГИКА ДЛЯ НЕ ВЫБРАННОГО ДНЯ ---
+            Box(contentAlignment = Alignment.Center) {
+                // 1. Число месяца (идеально в центре)
+                Text(
+                    text = date.dayOfMonth.toString(),
+                    fontSize = 18.sp,
+                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                    color = textColor
+                )
 
-        // Индикатор для сегодняшнего дня
-        if (isToday && !isSelected) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(y = (-4).dp)
-                    .size(4.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(50)
+                // 2. Индикатор под числом (не смещает его с центра)
+                if (dayData.hasData || isToday) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 8.dp)
+                            .size(4.dp)
+                            .background(
+                                color = if (isToday) MaterialTheme.colorScheme.primary else Color(0xFF4CAF50),
+                                shape = RoundedCornerShape(50)
+                            )
                     )
-            )
+                }
+            }
         }
     }
 }
+// =========================================================================
 
+// Существующие data class и helper-функция остаются без изменений
 private data class DayData(
     val hasData: Boolean,
     val calories: String,

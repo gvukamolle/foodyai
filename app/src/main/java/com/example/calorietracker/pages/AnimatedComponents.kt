@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,8 @@ import com.example.calorietracker.pages.NutrientChip
 import com.example.calorietracker.ui.animations.StaggeredAnimatedList
 import com.example.calorietracker.ui.animations.TypewriterText
 import kotlinx.coroutines.delay
+import com.example.calorietracker.utils.filterDecimal
+import com.example.calorietracker.utils.capitalizeFirst
 
 // Анимированное текстовое поле
 @Composable
@@ -157,14 +160,15 @@ fun AnimatedInputFields(
                 value = data.name,
                 label = "Название продукта",
                 icon = Icons.Default.FoodBank,
-                onChange = { onDataChange(data.copy(name = it)) }
+                keyboardType = KeyboardType.Text,
+                onChange = { onDataChange(data.copy(name = it.capitalizeFirst())) }
             ),
             InputFieldData(
                 value = data.weight,
                 label = "Вес порции (г)",
                 icon = Icons.Default.Scale,
-                keyboardType = KeyboardType.Number,
-                onChange = { onDataChange(data.copy(weight = it.filter { ch -> ch.isDigit() })) }
+                keyboardType = KeyboardType.Decimal,
+                onChange = { onDataChange(data.copy(weight = filterDecimal(it))) }
             )
         ),
         delayBetweenItems = 0
@@ -174,7 +178,10 @@ fun AnimatedInputFields(
             onValueChange = field.onChange,
             placeholder = field.label,
             icon = field.icon,
-            keyboardOptions = KeyboardOptions(keyboardType = field.keyboardType),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = field.keyboardType,
+                capitalization = if (field.keyboardType == KeyboardType.Text) KeyboardCapitalization.Sentences else KeyboardCapitalization.None
+            ),
             accentColor = DialogColors.ManualInput,
             singleLine = true,
             appearDelay = 0,
@@ -220,10 +227,10 @@ fun AnimatedInputFields(
             // Калории
             AnimatedTextField(
                 value = data.caloriesPer100g,
-                onValueChange = { onDataChange(data.copy(caloriesPer100g = it.filter { ch -> ch.isDigit() })) },
+                onValueChange = { onDataChange(data.copy(caloriesPer100g = filterDecimal(it))) },
                 placeholder = "Калории (ккал)",
                 icon = Icons.Default.LocalFireDepartment,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 accentColor = Color(0xFFFF5722),
                 singleLine = true
             )
@@ -239,21 +246,21 @@ fun AnimatedInputFields(
                     value = data.proteinsPer100g,
                     label = "Белки",
                     color = Color(0xFF2196F3),
-                    onChange = { onDataChange(data.copy(proteinsPer100g = it.filter { ch -> ch.isDigit() })) },
+                    onChange = { onDataChange(data.copy(proteinsPer100g = filterDecimal(it))) },
                     modifier = Modifier.weight(1f)
                 )
                 CompactNutrientField(
                     value = data.fatsPer100g,
                     label = "Жиры",
                     color = Color(0xFFFFC107),
-                    onChange = { onDataChange(data.copy(fatsPer100g = it.filter { ch -> ch.isDigit() })) },
+                    onChange = { onDataChange(data.copy(fatsPer100g = filterDecimal(it))) },
                     modifier = Modifier.weight(1f)
                 )
                 CompactNutrientField(
                     value = data.carbsPer100g,
                     label = "Углеводы",
                     color = Color(0xFF9C27B0),
-                    onChange = { onDataChange(data.copy(carbsPer100g = it.filter { ch -> ch.isDigit() })) },
+                    onChange = { onDataChange(data.copy(carbsPer100g = filterDecimal(it))) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -291,7 +298,7 @@ private fun CompactNutrientField(
                 color = Color.Black,
                 textAlign = TextAlign.Center
             ),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
             cursorBrush = SolidColor(color),
             decorationBox = { innerTextField ->
