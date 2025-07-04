@@ -11,26 +11,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.PaintingStyle.Companion.Stroke
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,98 +34,48 @@ import com.example.calorietracker.data.DailyNutritionSummary
 import com.example.calorietracker.FoodItem
 import com.example.calorietracker.Meal
 import com.example.calorietracker.MealType
+import com.example.calorietracker.extensions.fancyShadow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import kotlin.math.cos
-import kotlin.math.sin
 
 // Крутая переливающаяся радужная обводка
 @Composable
 fun AnimatedRainbowBorder(
     modifier: Modifier = Modifier,
-    borderWidth: Dp = 3.dp,
-    cornerRadius: Dp = 20.dp,
+    borderWidth: Dp = 12.dp,
+    cornerRadius: Dp = 24.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "rainbow")
 
-    // Анимация вращения градиента
-    val rotation by infiniteTransition.animateFloat(
+    val hue by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
+            animation = tween(30000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "rotation"
+        label = "hue"
     )
 
-    // Анимация пульсации
-    val pulsate by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulsate"
-    )
+    val color = Color.hsv(hue, 1f, 1f)
 
-    Box(modifier = modifier) {
-        // Внешний контейнер с анимированным градиентом
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .graphicsLayer {
-                    rotationZ = rotation
-                }
-                .drawBehind {
-                    val strokeWidth = borderWidth.toPx()
-                    val halfStroke = strokeWidth / 2
-                    val radius = cornerRadius.toPx()
-
-                    // Создаем радужный градиент
-                    val colors = listOf(
-                        Color(0xFFFF0080), // Розовый
-                        Color(0xFFFF0040), // Красный
-                        Color(0xFFFF8C00), // Оранжевый
-                        Color(0xFFFFD700), // Золотой
-                        Color(0xFF00FF00), // Зеленый
-                        Color(0xFF00CED1), // Бирюзовый
-                        Color(0xFF0080FF), // Синий
-                        Color(0xFF8A2BE2), // Фиолетовый
-                        Color(0xFFFF0080)  // Розовый (замыкаем круг)
-                    )
-
-                    val brush = Brush.sweepGradient(
-                        colors = colors,
-                        center = center
-                    )
-
-                    drawRoundRect(
-                        brush = brush,
-                        topLeft = Offset(halfStroke, halfStroke),
-                        size = Size(
-                            size.width - strokeWidth,
-                            size.height - strokeWidth
-                        ),
-                        cornerRadius = CornerRadius(radius),
-                        style = Stroke(width = strokeWidth * pulsate)
-                    )
-                }
-        )
-
-        // Внутренний белый контейнер
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .padding(borderWidth)
-                .clip(RoundedCornerShape(cornerRadius - borderWidth))
-                .background(Color.White),
-            content = content
-        )
+    Box(
+        modifier = modifier
+            .fancyShadow(
+                color = color,
+                borderRadius = cornerRadius,
+                shadowRadius = borderWidth,
+                alpha = 0.9f
+            )
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(Color.White)
+    ) {
+        Box(modifier = Modifier.padding(borderWidth)) {
+            content()
+        }
     }
 }
 
@@ -221,7 +163,7 @@ fun DayHistoryDialog(
                         .fillMaxWidth(0.9f)
                         .fillMaxHeight(0.8f)
                         .padding(16.dp),
-                    borderWidth = 4.dp,
+                    borderWidth = 8.dp,
                     cornerRadius = 24.dp
                 ) {
                     Column(
@@ -232,7 +174,7 @@ fun DayHistoryDialog(
                         // Заголовок с датой и кнопкой закрытия
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -241,13 +183,6 @@ fun DayHistoryDialog(
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
-                            IconButton(onClick = { animatedDismiss() }) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Закрыть",
-                                    tint = Color.Gray
-                                )
-                            }
                         }
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -334,55 +269,62 @@ private fun TotalNutritionCard(
                 color = Color.Black
             )
 
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                NutritionValue(
-                    label = "Калории",
-                    value = calories.toString(),
-                    color = Color(0xFF4CAF50),
-                    icon = "🔥"
-                )
-                NutritionValue(
-                    label = "Белки",
-                    value = "%.1f г".format(protein),
-                    color = Color(0xFF2196F3),
-                    icon = "💪"
-                )
-                NutritionValue(
-                    label = "Жиры",
-                    value = "%.1f г".format(fat),
-                    color = Color(0xFFFF9800),
-                    icon = "🥑"
-                )
-                NutritionValue(
-                    label = "Углеводы",
-                    value = "%.1f г".format(carbs),
-                    color = Color(0xFF9C27B0),
-                    icon = "🍞"
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    NutritionStat(
+                        "Калории",
+                        "$calories ккал",
+                        Color(0xFF4CAF50),
+                        modifier = Modifier.weight(1f)
+                    )
+                    NutritionStat(
+                        "Белки",
+                        "%.1f г".format(protein),
+                        Color(0xFF2196F3),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    NutritionStat(
+                        "Жиры",
+                        "%.1f г".format(fat),
+                        Color(0xFFFF9800),
+                        modifier = Modifier.weight(1f)
+                    )
+                    NutritionStat(
+                        "Углеводы",
+                        "%.1f г".format(carbs),
+                        Color(0xFF9C27B0),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
 }
 
-// Компонент для отображения значения КБЖУ с иконкой
+// Компонент для отображения значения КБЖУ
 @Composable
-private fun NutritionValue(
+private fun NutritionStat(
     label: String,
     value: String,
     color: Color,
-    icon: String
+    modifier: Modifier = Modifier
 ) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = icon,
-            fontSize = 24.sp
-        )
+        modifier = modifier,
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
         Text(
             text = value,
             fontSize = 20.sp,
@@ -422,8 +364,9 @@ private fun MealCard(meal: Meal) {
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF4CAF50)
                 )
+                val totalWeight = meal.foods.sumOf { it.weight.toIntOrNull() ?: 0 }
                 Text(
-                    text = "Всего: ${meal.foods.sumOf { it.calories }} ккал",
+                    text = "Масса: ${totalWeight} г",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
@@ -460,40 +403,78 @@ private fun FoodItemRow(food: FoodItem) {
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f)
             )
-            Text(
-                text = food.weight,
-                fontSize = 15.sp,
-                color = Color.Gray
-            )
         }
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = "${food.calories} ккал",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF4CAF50)
-            )
-            Text(
-                text = "Б: ${food.protein}г",
-                fontSize = 13.sp,
-                color = Color(0xFF2196F3)
-            )
-            Text(
-                text = "Ж: ${food.fat}г",
-                fontSize = 13.sp,
-                color = Color(0xFFFF9800)
-            )
-            Text(
-                text = "У: ${food.carbs}г",
-                fontSize = 13.sp,
-                color = Color(0xFF9C27B0)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MacroStat(
+                    "Калории",
+                    "${food.calories} ккал",
+                    Color(0xFF4CAF50),
+                    modifier = Modifier.weight(1f)
+                )
+                MacroStat(
+                    "Белки",
+                    "${food.protein} г",
+                    Color(0xFF2196F3),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                MacroStat(
+                    "Жиры",
+                    "${food.fat} г",
+                    Color(0xFFFF9800),
+                    modifier = Modifier.weight(1f)
+                )
+                MacroStat(
+                    "Углеводы",
+                    "${food.carbs} г",
+                    Color(0xFF9C27B0),
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun MacroStat(
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = Color.Gray
+        )
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = color
+        )
+    }
+}
+
+private fun parseWeight(weight: String): Int {
+    return weight.filter { it.isDigit() }.toIntOrNull() ?: 0
+    }

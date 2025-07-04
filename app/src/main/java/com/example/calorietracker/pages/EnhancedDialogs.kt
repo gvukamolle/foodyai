@@ -83,7 +83,7 @@ fun AnimatedDialogContainer(
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(10)
+        delay(5)
         try {
             backgroundBitmap = view.drawToBitmap()
         } catch (e: Exception) { /* ignore */ }

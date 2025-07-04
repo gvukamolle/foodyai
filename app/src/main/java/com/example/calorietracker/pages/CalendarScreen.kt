@@ -352,6 +352,7 @@ private fun DayCell(
         contentAlignment = Alignment.Center
     ) {
         Column(
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -359,7 +360,8 @@ private fun DayCell(
                 text = date.dayOfMonth.toString(),
                 fontSize = 18.sp,
                 fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-                color = textColor
+                color = textColor,
+                modifier = Modifier.offset(y = 2.dp)
             )
 
             if (dayData.hasData && !isSelected) {
@@ -368,7 +370,10 @@ private fun DayCell(
                     fontSize = 10.sp,
                     color = Color(0xFF4CAF50),
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(top = 2.dp)
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .align(Alignment.CenterHorizontally),
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -378,7 +383,7 @@ private fun DayCell(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
+                    .offset(y = (-4).dp)
                     .size(4.dp)
                     .background(
                         color = MaterialTheme.colorScheme.primary,
