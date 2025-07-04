@@ -126,12 +126,11 @@ private fun CalendarTopBar(
         .replaceFirstChar { it.uppercase() }
     val year = currentMonth.year
 
-    TopAppBar(
+    CenterAlignedTopAppBar(
         title = {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
                 IconButton(onClick = onPreviousMonth) {
                     Icon(
@@ -170,7 +169,7 @@ private fun CalendarTopBar(
                 )
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(
+        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
             containerColor = Color.White
         )
     )
@@ -230,7 +229,7 @@ private fun CalendarGrid(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     for (dayOfWeek in 0..6) {
-                        val dayIndex = week * 7 + dayOfWeek - (firstDayOfWeek - 1)
+                        val dayIndex = week * 7 + dayOfWeek - (firstDayOfWeek - 1) + 1
 
                         if (dayIndex in 1..daysInMonth) {
                             val date = selectedMonth.atDay(dayIndex)
