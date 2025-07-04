@@ -39,45 +39,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
-// Крутая переливающаяся радужная обводка
-@Composable
-fun AnimatedRainbowBorder(
-    modifier: Modifier = Modifier,
-    borderWidth: Dp = 12.dp,
-    cornerRadius: Dp = 24.dp,
-    content: @Composable BoxScope.() -> Unit
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "rainbow")
-
-    val hue by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(30000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "hue"
-    )
-
-    val color = Color.hsv(hue, 1f, 1f)
-
-    Box(
-        modifier = modifier
-            .fancyShadow(
-                color = color,
-                borderRadius = cornerRadius,
-                shadowRadius = borderWidth,
-                alpha = 0.9f
-            )
-            .clip(RoundedCornerShape(cornerRadius))
-            .background(Color.White)
-    ) {
-        Box(modifier = Modifier.padding(borderWidth)) {
-            content()
-        }
-    }
-}
+import com.example.calorietracker.ui.components.AnimatedRainbowBorder
 
 // Основной диалог истории дня
 @Composable

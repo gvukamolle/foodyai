@@ -1,10 +1,9 @@
 package com.example.calorietracker.pages
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
@@ -22,7 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,8 +40,13 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import com.example.calorietracker.extensions.fancyShadow
-
+import com.example.calorietracker.ui.components.AnimatedRainbowBorder
+import kotlin.math.abs
 
 @Composable
 fun CalendarScreen(
@@ -50,6 +57,7 @@ fun CalendarScreen(
     val systemUiController = rememberSystemUiController()
     val calendarData by viewModel.calendarData.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
 
     // Состояние календаря
     var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -61,6 +69,9 @@ fun CalendarScreen(
     var scale by remember { mutableStateOf(1f) }
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
+
+    // Состояние для свайпа
+    var swipeOffset by remember { mutableStateOf(0f) }
 
     val animatedScale by animateFloatAsState(
         targetValue = scale,
@@ -81,101 +92,152 @@ fun CalendarScreen(
         onDispose { }
     }
 
-    // ИЗМЕНЕНА СТРУКТУРА ДЛЯ КНОПКИ ВНИЗУ
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(Color.White)
     ) {
         CalendarTopBar(
             currentMonth = selectedMonth,
-            onBack = onBack,
+            onBack = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onBack()
+            },
             onPreviousMonth = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 selectedMonth = selectedMonth.minusMonths(1)
                 selectedDay = null
             },
             onNextMonth = {
                 if (selectedMonth < YearMonth.now()) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     selectedMonth = selectedMonth.plusMonths(1)
                     selectedDay = null
                 }
             }
         )
 
-        // Этот Box занимает все доступное место, оставляя пространство для кнопки внизу
         Box(
             modifier = Modifier.weight(1f)
         ) {
-            // Вся прокручиваемая и масштабируемая часть теперь внутри этого Box
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer(
-                            scaleX = animatedScale,
-                            scaleY = animatedScale,
-                            translationX = offsetX,
-                            translationY = offsetY
-                        )
-                        .transformable(
-                            state = rememberTransformableState { zoomChange, offsetChange, _ ->
-                                scale = (scale * zoomChange).coerceIn(0.8f, 2f)
-                                offsetX += offsetChange.x
-                                offsetY += offsetChange.y
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                when {
+                                    swipeOffset > 100 -> {
+                                        // Свайп вправо - предыдущий месяц
+                                        selectedMonth = selectedMonth.minusMonths(1)
+                                        selectedDay = null
+                                    }
 
-                                val maxOffset = 200f * (scale - 1f)
-                                offsetX = offsetX.coerceIn(-maxOffset, maxOffset)
-                                offsetY = offsetY.coerceIn(-maxOffset, maxOffset)
+                                    swipeOffset < -100 -> {
+                                        // Свайп влево - следующий месяц
+                                        if (selectedMonth < YearMonth.now()) {
+                                            selectedMonth = selectedMonth.plusMonths(1)
+                                            selectedDay = null
+                                        }
+                                    }
+                                }
+                                swipeOffset = 0f
+                            },
+                            onHorizontalDrag = { _, dragAmount ->
+                                swipeOffset += dragAmount
                             }
                         )
-                ) {
-                    CalendarGrid(
-                        selectedMonth = selectedMonth,
-                        selectedDay = selectedDay,
-                        onDayClick = { day ->
-                            selectedDay = day
+                    }
+                    .graphicsLayer(
+                        scaleX = animatedScale,
+                        scaleY = animatedScale,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    )
+                    .transformable(
+                        state = rememberTransformableState { zoomChange, offsetChange, _ ->
+                            scale = (scale * zoomChange).coerceIn(0.8f, 2f)
+                            offsetX += offsetChange.x
+                            offsetY += offsetChange.y
+
+                            val maxOffset = 200f * (scale - 1f)
+                            offsetX = offsetX.coerceIn(-maxOffset, maxOffset)
+                            offsetY = offsetY.coerceIn(-maxOffset, maxOffset)
                         }
                     )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
+            ) {
+                CalendarGrid(
+                    selectedMonth = selectedMonth,
+                    selectedDay = selectedDay,
+                    onDayClick = { day ->
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        selectedDay = day
+                    }
+                )
             }
         }
 
-        // Кнопка для открытия истории выбранного дня
-        Button(
-            onClick = {
-                if (selectedDay != null) {
+// Кнопка с радужной обводкой
+        AnimatedRainbowBorder(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            borderWidth = 4.dp,
+            cornerRadius = 20.dp
+        ) {
+            // 1. Определяем состояние кнопки (включена или нет) на основе selectedDay.
+            // Это сделает код более читаемым.
+            val isDaySelected = selectedDay != null
+
+            Button(
+                onClick = {
+                    // Теперь onClick будет вызван ТОЛЬКО если кнопка включена (isDaySelected = true)
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     coroutineScope.launch {
-                        val dateString = selectedDay!!.toString()
+                        val dateString =
+                            selectedDay!!.toString() // !! здесь безопасно, т.к. кнопка неактивна, если selectedDay == null
                         dayHistoryData = repository.getIntakeHistory(dateString)
                         showDayHistory = true
                     }
-                } else {
-                    Toast.makeText(context, "Сначала выберите день", Toast.LENGTH_SHORT).show()
+                },
+                enabled = isDaySelected,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    disabledContainerColor = Color.White
+                )
+            ) {
+                AnimatedContent(
+                    targetState = isDaySelected,
+                    label = "Button Text Animation",
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(200)) togetherWith fadeOut(
+                            animationSpec = tween(
+                                200
+                            )
+                        )
+                    }
+                ) { isSelected ->
+                    if (isSelected) {
+                        Text(
+                            text = "Показать историю питания",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    } else {
+                        Text(
+                            text = "Сначала выберите день",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.LightGray // Серый цвет, как требовалось
+                        )
+                    }
                 }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .height(60.dp)
-                .fancyShadow(
-                    borderRadius = 16.dp,
-                    shadowRadius = 10.dp,
-                    alpha = 0.35f,
-                    color = MaterialTheme.colorScheme.primary
-                ),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-        ) {
-            Text(
-                text = "Показать историю питания",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
+            }
         }
     }
 
@@ -184,7 +246,10 @@ fun CalendarScreen(
             date = selectedDay!!,
             dailyIntake = dayHistoryData ?: DailyIntake(),
             nutritionSummary = calendarData[selectedDay],
-            onDismiss = { showDayHistory = false }
+            onDismiss = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                showDayHistory = false
+            }
         )
     }
 }
@@ -261,17 +326,26 @@ private fun CalendarGrid(
     val lastDayOfMonth = selectedMonth.atEndOfMonth()
     val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value
     val daysInMonth = selectedMonth.lengthOfMonth()
+    val today = LocalDate.now()
+
+    // Вычисляем даты для заполнения из предыдущего месяца
+    val previousMonth = selectedMonth.minusMonths(1)
+    val daysInPreviousMonth = previousMonth.lengthOfMonth()
+    val daysFromPreviousMonth = firstDayOfWeek - 1
+
+    // Фиксируем количество строк в календаре
+    val CALENDAR_ROWS = 6
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(12.dp) // Уменьшили padding
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -280,7 +354,7 @@ private fun CalendarGrid(
                 daysOfWeek.forEach { day ->
                     Text(
                         text = day,
-                        fontSize = 12.sp,
+                        fontSize = 12.sp, // Уменьшили размер
                         fontWeight = FontWeight.Bold,
                         color = Color.Gray,
                         textAlign = TextAlign.Center,
@@ -289,59 +363,102 @@ private fun CalendarGrid(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp)) // Уменьшили отступ
 
-            val totalCells = (firstDayOfWeek - 1) + daysInMonth
-            val rows = (totalCells + 6) / 7
-
-            for (week in 0 until rows) {
+            // Всегда отображаем 6 строк
+            for (week in 0 until CALENDAR_ROWS) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     for (dayOfWeek in 0..6) {
-                        val dayIndex = week * 7 + dayOfWeek - (firstDayOfWeek - 1) + 1
+                        val cellIndex = week * 7 + dayOfWeek
 
-                        if (dayIndex in 1..daysInMonth) {
-                            val date = selectedMonth.atDay(dayIndex)
+                        when {
+                            // Дни из предыдущего месяца
+                            cellIndex < daysFromPreviousMonth -> {
+                                val dayNumber = daysInPreviousMonth - (daysFromPreviousMonth - cellIndex - 1)
+                                val date = previousMonth.atDay(dayNumber)
 
-                            DayCell(
-                                date = date,
-                                isSelected = selectedDay == date,
-                                isFuture = date > LocalDate.now(),
-                                onClick = { onDayClick(date) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.weight(1f))
+                                DayCell(
+                                    date = date,
+                                    isSelected = false,
+                                    isToday = false,
+                                    isFuture = false,
+                                    isOtherMonth = true,
+                                    onClick = { /* Некликабельно */ },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            // Дни текущего месяца
+                            cellIndex - daysFromPreviousMonth < daysInMonth -> {
+                                val dayNumber = cellIndex - daysFromPreviousMonth + 1
+                                val date = selectedMonth.atDay(dayNumber)
+
+                                DayCell(
+                                    date = date,
+                                    isSelected = selectedDay == date,
+                                    isToday = date == today,
+                                    isFuture = date > today,
+                                    isOtherMonth = false,
+                                    onClick = { onDayClick(date) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            // Дни из следующего месяца
+                            else -> {
+                                val nextMonth = selectedMonth.plusMonths(1)
+                                val dayNumber = cellIndex - daysFromPreviousMonth - daysInMonth + 1
+                                val date = nextMonth.atDay(dayNumber)
+
+                                DayCell(
+                                    date = date,
+                                    isSelected = false,
+                                    isToday = false,
+                                    isFuture = false,
+                                    isOtherMonth = true,
+                                    onClick = { /* Некликабельно */ },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
                 }
 
-                if (week < rows - 1) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                if (week < CALENDAR_ROWS - 1) {
+                    Spacer(modifier = Modifier.height(8.dp)) // Уменьшили отступ
                 }
             }
         }
     }
 }
 
-// =========================================================================
-// === ОБНОВЛЕННЫЙ КОМПОНЕНТ DayCell ========================================
-// =========================================================================
 @Composable
 private fun DayCell(
     date: LocalDate,
     isSelected: Boolean,
+    isToday: Boolean,
     isFuture: Boolean,
+    isOtherMonth: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
-    val textColor = if (isSelected) Color.White else Color.DarkGray.copy(alpha = if (isFuture) 0.5f else 1f)
+    val backgroundColor = when {
+        isSelected -> MaterialTheme.colorScheme.primary
+        isToday && !isOtherMonth -> Color.Gray.copy(alpha = 0.2f)
+        else -> Color.Transparent
+    }
+
+    val textColor = when {
+        isOtherMonth -> Color.Gray.copy(alpha = 0.3f) // Тускло-серый для дат из других месяцев
+        isSelected -> Color.White
+        isToday -> Color.Black
+        isFuture -> Color.DarkGray.copy(alpha = 0.5f)
+        else -> Color.DarkGray
+    }
 
     val animatedScale by animateFloatAsState(
-        targetValue = if (isSelected) 0.95f else 1f,
+        targetValue = if (isSelected && !isOtherMonth) 0.95f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -349,47 +466,62 @@ private fun DayCell(
         label = "cellScale"
     )
 
+    // Анимация для выбранного дня
+    val numberOffset by animateDpAsState(
+        targetValue = if (isSelected && !isOtherMonth) (-8).dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "numberOffset"
+    )
+
+    val dotAlpha by animateFloatAsState(
+        targetValue = if (isSelected && !isOtherMonth) 1f else 0f,
+        animationSpec = tween(300),
+        label = "dotAlpha"
+    )
+
     Box(
         modifier = modifier
-            .padding(horizontal = 4.dp, vertical = 6.dp)
-            .height(64.dp)
+            .padding(horizontal = 4.dp, vertical = 4.dp) // Уменьшили padding
+            .height(80.dp) // Уменьшили высоту
             .graphicsLayer {
                 scaleX = animatedScale
                 scaleY = animatedScale
             }
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(24.dp)) // Уменьшили радиус
             .background(backgroundColor)
-            .clickable(enabled = !isFuture) { onClick() },
+            .clickable(enabled = !isFuture && !isOtherMonth) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        if (isSelected) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // 1. Число месяца (сверху)
-                Text(
-                    text = date.dayOfMonth.toString(),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = textColor
-                )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxHeight()
+        ) {
+            // Число с анимацией смещения
+            Text(
+                text = date.dayOfMonth.toString(),
+                fontSize = 18.sp, // Уменьшили размер
+                fontWeight = if ((isSelected || isToday) && !isOtherMonth) FontWeight.Bold else FontWeight.Medium,
+                color = textColor,
+                modifier = Modifier.offset(y = numberOffset)
+            )
 
-                Spacer(modifier = Modifier.height(6.dp))
-
+            // Точка, появляющаяся при выборе
+            if (isSelected && !isOtherMonth) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Box(
                     modifier = Modifier
                         .size(4.dp)
-                        .background(color = textColor, shape = RoundedCornerShape(50))
+                        .graphicsLayer { alpha = dotAlpha }
+                        .background(
+                            color = Color.White,
+                            shape = RoundedCornerShape(50)
+                        )
                 )
             }
-        } else {
-            Text(
-                text = date.dayOfMonth.toString(),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = textColor
-            )
         }
     }
 }
