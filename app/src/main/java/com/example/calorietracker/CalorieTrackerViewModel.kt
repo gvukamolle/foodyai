@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.calorietracker.data.DailyIntake
 import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.data.UserProfile
 import com.example.calorietracker.network.*
@@ -25,6 +24,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import android.widget.Toast
 import androidx.compose.ui.graphics.Color
 import com.example.calorietracker.auth.UserData
+import com.example.calorietracker.data.DailyIntake
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import com.example.calorietracker.network.LogFoodRequest
@@ -106,7 +106,6 @@ class CalorieTrackerViewModel(
     var meals by mutableStateOf<List<Meal>>(emptyList())
         private set
 
-    // Получаем текущий DailyIntake (теперь это только getter)
     val dailyIntake: DailyIntake
         get() = DailyIntake(
             calories = dailyCalories,

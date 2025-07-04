@@ -61,8 +61,8 @@ fun AnimatedDialogs(
             ManualInputData(
                 name = prefill.name,
                 caloriesPer100g = prefill.calories.toString(),
-                proteinsPer100g = prefill.proteins.toString(),
-                fatsPer100g = prefill.fats.toString(),
+                proteinsPer100g = prefill.protein.toString(),
+                fatsPer100g = prefill.fat.toString(),
                 carbsPer100g = prefill.carbs.toString(),
                 weight = prefill.weight
             )

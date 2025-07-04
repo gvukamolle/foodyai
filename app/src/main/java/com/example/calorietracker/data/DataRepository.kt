@@ -20,7 +20,7 @@ class DataRepository(context: Context) {
 
     // Временное хранение данных календаря в SharedPreferences
     fun saveDailySummary(
-        date: LocalDate = LocalDate.now(),
+        date: LocalDate = DailyResetUtils.getFoodLocalDate(),
         calories: Int,
         protein: Float,
         carbs: Float,
@@ -43,7 +43,7 @@ class DataRepository(context: Context) {
 
     // Получение данных для календаря
     fun getCalendarData(months: Int = 3): Flow<List<DailyNutritionSummary>> = flow {
-        val endDate = LocalDate.now()
+        val endDate = DailyResetUtils.getFoodLocalDate()
         val startDate = endDate.minusMonths(months.toLong())
 
         val summaries = mutableListOf<DailyNutritionSummary>()

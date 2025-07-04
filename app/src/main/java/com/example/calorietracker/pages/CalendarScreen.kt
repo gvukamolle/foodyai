@@ -50,6 +50,10 @@ fun CalendarScreen(
     var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
     var visible by remember { mutableStateOf(false) }
 
+    // Данные из viewModel
+    val calendarData by viewModel.calendarData.collectAsState()
+    val currentIntake = viewModel.dailyIntake
+
     LaunchedEffect(Unit) {
         systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
         delay(50)
@@ -89,7 +93,8 @@ fun CalendarScreen(
                     onDayClick = { date ->
                         selectedDay = if (selectedDay == date) null else date
                     },
-                    viewModel = viewModel
+                    currentIntake = currentIntake,
+                    calendarData = calendarData
                 )
             }
 
@@ -100,7 +105,7 @@ fun CalendarScreen(
                     exit = shrinkVertically() + fadeOut()
                 ) {
                     DayDetailsCard(
-                        dayData = getDayData(day, viewModel),
+                        dayData = getDayData(day, currentIntake, calendarData),
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -176,8 +181,9 @@ private fun CalendarGrid(
     selectedMonth: YearMonth,
     selectedDay: LocalDate?,
     onDayClick: (LocalDate) -> Unit,
-    viewModel: CalorieTrackerViewModel
-) {
+    currentIntake: com.example.calorietracker.data.DailyIntake,
+    calendarData: Map<LocalDate, com.example.calorietracker.data.DailyNutritionSummary>
+    ) {
     val daysOfWeek = listOf("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")
     val firstDayOfMonth = selectedMonth.atDay(1)
     val lastDayOfMonth = selectedMonth.atEndOfMonth()
@@ -228,7 +234,7 @@ private fun CalendarGrid(
 
                         if (dayIndex in 1..daysInMonth) {
                             val date = selectedMonth.atDay(dayIndex)
-                            val dayData = getDayData(date, viewModel)
+                            val dayData = getDayData(date, currentIntake, calendarData)
 
                             DayCell(
                                 date = date,
@@ -406,29 +412,29 @@ private fun MacroRow(
 }
 
 // Вспомогательная функция для получения данных дня
-private fun getDayData(date: LocalDate, viewModel: CalorieTrackerViewModel): DayData {
-    // Получаем текущие данные из viewModel
-    val currentIntake = viewModel.dailyIntake
+private fun getDayData(
+    date: LocalDate,
+    currentIntake: com.example.calorietracker.data.DailyIntake,
+    calendarData: Map<LocalDate, com.example.calorietracker.data.DailyNutritionSummary>
+): DayData {
 
     return when {
         date == LocalDate.now() -> DayData(
             date = date,
             calories = currentIntake.calories,
-            protein = currentIntake.protein.toInt(),    // преобразуем Float в Int
-            carbs = currentIntake.carbs.toInt(),        // преобразуем Float в Int
-            fat = currentIntake.fat.toInt(),            // преобразуем Float в Int
+            protein = currentIntake.protein.toInt(),
+            carbs = currentIntake.carbs.toInt(),
+            fat = currentIntake.fat.toInt(),
             hasData = currentIntake.calories > 0
         )
-        date < LocalDate.now() && date > LocalDate.now().minusDays(7) -> {
-            // Пока возвращаем случайные данные для примера
-            // В будущем будем брать из repository
-            val random = kotlin.random.Random(date.toEpochDay().toInt())
+        calendarData[date] != null -> {
+            val summary = calendarData[date]!!
             DayData(
                 date = date,
-                calories = random.nextInt(1800, 2500),
-                protein = (random.nextFloat() * 50 + 80).toInt(),    // преобразуем Float в Int
-                carbs = (random.nextFloat() * 100 + 200).toInt(),    // преобразуем Float в Int
-                fat = (random.nextFloat() * 30 + 60).toInt(),        // преобразуем Float в Int
+                calories = summary.totalCalories,
+                protein = summary.totalProtein.toInt(),
+                carbs = summary.totalCarbs.toInt(),
+                fat = summary.totalFat.toInt(),
                 hasData = true
             )
         }

@@ -34,6 +34,21 @@ object DailyResetUtils {
     }
 
     /**
+     * Возвращает "пищевую" дату как [LocalDate]. Удобно, когда требуется объект
+     * LocalDate вместо строки.
+     */
+    fun getFoodLocalDate(): LocalDate {
+        val now = LocalDateTime.now()
+        val resetTime = LocalTime.of(RESET_HOUR, 0)
+        return if (now.toLocalTime().isBefore(resetTime)) {
+            now.toLocalDate().minusDays(1)
+        } else {
+            now.toLocalDate()
+        }
+    }
+
+
+    /**
      * Получить текущую календарную дату (меняется ровно в полночь).
      * @return Дата в формате "YYYY-MM-DD".
      */

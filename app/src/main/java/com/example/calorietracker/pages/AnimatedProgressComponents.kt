@@ -43,7 +43,7 @@ fun AnimatedProgressBars(viewModel: CalorieTrackerViewModel) {
     }
 
     val containerHeight by animateDpAsState(
-        targetValue = if (expanded) 220.dp else 110.dp,
+        targetValue = if (expanded) 200.dp else 100.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -111,31 +111,31 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
             ),
             NutrientData(
                 label = "Белки",
-                current = viewModel.dailyIntake.proteins,
+                current = viewModel.dailyIntake.protein.toInt(),
                 target = viewModel.userProfile.dailyProteins,
                 unit = "г",
                 color = viewModel.getProgressColor(
-                    viewModel.dailyIntake.proteins,
+                    viewModel.dailyIntake.protein.toInt(),
                     viewModel.userProfile.dailyProteins
                 )
             ),
             NutrientData(
                 label = "Жиры",
-                current = viewModel.dailyIntake.fats,
+                current = viewModel.dailyIntake.fat.toInt(),
                 target = viewModel.userProfile.dailyFats,
                 unit = "г",
                 color = viewModel.getProgressColor(
-                    viewModel.dailyIntake.fats,
+                    viewModel.dailyIntake.fat.toInt(),
                     viewModel.userProfile.dailyFats
                 )
             ),
             NutrientData(
                 label = "Углеводы",
-                current = viewModel.dailyIntake.carbs,
+                current = viewModel.dailyIntake.carbs.toInt(),
                 target = viewModel.userProfile.dailyCarbs,
                 unit = "г",
                 color = viewModel.getProgressColor(
-                    viewModel.dailyIntake.carbs,
+                    viewModel.dailyIntake.carbs.toInt(),
                     viewModel.userProfile.dailyCarbs
                 )
             )
@@ -326,9 +326,9 @@ private fun CollapsedProgressView(viewModel: CalorieTrackerViewModel) {
     ) {
         val nutrients = listOf(
             Triple("К", viewModel.dailyIntake.calories, viewModel.userProfile.dailyCalories),
-            Triple("Б", viewModel.dailyIntake.proteins, viewModel.userProfile.dailyProteins),
-            Triple("Ж", viewModel.dailyIntake.fats, viewModel.userProfile.dailyFats),
-            Triple("У", viewModel.dailyIntake.carbs, viewModel.userProfile.dailyCarbs)
+            Triple("Б", viewModel.dailyIntake.protein.toInt(), viewModel.userProfile.dailyProteins),
+            Triple("Ж", viewModel.dailyIntake.fat.toInt(), viewModel.userProfile.dailyFats),
+            Triple("У", viewModel.dailyIntake.carbs.toInt(), viewModel.userProfile.dailyCarbs)
         )
 
         nutrients.forEachIndexed { index, (label, current, target) ->
@@ -516,8 +516,8 @@ private fun AnimatedFoodDetails(food: FoodItem) {
     val details = listOf(
         "Блюдо: ${food.name}",
         "Калории: ${food.calories}",
-        "Белки: ${food.proteins} г",
-        "Жиры: ${food.fats} г",
+        "Белки: ${food.protein} г",
+        "Жиры: ${food.fat} г",
         "Углеводы: ${food.carbs} г",
         "Вес: ${food.weight} г"
     )
