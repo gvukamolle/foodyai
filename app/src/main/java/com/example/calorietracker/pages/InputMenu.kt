@@ -48,6 +48,7 @@ import java.time.LocalTime
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.platform.LocalDensity
 import com.example.calorietracker.extensions.fancyShadow
+import androidx.compose.ui.platform.LocalFocusManager
 
 
 // Вариант 2: С градиентом и современными иконками (БЕЗ СЕРЫХ ОБЛАСТЕЙ)
@@ -88,6 +89,11 @@ fun PlusDropdownMenuV2(
         )
     ) {
         val density = LocalDensity.current
+        val focusManager = LocalFocusManager.current
+        val ime = WindowInsets.ime
+        val imeVisible by remember {
+            derivedStateOf { ime.getBottom(density) > 0 }
+        }
         Popup(
             alignment = Alignment.BottomEnd,
             offset = with(density) {
@@ -96,14 +102,37 @@ fun PlusDropdownMenuV2(
                     y = (-40).dp.roundToPx()   // <-- Теперь смещение по Y в dp
                 )
             },
-            onDismissRequest = onDismissRequest,
-            properties = PopupProperties(
+            onDismissRequest = {
+                if (imeVisible) {
+                    focusManager.clearFocus()
+                } else {
+                    onDismissRequest()
+                }
+            },            properties = PopupProperties(
                 focusable = true,
                 dismissOnBackPress = true,
-                dismissOnClickOutside = true
+                dismissOnClickOutside = false
             )
         ) {
-            Card(
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            if (imeVisible) {
+                                focusManager.clearFocus()
+                            } else {
+                                onDismissRequest()
+                            }
+                        }
+                )
+                Card(
                 modifier = Modifier
                     .fancyShadow(
                         borderRadius = 20.dp,
@@ -116,7 +145,7 @@ fun PlusDropdownMenuV2(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 // ВАЖНО: Убедитесь, что у самой карточки нет собственной тени/elevation
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
+                ){}
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()

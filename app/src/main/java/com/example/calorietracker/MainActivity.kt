@@ -26,8 +26,6 @@ import android.graphics.Matrix
 import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
-import java.io.File
-import kotlin.io.path.createTempFile
 import androidx.core.content.ContextCompat
 import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.data.DataRepository
@@ -38,7 +36,7 @@ import kotlinx.coroutines.launch
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
-    Setup, Main, SettingsV2
+    Setup, Main, SettingsV2, Calendar
 }
 
 private fun decodeBitmapWithOrientation(file: java.io.File): Bitmap {
@@ -107,10 +105,8 @@ fun CalorieTrackerApp(
     val coroutineScope = rememberCoroutineScope()
     val authState by authManager.authState.collectAsState()
     val currentUser by authManager.currentUser.collectAsState()
-    // ИСПРАВЛЕНИЕ: mutableStateOf с большой 'O'
     var showSettingsScreen by remember { mutableStateOf(false) }
-
-    // ИСПРАВЛЕНИЕ: mutableStateOf с большой 'O'
+    var showCalendarScreen by remember { mutableStateOf(false) }
     var currentScreen by remember { mutableStateOf<Screen?>(null) }
 
     LaunchedEffect(currentUser) {
@@ -126,9 +122,8 @@ fun CalorieTrackerApp(
         }
     }
 
-    // ИСПРАВЛЕНИЕ: mutableStateOf с большой 'O'
+    // Камера и галерея
     val cameraUri = remember { mutableStateOf<Uri?>(null) }
-    // ИСПРАВЛЕНИЕ: mutableStateOf с большой 'O'
     val cameraFile = remember { mutableStateOf<java.io.File?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
@@ -165,21 +160,28 @@ fun CalorieTrackerApp(
         cameraLauncher.launch(uri)
     }
 
-    val permissionLauncher =
-        rememberLauncherForActivityResult<String, Boolean>(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                launchCamera()
-            } else {
-                Toast.makeText(
-                    context,
-                    "Необходимо разрешение на использование камеры",
-                    Toast.LENGTH_SHORT
-                ).show()
+    val permissionLauncher = rememberLauncherForActivityResult<String, Boolean>(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            launchCamera()
+        } else {
+            Toast.makeText(
+                context,
+                "Необходимо разрешение на использование камеры",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    BackHandler(enabled = showSettingsScreen || showCalendarScreen) {
+        when {
+            showCalendarScreen -> {
+                showCalendarScreen = false
+                currentScreen = Screen.Main
+            }
+            showSettingsScreen -> {
+                showSettingsScreen = false
             }
         }
-
-    BackHandler(enabled = showSettingsScreen) {
-        showSettingsScreen = false
     }
 
     when (authState) {
@@ -200,6 +202,16 @@ fun CalorieTrackerApp(
                 label = "main_nav"
             ) { screen ->
                 when (screen) {
+                    Screen.Calendar -> {
+                        CalendarScreen(
+                            viewModel = viewModel,
+                            onBack = {
+                                showCalendarScreen = false
+                                currentScreen = Screen.Main
+                            }
+                        )
+                    }
+
                     Screen.Setup -> {
                         SetupScreen(
                             viewModel = viewModel,
@@ -257,7 +269,11 @@ fun CalorieTrackerApp(
                             onDescribeClick = {
                                 viewModel.showDescriptionDialog = true
                             },
-                            onSettingsClick = { showSettingsScreen = true }
+                            onSettingsClick = { showSettingsScreen = true },
+                            onCalendarClick = {  // Новый обработчик
+                                currentScreen = Screen.Calendar
+                                showCalendarScreen = true
+                            }
                         )
                     }
 

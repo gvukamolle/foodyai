@@ -44,7 +44,8 @@ import androidx.compose.ui.draw.blur
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.calorietracker.extensions.fancyShadow
-
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 
 // =========================================================================
 // НОВАЯ УНИВЕРСАЛЬНАЯ ОБЕРТКА ДЛЯ ПРАВИЛЬНОЙ АНИМАЦИИ
@@ -61,6 +62,12 @@ fun AnimatedPopup(
 
     // Снимаем скриншот текущего экрана, чтобы размыть его под диалогом
     val view = LocalView.current
+    val density = LocalDensity.current
+    val focusManager = LocalFocusManager.current
+    val ime = WindowInsets.ime
+    val imeVisible by remember {
+        derivedStateOf { ime.getBottom(density) > 0 }
+    }
     var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(view) {
         // Даем вью отрисоваться перед захватом
@@ -133,9 +140,14 @@ fun AnimatedPopup(
                     .background(Color.White.copy(alpha = 0.6f * animatedAlpha))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { dismiss() }
-                    )
+                        indication = null
+                    ) {
+                        if (imeVisible) {
+                            focusManager.clearFocus()
+                        } else {
+                            dismiss()
+                        }
+                    }
             )
 
             // Анимированный контейнер для содержимого
@@ -151,9 +163,12 @@ fun AnimatedPopup(
                     // Этот clickable нужен, чтобы клики по карточке не закрывали диалог
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {}
-                    )
+                        indication = null
+                    ) {
+                        if (imeVisible) {
+                            focusManager.clearFocus()
+                        }
+                    }
             ) {
                 content(::dismiss)
             }

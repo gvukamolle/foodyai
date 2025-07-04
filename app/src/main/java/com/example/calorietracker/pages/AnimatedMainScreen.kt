@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -18,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
@@ -43,7 +45,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
 import com.example.calorietracker.ui.animations.TypewriterText
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.util.Locale
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import java.time.format.TextStyle as DateTextStyle
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +61,8 @@ fun AnimatedMainScreen(
     onGalleryClick: () -> Unit,
     onManualClick: () -> Unit,
     onDescribeClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onCalendarClick: () -> Unit
 ) {
     val systemUiController = rememberSystemUiController()
     val context = LocalContext.current
@@ -118,10 +126,11 @@ fun AnimatedMainScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Анимированный заголовок
+            // Обновленный заголовок с кликом на календарь
             AnimatedHeader(
                 viewModel = viewModel,
-                onSettingsClick = onSettingsClick
+                onSettingsClick = onSettingsClick,
+                onDateClick = onCalendarClick  // Передаем обработчик
             )
 
             // Прогресс-бары
@@ -151,11 +160,12 @@ fun AnimatedMainScreen(
     }
 }
 
-// Анимированный заголовок
+// Обновленный AnimatedHeader с датой и стрелкой
 @Composable
 private fun AnimatedHeader(
     viewModel: CalorieTrackerViewModel,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onDateClick: () -> Unit // Новый параметр для перехода к календарю
 ) {
     var visible by remember { mutableStateOf(false) }
 
@@ -175,19 +185,44 @@ private fun AnimatedHeader(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Дневной прогресс",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-                TypewriterText(
-                    text = viewModel.displayDate,
-                    style = TextStyle(
-                        fontSize = 13.sp,
-                        color = Color.Gray
+            // Кликабельная область с датой
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onDateClick() }
+                    .padding(vertical = 4.dp, horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    // Форматируем дату: "3 июля, четверг"
+                    val currentDate = LocalDate.now()
+                    val dayOfWeek = currentDate.dayOfWeek.getDisplayName(DateTextStyle.FULL, Locale("ru"))
+                    val month = currentDate.month.getDisplayName(java.time.format.TextStyle.FULL, Locale("ru"))
+                    val day = currentDate.dayOfMonth
+
+                    Text(
+                        text = "$day $month",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
                     )
+                    Text(
+                        text = dayOfWeek.replaceFirstChar { it.uppercase() },
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Стрелка
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    contentDescription = "Открыть календарь",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
@@ -195,14 +230,11 @@ private fun AnimatedHeader(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            IconButton(
-                onClick = onSettingsClick,
-                modifier = Modifier.size(32.dp)
-            ) {
+            IconButton(onClick = onSettingsClick) {
                 Icon(
                     Icons.Default.Settings,
                     contentDescription = "Настройки",
-                    tint = Color.Black
+                    tint = Color.Gray
                 )
             }
         }

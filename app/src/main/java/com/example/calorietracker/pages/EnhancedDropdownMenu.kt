@@ -43,6 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalTime
 import com.example.calorietracker.extensions.fancyShadow
+import androidx.compose.ui.platform.LocalFocusManager
 
 // Улучшенное выпадающее меню с размытием фона
 @OptIn(ExperimentalAnimationApi::class)
@@ -62,6 +63,12 @@ fun EnhancedPlusDropdownMenu(
 
     val coroutineScope = rememberCoroutineScope()
     val view = LocalView.current
+    val density = LocalDensity.current
+    val focusManager = LocalFocusManager.current
+    val ime = WindowInsets.ime
+    val imeVisible by remember {
+        derivedStateOf { ime.getBottom(density) > 0 }
+    }
     var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isVisible by remember { mutableStateOf(false) }
 
@@ -86,17 +93,37 @@ fun EnhancedPlusDropdownMenu(
 
     if (expanded) {
         Popup(
-            onDismissRequest = { animatedDismiss() },
+            onDismissRequest = {
+                if (imeVisible) {
+                    focusManager.clearFocus()
+                } else {
+                    animatedDismiss()
+                }
+            },
             properties = PopupProperties(
                 focusable = true,
                 dismissOnBackPress = true,
-                dismissOnClickOutside = true
+                dismissOnClickOutside = false
             )
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.BottomEnd
             ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            if (imeVisible) {
+                                focusManager.clearFocus()
+                            } else {
+                                animatedDismiss()
+                            }
+                        }
+                )
                 AnimatedVisibility(
                     visible = isVisible && backgroundBitmap != null,
                     enter = fadeIn(tween(200)),
@@ -121,9 +148,14 @@ fun EnhancedPlusDropdownMenu(
                                     .background(Color.White.copy(alpha = 0.6f))
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = { animatedDismiss() }
-                                    )
+                                        indication = null
+                                    ) {
+                                        if (imeVisible) {
+                                            focusManager.clearFocus()
+                                        } else {
+                                            animatedDismiss()
+                                        }
+                                    }
                             )
                         }
                     }

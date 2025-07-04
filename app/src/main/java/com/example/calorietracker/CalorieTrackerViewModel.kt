@@ -33,6 +33,10 @@ import com.example.calorietracker.utils.DailyResetUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import java.time.LocalDate
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import com.example.calorietracker.data.DailyNutritionSummary
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -48,10 +52,16 @@ enum class MessageType {
 data class FoodItem(
     val name: String,
     val calories: Int,
-    val proteins: Int,
-    val fats: Int,
+    val protein: Int,    // было proteins
+    val fat: Int,        // было fats
     val carbs: Int,
     val weight: String
+)
+
+data class Meal(
+    val type: MealType,
+    val foods: List<FoodItem>,
+    val time: Long = System.currentTimeMillis()
 )
 
 enum class MealType(val displayName: String) {
@@ -62,8 +72,6 @@ enum class MealType(val displayName: String) {
     LATE_BREAKFAST("Ланч"),
     SUPPER("Перекус")
 }
-
-// Исправленная структура CalorieTrackerViewModel.kt
 
 fun getFoodHistoryByDate(date: String): List<FoodHistoryItem> {
     // Этот метод будет вызываться при запросах типа "что я ел вчера"
@@ -84,11 +92,38 @@ class CalorieTrackerViewModel(
 ) : ViewModel() {
     val userId = getOrCreateUserId(context)
 
+    // Поля для отслеживания дневного потребления
+    var dailyCalories by mutableStateOf(0)
+        private set
+    var dailyProtein by mutableStateOf(0f)
+        private set
+    var dailyCarbs by mutableStateOf(0f)
+        private set
+    var dailyFat by mutableStateOf(0f)
+        private set
+
+    // Список приемов пищи
+    var meals by mutableStateOf<List<Meal>>(emptyList())
+        private set
+
+    // Получаем текущий DailyIntake (теперь это только getter)
+    val dailyIntake: DailyIntake
+        get() = DailyIntake(
+            calories = dailyCalories,
+            protein = dailyProtein,
+            carbs = dailyCarbs,
+            fat = dailyFat,
+            meals = meals
+        )
+
+    // Состояние для календаря
+    private val _calendarData = MutableStateFlow<Map<LocalDate, DailyNutritionSummary>>(emptyMap())
+    val calendarData: StateFlow<Map<LocalDate, DailyNutritionSummary>> = _calendarData.asStateFlow()
+
     // UI состояния
     var currentStep by mutableStateOf("setup")
     var showSettings by mutableStateOf(false)
     var userProfile by mutableStateOf(UserProfile())
-    var dailyIntake by mutableStateOf(DailyIntake())
     var displayDate by mutableStateOf(DailyResetUtils.getFormattedDisplayDate())
         private set
     var currentFoodSource by mutableStateOf<String?>(null)
@@ -121,6 +156,13 @@ class CalorieTrackerViewModel(
         checkInternetConnection()
         // Периодическая проверка обнуления каждые 5 минут
         startPeriodicReset()
+
+        // Загружаем данные календаря
+        viewModelScope.launch {
+            repository.getCalendarData().collect { summaries ->
+                _calendarData.value = summaries.associateBy { it.date }
+            }
+        }
     }
 
     private fun loadUserData() {
@@ -128,8 +170,13 @@ class CalorieTrackerViewModel(
             userProfile = profile
             currentStep = "main"
         }
-        // getDailyIntake автоматически проверит и обнулит если нужно
-        dailyIntake = repository.getDailyIntake()
+        // Загружаем данные о потреблении
+        val intake = repository.getDailyIntake()
+        dailyCalories = intake.calories
+        dailyProtein = intake.protein
+        dailyCarbs = intake.carbs
+        dailyFat = intake.fat
+        meals = intake.meals
     }
 
     private fun startPeriodicReset() {
@@ -137,14 +184,39 @@ class CalorieTrackerViewModel(
             while (true) {
                 delay(5 * 60 * 1000) // 5 минут
                 // Перезагружаем данные, что автоматически проверит обнуление
-                dailyIntake = repository.getDailyIntake()
+                val intake = repository.getDailyIntake()
+                dailyCalories = intake.calories
+                dailyProtein = intake.protein
+                dailyCarbs = intake.carbs
+                dailyFat = intake.fat
+                meals = intake.meals
             }
         }
     }
 
     private fun saveUserData() {
         repository.saveUserProfile(userProfile)
-        repository.saveDailyIntake(dailyIntake)
+        val currentIntake = DailyIntake(
+            calories = dailyCalories,
+            protein = dailyProtein,
+            carbs = dailyCarbs,
+            fat = dailyFat,
+            meals = meals
+        )
+        repository.saveDailyIntake(currentIntake)
+    }
+
+    // Сохранение текущего дня при каждом обновлении
+    private fun updateAndSaveDailyProgress() {
+        viewModelScope.launch {
+            repository.saveDailySummary(
+                calories = dailyCalories,
+                protein = dailyProtein,
+                carbs = dailyCarbs,
+                fat = dailyFat,
+                mealsCount = meals.size
+            )
+        }
     }
 
     // Проверка подключения к интернету
@@ -154,7 +226,6 @@ class CalorieTrackerViewModel(
             isOnline = currentOnline
         }
     }
-
 
     fun updateUserProfile(newProfile: UserProfile) {
         userProfile = newProfile
@@ -166,18 +237,22 @@ class CalorieTrackerViewModel(
         // в твой локальный UserProfile (SharedPreferences)
         // Пока сделаем простую синхронизацию
         userProfile = userProfile.copy(
-            isSetupComplete =
-                userData.isSetupComplete || userProfile.isSetupComplete
-        // Тут можно добавить и другие поля, если они хранятся в Firebase
+            isSetupComplete = userData.isSetupComplete || userProfile.isSetupComplete
+            // Тут можно добавить и другие поля, если они хранятся в Firebase
         )
     }
 
     private fun loadInitialData() {
-    viewModelScope.launch {
-    userProfile = repository.getUserProfile() ?: UserProfile()
-        dailyIntake = repository.getDailyIntake()
-             }
-         }
+        viewModelScope.launch {
+            userProfile = repository.getUserProfile() ?: UserProfile()
+            val intake = repository.getDailyIntake()
+            dailyCalories = intake.calories
+            dailyProtein = intake.protein
+            dailyCarbs = intake.carbs
+            dailyFat = intake.fat
+            meals = intake.meals
+        }
+    }
 
     fun updateDateAndCheckForReset() {
         // Обновляем строку с датой (например, с "25 Июня" на "26 Июня")
@@ -318,8 +393,7 @@ class CalorieTrackerViewModel(
             val photoPart = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
 
             val profileJson = gson.toJson(userProfile.toNetworkProfile())
-            val profileRequestBody =
-                profileJson.toRequestBody("application/json".toMediaTypeOrNull())
+            val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
             val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
             val captionRequestBody = caption.toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -363,8 +437,7 @@ class CalorieTrackerViewModel(
                             MessageType.AI,
                             "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
                         )
-                        Toast.makeText(context, "На фото не обнаружено еды", Toast.LENGTH_LONG)
-                            .show()
+                        Toast.makeText(context, "На фото не обнаружено еды", Toast.LENGTH_LONG).show()
                         showPhotoDialog = false
                     }
 
@@ -379,8 +452,8 @@ class CalorieTrackerViewModel(
                         prefillFood = FoodItem(
                             name = foodData.name,
                             calories = foodData.calories,
-                            proteins = foodData.proteins,
-                            fats = foodData.fats,
+                            protein = foodData.protein,    // FoodDataFromAnswer использует proteins
+                            fat = foodData.fat,            // FoodDataFromAnswer использует fats
                             carbs = foodData.carbs,
                             weight = foodData.weight
                         )
@@ -449,8 +522,8 @@ class CalorieTrackerViewModel(
                 prefillFood = FoodItem(
                     name = foodData.name,
                     calories = foodData.calories,
-                    proteins = foodData.proteins,
-                    fats = foodData.fats,
+                    protein = foodData.protein,    // FoodDataFromAnswer использует proteins
+                    fat = foodData.fat,            // FoodDataFromAnswer использует fats
                     carbs = foodData.carbs,
                     weight = foodData.weight
                 )
@@ -466,8 +539,6 @@ class CalorieTrackerViewModel(
         }
     }
 
-
-
     // Вспомогательная функция для обработки ошибок
     private fun handleError(errorMessage: String) {
         messages = messages + ChatMessage(
@@ -482,8 +553,8 @@ class CalorieTrackerViewModel(
         val food: String,      // "да" или "нет"
         val name: String,      // название продукта
         val calories: Int,     // калории
-        val proteins: Int,     // белки
-        val fats: Int,         // жиры
+        val protein: Int,     // белки
+        val fat: Int,         // жиры
         val carbs: Int,        // углеводы
         val weight: String     // вес (строка, т.к. может быть "100г")
     )
@@ -504,8 +575,8 @@ class CalorieTrackerViewModel(
         pendingFood = FoodItem(
             name = name,
             calories = calories.toIntOrNull() ?: 0,
-            proteins = proteins.toIntOrNull() ?: 0,
-            fats = fats.toIntOrNull() ?: 0,
+            protein = proteins.toIntOrNull() ?: 0,    // параметр proteins -> поле protein
+            fat = fats.toIntOrNull() ?: 0,           // параметр fats -> поле fat
             carbs = carbs.toIntOrNull() ?: 0,
             weight = (weight.toIntOrNull() ?: 100).toString()
         )
@@ -523,17 +594,23 @@ class CalorieTrackerViewModel(
         showManualInputDialog = false
     }
 
-    // Подтверждение добавления продукта с отправкой на сервер
+    // Подтверждение добавления продукта
     fun confirmFood() {
         Log.d("CalorieTracker", "confirmFood called, source: $currentFoodSource")
         pendingFood?.let { food ->
-            // Обновляем локальные данные
-            dailyIntake = dailyIntake.copy(
-                calories = dailyIntake.calories + food.calories,
-                proteins = dailyIntake.proteins + food.proteins,
-                fats = dailyIntake.fats + food.fats,
-                carbs = dailyIntake.carbs + food.carbs
+            // Создаем новый прием пищи
+            val meal = Meal(
+                type = selectedMeal,
+                foods = listOf(food),
+                time = System.currentTimeMillis()
             )
+
+            // Обновляем поля
+            meals = meals + meal
+            dailyCalories += food.calories
+            dailyProtein += food.protein.toFloat()
+            dailyCarbs += food.carbs.toFloat()
+            dailyFat += food.fat.toFloat()
 
             val aiStatus = if (isOnline) "с помощью AI" else "вручную"
 
@@ -548,15 +625,27 @@ class CalorieTrackerViewModel(
                         generateNutritionalAdvice(food)
             )
 
+            // Сохраняем в репозиторий
+            val updatedIntake = DailyIntake(
+                calories = dailyCalories,
+                protein = dailyProtein,
+                carbs = dailyCarbs,
+                fat = dailyFat,
+                meals = meals
+            )
+            repository.saveDailyIntake(updatedIntake)
+            updateAndSaveDailyProgress() // Сохраняем для календаря
+
             // Отправляем данные на сервер
             if (isOnline) {
                 viewModelScope.launch {
                     sendFoodToServer(food, selectedMeal)
                 }
             }
+
             pendingFood = null
-            prefillFood = null // Очищаем prefillFood
-            currentFoodSource = null // Очищаем источник
+            prefillFood = null
+            currentFoodSource = null
             saveUserData()
         }
     }
@@ -574,8 +663,6 @@ class CalorieTrackerViewModel(
         viewModelScope.launch { analyzePhotoWithAI(bitmap, photoCaption) }
     }
 
-
-    // Обновите sendFoodToServer чтобы использовать правильный источник:
     private suspend fun sendFoodToServer(food: FoodItem, mealType: MealType) {
         try {
             val now = LocalDateTime.now()
@@ -585,8 +672,8 @@ class CalorieTrackerViewModel(
             val foodItemData = FoodItemData(
                 name = food.name,
                 calories = food.calories,
-                proteins = food.proteins,
-                fats = food.fats,
+                proteins = food.protein,    // было food.proteins
+                fats = food.fat,           // было food.fats
                 carbs = food.carbs,
                 weight = food.weight.toIntOrNull() ?: 100
             )
@@ -610,10 +697,7 @@ class CalorieTrackerViewModel(
             }
 
             if (response.isSuccess) {
-                Log.d(
-                    "CalorieTracker",
-                    "Еда успешно отправлена на сервер (источник: ${currentFoodSource})"
-                )
+                Log.d("CalorieTracker", "Еда успешно отправлена на сервер (источник: ${currentFoodSource})")
             } else {
                 Log.e("CalorieTracker", "Ошибка отправки еды на сервер", response.exceptionOrNull())
             }
@@ -629,12 +713,12 @@ class CalorieTrackerViewModel(
     // Генерация советов по питанию
     private fun generateNutritionalAdvice(food: FoodItem): String {
         val caloriePercent = (food.calories.toFloat() / userProfile.dailyCalories * 100).toInt()
-        val remainingCalories = userProfile.dailyCalories - dailyIntake.calories
+        val remainingCalories = userProfile.dailyCalories - dailyCalories
 
         return when {
             caloriePercent > 30 -> "Это ${caloriePercent}% от дневной нормы. Планируйте остальные приемы пищи с учетом этого."
             remainingCalories < 200 -> "У вас осталось всего $remainingCalories ккал на день. Выбирайте легкие продукты."
-            food.proteins > food.carbs -> "Отличный источник белка! Это поможет в достижении ваших целей."
+            food.protein > food.carbs -> "Отличный источник белка! Это поможет в достижении ваших целей."
             food.carbs > 50 -> "Много углеводов - отлично для энергии. Не забудьте про физическую активность!"
             else -> "Хороший выбор! Продолжайте в том же духе."
         }
@@ -706,8 +790,8 @@ class CalorieTrackerViewModel(
                 val yesterdayIntake = repository.getIntakeHistory(yesterday)
                 if (yesterdayIntake != null && yesterdayIntake.calories > 0) {
                     "Вчера вы употребили: ${yesterdayIntake.calories} ккал, " +
-                            "белки: ${yesterdayIntake.proteins}г, " +
-                            "жиры: ${yesterdayIntake.fats}г, " +
+                            "белки: ${yesterdayIntake.protein}г, " +
+                            "жиры: ${yesterdayIntake.fat}г, " +
                             "углеводы: ${yesterdayIntake.carbs}г."
                 } else {
                     "У меня нет данных о вашем питании за вчера."
@@ -730,11 +814,11 @@ class CalorieTrackerViewModel(
             }
 
             question.contains("калори", ignoreCase = true) ->
-                "Ваша дневная норма: ${userProfile.dailyCalories} ккал. Сегодня вы употребили ${dailyIntake.calories} ккал. " +
-                        "Осталось: ${userProfile.dailyCalories - dailyIntake.calories} ккал."
+                "Ваша дневная норма: ${userProfile.dailyCalories} ккал. Сегодня вы употребили ${dailyCalories} ккал. " +
+                        "Осталось: ${userProfile.dailyCalories - dailyCalories} ккал."
 
             question.contains("белк", ignoreCase = true) ->
-                "Норма белка: ${userProfile.dailyProteins}г в день. Сегодня употреблено: ${dailyIntake.proteins}г. " +
+                "Норма белка: ${userProfile.dailyProteins}г в день. Сегодня употреблено: ${dailyProtein.toInt()}г. " +
                         "Хорошие источники белка: куриная грудка (31г/100г), творог (18г/100г), яйца (13г/100г)."
 
             question.contains("вод", ignoreCase = true) ->

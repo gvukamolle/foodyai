@@ -3,7 +3,15 @@ package com.example.calorietracker.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.calorietracker.Meal
 
+data class DailyIntake(
+    val calories: Int = 0,
+    val protein: Float = 0f,
+    val carbs: Float = 0f,
+    val fat: Float = 0f,
+    val meals: List<Meal> = emptyList()  // Добавляем список приемов пищи
+)
 
 // ====== 1. Основная модель для работы в приложении ======
 data class UserProfile(

@@ -1,4 +1,3 @@
-
 package com.example.calorietracker.data
 
 import android.content.Context
@@ -6,8 +5,9 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.calorietracker.utils.DailyResetUtils
 import com.google.gson.Gson
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import java.time.LocalDate
-
 
 /**
  * Репозиторий для управления данными приложения, такими как профиль пользователя и дневное потребление калорий.
@@ -17,6 +17,65 @@ import java.time.LocalDate
 class DataRepository(context: Context) {
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("calorie_tracker_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
+
+    // Временное хранение данных календаря в SharedPreferences
+    fun saveDailySummary(
+        date: LocalDate = LocalDate.now(),
+        calories: Int,
+        protein: Float,
+        carbs: Float,
+        fat: Float,
+        mealsCount: Int
+    ) {
+        val summary = DailyNutritionSummary(
+            date = date,
+            totalCalories = calories,
+            totalProtein = protein,
+            totalCarbs = carbs,
+            totalFat = fat,
+            mealsCount = mealsCount
+        )
+        val json = gson.toJson(summary)
+        sharedPreferences.edit {
+            putString("daily_summary_${date.toEpochDay()}", json)
+        }
+    }
+
+    // Получение данных для календаря
+    fun getCalendarData(months: Int = 3): Flow<List<DailyNutritionSummary>> = flow {
+        val endDate = LocalDate.now()
+        val startDate = endDate.minusMonths(months.toLong())
+
+        val summaries = mutableListOf<DailyNutritionSummary>()
+        var currentDate = startDate
+
+        while (!currentDate.isAfter(endDate)) {
+            val json = sharedPreferences.getString("daily_summary_${currentDate.toEpochDay()}", null)
+            if (json != null) {
+                val summary = gson.fromJson(json, DailyNutritionSummary::class.java)
+                summaries.add(summary)
+            }
+            currentDate = currentDate.plusDays(1)
+        }
+
+        emit(summaries)
+    }
+
+    // Автоматическая очистка старых данных (старше 120 дней)
+    fun cleanupOldData() {
+        val cutoffDate = LocalDate.now().minusDays(120)
+        val cutoffEpochDay = cutoffDate.toEpochDay()
+
+        sharedPreferences.all.keys
+            .filter { it.startsWith("daily_summary_") }
+            .mapNotNull { key ->
+                val epochDay = key.removePrefix("daily_summary_").toLongOrNull()
+                if (epochDay != null && epochDay < cutoffEpochDay) key else null
+            }
+            .forEach { key ->
+                sharedPreferences.edit { remove(key) }
+            }
+    }
 
     fun saveUserProfile(profile: UserProfile) {
         val json = gson.toJson(profile)
@@ -83,31 +142,5 @@ class DataRepository(context: Context) {
             .map { it.removePrefix("daily_intake_") }
             .sorted()
             .reversed()
-    }
-
-    /**
-     * Очищает старые данные о приемах пищи (старше 30 дней).
-     */
-    fun cleanOldData() {
-        // Получаем дату, которая была 30 дней назад
-        val thirtyDaysAgo = LocalDate.now().minusDays(30)
-
-        sharedPreferences.all.keys
-            .filter { it.startsWith("daily_intake_") }
-            .map { it.removePrefix("daily_intake_") }
-            .filter { dateString ->
-                try {
-                    // Превращаем строку "YYYY-MM-DD" в полноценный объект даты
-                    val entryDate = LocalDate.parse(dateString)
-                    // Корректно сравниваем, была ли дата записи раньше, чем 30 дней назад
-                    entryDate.isBefore(thirtyDaysAgo)
-                } catch (e: Exception) {
-                    // Если вдруг ключ имеет неверный формат, игнорируем его
-                    false
-                }
-            }
-            .forEach { date ->
-                sharedPreferences.edit { remove("daily_intake_$date") }
-            }
     }
 }

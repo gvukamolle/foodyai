@@ -12,13 +12,18 @@ class CleanupWorker(
 
     override fun doWork(): Result {
         return try {
+            // ИСПРАВЛЕНО: Конструктор DataRepository принимает только один аргумент - Context.
+            // Переменной 'database' здесь не существует, и она не нужна.
             val repository = DataRepository(applicationContext)
 
+            // Эта строка теперь будет работать, т.к. 'repository' создан правильно.
             // Очищаем старые данные
-            repository.cleanOldData()
+            repository.cleanupOldData()
 
             Result.success()
         } catch (e: Exception) {
+            // (Рекомендация) Хорошей практикой будет логировать ошибку для отладки.
+            // Например: Log.e("CleanupWorker", "Ошибка при очистке старых данных", e)
             Result.failure()
         }
     }
