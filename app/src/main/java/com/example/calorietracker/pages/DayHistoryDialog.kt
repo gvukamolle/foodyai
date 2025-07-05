@@ -43,6 +43,8 @@ import com.example.calorietracker.ui.components.AnimatedRainbowBorder
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import kotlin.math.roundToInt
+
 
 // Основной диалог истории дня
 @Composable
@@ -261,7 +263,7 @@ fun DayHistoryDialog(
             onConfirm = { data ->
                 val updatedFood = FoodItem(
                     name = data.name,
-                    calories = data.totalCalories,
+                    calories = data.totalCalories.roundToInt(),
                     protein = data.totalProteins.toDouble(),
                     fat = data.totalFats.toDouble(),
                     carbs = data.totalCarbs.toDouble(),
