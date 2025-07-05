@@ -14,19 +14,15 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.runtime.derivedStateOf
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
@@ -38,7 +34,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -55,6 +50,16 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import com.example.calorietracker.utils.capitalizeFirst
 import com.example.calorietracker.utils.filterDecimal
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 // Цветовая схема для диалогов
 object DialogColors {
@@ -445,46 +450,121 @@ private fun InputFields(
     onDataChange: (ManualInputData) -> Unit
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    val fields = listOf(
-        Triple("Название", data.name) { value: String ->
-            onDataChange(data.copy(name = value.capitalizeFirst()))
-        },
-        Triple("Калории на 100г", data.caloriesPer100g) { value: String ->
-            onDataChange(data.copy(caloriesPer100g = filterDecimal(value)))
-        },
-        Triple("Белки на 100г", data.proteinsPer100g) { value: String ->
-            onDataChange(data.copy(proteinsPer100g = filterDecimal(value)))
-        },
-        Triple("Жиры на 100г", data.fatsPer100g) { value: String ->
-            onDataChange(data.copy(fatsPer100g = filterDecimal(value)))
-        },
-        Triple("Углеводы на 100г", data.carbsPer100g) { value: String ->
-            onDataChange(data.copy(carbsPer100g = filterDecimal(value)))
-        },
-        Triple("Вес (грамм)", data.weight) { value: String ->
-            onDataChange(data.copy(weight = filterDecimal(value)))
-        }
+    OutlinedTextField(
+        value = data.name,
+        onValueChange = { onDataChange(data.copy(name = it.capitalizeFirst())) },
+        label = { Text("Название") },
+        modifier = Modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = DialogColors.ManualInput,
+            focusedLabelColor = DialogColors.ManualInput
+        ),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            capitalization = KeyboardCapitalization.Sentences,
+            imeAction = ImeAction.Done
+        ),
+        keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+        singleLine = true
     )
 
-    fields.forEach { (label, value, onChange) ->
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            label = { Text(label) },
+    Spacer(Modifier.height(16.dp))
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = DialogColors.ManualInput,
-                focusedLabelColor = DialogColors.ManualInput
-            ),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = if (label == "Название") KeyboardType.Text else KeyboardType.Decimal,
-                capitalization = if (label == "Название") KeyboardCapitalization.Sentences else KeyboardCapitalization.None,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-            singleLine = true
-        )
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = data.caloriesPer100g,
+                onValueChange = { onDataChange(data.copy(caloriesPer100g = filterDecimal(it))) },
+                label = { Text("Калории на 100г") },
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = DialogColors.ManualInput,
+                    focusedLabelColor = DialogColors.ManualInput
+                ),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = data.proteinsPer100g,
+                onValueChange = { onDataChange(data.copy(proteinsPer100g = filterDecimal(it))) },
+                label = { Text("Белки на 100г") },
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = DialogColors.ManualInput,
+                    focusedLabelColor = DialogColors.ManualInput
+                ),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                singleLine = true
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = data.fatsPer100g,
+                onValueChange = { onDataChange(data.copy(fatsPer100g = filterDecimal(it))) },
+                label = { Text("Жиры на 100г") },
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = DialogColors.ManualInput,
+                    focusedLabelColor = DialogColors.ManualInput
+                ),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = data.carbsPer100g,
+                onValueChange = { onDataChange(data.copy(carbsPer100g = filterDecimal(it))) },
+                label = { Text("Углеводы на 100г") },
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = DialogColors.ManualInput,
+                    focusedLabelColor = DialogColors.ManualInput
+                ),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                singleLine = true
+            )
+        }
     }
+    Spacer(Modifier.height(8.dp))
+
+    OutlinedTextField(
+        value = data.weight,
+        onValueChange = { onDataChange(data.copy(weight = filterDecimal(it))) },
+        label = { Text("Вес (грамм)") },
+        modifier = Modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = DialogColors.ManualInput,
+            focusedLabelColor = DialogColors.ManualInput
+        ),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Decimal,
+            imeAction = ImeAction.Done
+        ),
+        keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+        singleLine = true
+    )
 }
 
 @Composable
@@ -515,7 +595,7 @@ private fun NutritionSummary(data: ManualInputData) {
                 // Первая строка: Калории и Белки
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                 ) {
                     NutritionItem(
                         label = "Калории",
@@ -534,7 +614,7 @@ private fun NutritionSummary(data: ManualInputData) {
                 // Вторая строка: Жиры и Углеводы
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                 ) {
                     NutritionItem(
                         label = "Жиры",
@@ -562,12 +642,12 @@ private fun NutritionItem(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.padding(horizontal = 4.dp),
+        modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = Color(0xFFFFFFFF)
         ),
         shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -576,21 +656,22 @@ private fun NutritionItem(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
-                verticalAlignment = Alignment.Bottom,
+                // Убираем verticalAlignment отсюда
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = value.toString(),
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
-                    color = Color.Black
+                    color = Color.Black,
+                    modifier = Modifier.alignByBaseline() // <-- Добавляем здесь
                 )
                 Spacer(modifier = Modifier.width(2.dp))
                 Text(
                     text = unit,
                     fontSize = 14.sp,
                     color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 2.dp)
+                    modifier = Modifier.alignByBaseline() // <-- И здесь
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
@@ -606,10 +687,10 @@ private fun NutritionItem(
 // Модель данных для ручного ввода
 data class ManualInputData(
     val name: String = "",
-    val caloriesPer100g: String = "",
-    val proteinsPer100g: String = "",
-    val fatsPer100g: String = "",
-    val carbsPer100g: String = "",
+    val caloriesPer100g: String = "0",
+    val proteinsPer100g: String = "0",
+    val fatsPer100g: String = "0",
+    val carbsPer100g: String = "0",
     val weight: String = "100"
 ) {
     val totalCalories: Int get() = ((caloriesPer100g.toFloatOrNull() ?: 0f) * (weight.toFloatOrNull() ?: 100f) / 100).toInt()
