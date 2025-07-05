@@ -498,40 +498,108 @@ private fun NutritionSummary(data: ManualInputData) {
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 "Итого на ${data.weight} г:",
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+                fontSize = 16.sp,
+                color = Color.Black // Убираем фиолетовый цвет
             )
-            Row(
+
+            // Сетка 2x2 для итогов
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                NutritionItem("Калории", data.totalCalories)
-                NutritionItem("Белки", data.totalProteins)
-                NutritionItem("Жиры", data.totalFats)
-                NutritionItem("Углеводы", data.totalCarbs)
+                // Первая строка: Калории и Белки
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    NutritionItem(
+                        label = "Калории",
+                        value = data.totalCalories,
+                        unit = "ккал",
+                        modifier = Modifier.weight(1f)
+                    )
+                    NutritionItem(
+                        label = "Белки",
+                        value = data.totalProteins,
+                        unit = "г",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Вторая строка: Жиры и Углеводы
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    NutritionItem(
+                        label = "Жиры",
+                        value = data.totalFats,
+                        unit = "г",
+                        modifier = Modifier.weight(1f)
+                    )
+                    NutritionItem(
+                        label = "Углеводы",
+                        value = data.totalCarbs,
+                        unit = "г",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun NutritionItem(label: String, value: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            value.toString(),
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = DialogColors.ManualInput
-        )
-        Text(
-            label,
-            fontSize = 12.sp,
-            color = Color.Gray
-        )
+private fun NutritionItem(
+    label: String,
+    value: Int,
+    unit: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.padding(horizontal = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = value.toString(),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = Color.Black
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Text(
+                    text = unit,
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 2.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+        }
     }
 }
 
