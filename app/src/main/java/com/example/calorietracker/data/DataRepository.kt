@@ -143,4 +143,75 @@ class DataRepository(context: Context) {
             .sorted()
             .reversed()
     }
+
+    // ---------- Новые методы для редактирования истории ----------
+
+    private data class Totals(
+        val calories: Int,
+        val protein: Float,
+        val fat: Float,
+        val carbs: Float
+    )
+
+    private fun calculateTotals(meals: List<com.example.calorietracker.Meal>): Totals {
+        var calories = 0
+        var protein = 0f
+        var fat = 0f
+        var carbs = 0f
+        meals.forEach { meal ->
+            meal.foods.forEach { food ->
+                calories += food.calories
+                protein += food.protein.toFloat()
+                fat += food.fat.toFloat()
+                carbs += food.carbs.toFloat()
+            }
+        }
+        return Totals(calories, protein, fat, carbs)
+    }
+
+    private fun updateSummary(date: String, intake: DailyIntake) {
+        val totals = calculateTotals(intake.meals)
+        saveDailySummary(
+            date = LocalDate.parse(date),
+            calories = totals.calories,
+            protein = totals.protein,
+            fat = totals.fat,
+            carbs = totals.carbs,
+            mealsCount = intake.meals.size
+        )
+    }
+
+    fun updateMeal(date: String, index: Int, meal: com.example.calorietracker.Meal) {
+        val intake = getIntakeHistory(date) ?: return
+        val meals = intake.meals.toMutableList()
+        if (index !in meals.indices) return
+        meals[index] = meal
+        val totals = calculateTotals(meals)
+        val updated = DailyIntake(
+            calories = totals.calories,
+            protein = totals.protein,
+            carbs = totals.carbs,
+            fat = totals.fat,
+            meals = meals
+        )
+        saveDailyIntake(updated, date)
+        updateSummary(date, updated)
+    }
+
+    fun deleteMeal(date: String, index: Int) {
+        val intake = getIntakeHistory(date) ?: return
+        val meals = intake.meals.toMutableList()
+        if (index !in meals.indices) return
+        meals.removeAt(index)
+        val totals = calculateTotals(meals)
+        val updated = DailyIntake(
+            calories = totals.calories,
+            protein = totals.protein,
+            carbs = totals.carbs,
+            fat = totals.fat,
+            meals = meals
+        )
+        saveDailyIntake(updated, date)
+        updateSummary(date, updated)
+    }
 }

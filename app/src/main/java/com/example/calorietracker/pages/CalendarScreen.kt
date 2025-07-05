@@ -249,6 +249,12 @@ fun CalendarScreen(
             onDismiss = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 showDayHistory = false
+            },
+            onMealUpdate = { idx, meal ->
+                repository.updateMeal(selectedDay!!.toString(), idx, meal)
+            },
+            onMealDelete = { idx ->
+                repository.deleteMeal(selectedDay!!.toString(), idx)
             }
         )
     }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -38,6 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.drawToBitmap
 import androidx.compose.ui.draw.blur
@@ -48,6 +52,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
 import com.example.calorietracker.utils.capitalizeFirst
 import com.example.calorietracker.utils.filterDecimal
+import kotlin.math.roundToInt
+import java.util.Locale
 
 // =========================================================================
 // НОВАЯ УНИВЕРСАЛЬНАЯ ОБЕРТКА ДЛЯ ПРАВИЛЬНОЙ АНИМАЦИИ
@@ -200,10 +206,15 @@ fun BeautifulManualFoodInputDialog(
     var weight by remember { mutableStateOf(initialWeight) }
 
     val weightFloat = weight.toFloatOrNull() ?: 100f
-    val totalCalories = ((caloriesPer100g.toFloatOrNull() ?: 0f) * weightFloat / 100).toInt()
-    val totalProteins = ((proteinsPer100g.toFloatOrNull() ?: 0f) * weightFloat / 100).toInt()
-    val totalFats = ((fatsPer100g.toFloatOrNull() ?: 0f) * weightFloat / 100).toInt()
-    val totalCarbs = ((carbsPer100g.toFloatOrNull() ?: 0f) * weightFloat / 100).toInt()
+    fun calc(value: String): Float {
+        val v = value.toFloatOrNull() ?: 0f
+        val total = v * weightFloat / 100f
+        return (total * 10).roundToInt() / 10f
+    }
+    val totalCalories = calc(caloriesPer100g)
+    val totalProteins = calc(proteinsPer100g)
+    val totalFats = calc(fatsPer100g)
+    val totalCarbs = calc(carbsPer100g)
 
     val haptic = LocalHapticFeedback.current
 
@@ -415,14 +426,14 @@ fun BeautifulManualFoodInputDialog(
                                 NutrientChip(
                                     icon = Icons.Default.LocalFireDepartment,
                                     label = "Ккал",
-                                    value = totalCalories.toString(),
+                                    value = String.format(Locale.US, "%.1f", totalCalories),
                                     color = Color(0xFFFF5722),
                                     modifier = Modifier.weight(1f)
                                 )
                                 NutrientChip(
                                     icon = Icons.Default.FitnessCenter,
                                     label = "Белки",
-                                    value = "${totalProteins}г",
+                                    value = String.format(Locale.US, "%.1fг", totalProteins),
                                     color = Color(0xFF2196F3),
                                     modifier = Modifier.weight(1f)
                                 )
@@ -434,14 +445,14 @@ fun BeautifulManualFoodInputDialog(
                                 NutrientChip(
                                     icon = Icons.Default.WaterDrop,
                                     label = "Жиры",
-                                    value = "${totalFats}г",
+                                    value = String.format(Locale.US, "%.1fг", totalFats),
                                     color = Color(0xFFFFC107),
                                     modifier = Modifier.weight(1f)
                                 )
                                 NutrientChip(
                                     icon = Icons.Default.Grain,
                                     label = "Углеводы",
-                                    value = "${totalCarbs}г",
+                                    value = String.format(Locale.US, "%.1fг", totalCarbs),
                                     color = Color(0xFF9C27B0),
                                     modifier = Modifier.weight(1f)
                                 )
@@ -475,10 +486,10 @@ fun BeautifulManualFoodInputDialog(
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onConfirm(
                                     foodName,
-                                    totalCalories.toString(),
-                                    totalProteins.toString(),
-                                    totalFats.toString(),
-                                    totalCarbs.toString(),
+                                    String.format(Locale.US, "%.1f", totalCalories),
+                                    String.format(Locale.US, "%.1f", totalProteins),
+                                    String.format(Locale.US, "%.1f", totalFats),
+                                    String.format(Locale.US, "%.1f", totalCarbs),
                                     weight
                                 )
                                 animatedDismiss()
@@ -512,6 +523,7 @@ fun BeautifulDescribeFoodDialog(
     isLoading: Boolean
 ) {
     val haptic = LocalHapticFeedback.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     AnimatedPopup(onDismissRequest = { if (!isLoading) onDismiss() }) { animatedDismiss ->
         Card(
@@ -623,6 +635,18 @@ fun BeautifulDescribeFoodDialog(
                                 unfocusedContainerColor = Color(0xFFFAFAFA)
                             ),
                             shape = RoundedCornerShape(12.dp),
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Sentences,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    keyboardController?.hide()
+                                    if (text.isNotBlank() && !isLoading) {
+                                        onSend()
+                                    }
+                                }
+                            ),
                             maxLines = 5
                         )
                     }
@@ -910,8 +934,6 @@ fun BeautifulPhotoConfirmDialog(
                     value = caption,
                     onValueChange = onCaptionChange,
                     label = "Добавить подпись (необязательно)",
-                    icon = Icons.Default.Edit,
-                    iconColor = Color(0xFF4CAF50),
                     modifier = Modifier.fillMaxWidth()
                 )
 

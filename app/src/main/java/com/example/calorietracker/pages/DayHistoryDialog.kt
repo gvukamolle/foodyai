@@ -40,6 +40,9 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.example.calorietracker.ui.components.AnimatedRainbowBorder
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 
 // Основной диалог истории дня
 @Composable
@@ -47,13 +50,37 @@ fun DayHistoryDialog(
     date: LocalDate,
     dailyIntake: DailyIntake,
     nutritionSummary: DailyNutritionSummary?,
-    onDismiss: () -> Unit
-) {
+    onDismiss: () -> Unit,
+    onMealUpdate: (Int, Meal) -> Unit = { _, _ -> },
+    onMealDelete: (Int) -> Unit = {}
+    ) {
     val view = LocalView.current
     val density = LocalDensity.current
     var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isVisible by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    // Локальное состояние списка приемов пищи
+    val meals = remember { mutableStateListOf<Meal>().apply { addAll(dailyIntake.meals) } }
+    var editIndex by remember { mutableStateOf<Int?>(null) }
+
+    val totals by remember {
+        derivedStateOf {
+            var cals = 0
+            var prot = 0f
+            var fat = 0f
+            var carbs = 0f
+            meals.forEach { meal ->
+                meal.foods.forEach { food ->
+                    cals += food.calories
+                    prot += food.protein.toFloat()
+                    fat += food.fat.toFloat()
+                    carbs += food.carbs.toFloat()
+                }
+            }
+            Totals(cals, prot, fat, carbs)
+        }
+    }
 
     // Форматтер для даты
     val dateFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale("ru"))
@@ -151,10 +178,10 @@ fun DayHistoryDialog(
 
                         // Суммарный КБЖУ
                         TotalNutritionCard(
-                            calories = nutritionSummary?.totalCalories ?: dailyIntake.calories,
-                            protein = nutritionSummary?.totalProtein ?: dailyIntake.protein,
-                            fat = nutritionSummary?.totalFat ?: dailyIntake.fat,
-                            carbs = nutritionSummary?.totalCarbs ?: dailyIntake.carbs
+                            calories = totals.calories,
+                            protein = totals.protein,
+                            fat = totals.fat,
+                            carbs = totals.carbs
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -174,7 +201,7 @@ fun DayHistoryDialog(
                                 .fillMaxWidth()
                                 .weight(1f)
                         ) {
-                            if (dailyIntake.meals.isEmpty()) {
+                            if (meals.isEmpty()) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
@@ -191,8 +218,20 @@ fun DayHistoryDialog(
                                     verticalArrangement = Arrangement.spacedBy(16.dp),
                                     contentPadding = PaddingValues(bottom = 16.dp)
                                 ) {
-                                    items(dailyIntake.meals) { meal ->
-                                        MealCard(meal)
+                                    itemsIndexed(meals) { idx, meal ->
+                                        MealCard(
+                                            meal = meal,
+                                            index = idx,
+                                            onEdit = { editIndex = it },
+                                            onUpdate = { i, m ->
+                                                meals[i] = m
+                                                onMealUpdate(i, m)
+                                            },
+                                            onDelete = { i ->
+                                                meals.removeAt(i)
+                                                onMealDelete(i)
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -201,6 +240,39 @@ fun DayHistoryDialog(
                 }
             }
         }
+    }
+
+    if (editIndex != null) {
+        val meal = meals[editIndex!!]
+        val food = meal.foods.firstOrNull()
+        val w = parseWeight(food?.weight ?: "0")
+        val initialData = ManualInputData(
+            name = food?.name ?: "",
+            caloriesPer100g = if (food != null && w > 0) ((food.calories.toFloat() / w) * 100).toInt().toString() else "0",
+            proteinsPer100g = if (food != null && w > 0) ((food.protein.toFloat() / w) * 100).toInt().toString() else "0",
+            fatsPer100g = if (food != null && w > 0) ((food.fat.toFloat() / w) * 100).toInt().toString() else "0",
+            carbsPer100g = if (food != null && w > 0) ((food.carbs.toFloat() / w) * 100).toInt().toString() else "0",
+            weight = food?.weight ?: "100"
+        )
+
+        EnhancedManualInputDialog(
+            initialData = initialData,
+            onDismiss = { editIndex = null },
+            onConfirm = { data ->
+                val updatedFood = FoodItem(
+                    name = data.name,
+                    calories = data.totalCalories,
+                    protein = data.totalProteins.toDouble(),
+                    fat = data.totalFats.toDouble(),
+                    carbs = data.totalCarbs.toDouble(),
+                    weight = data.weight
+                )
+                val updatedMeal = meal.copy(foods = listOf(updatedFood))
+                meals[editIndex!!] = updatedMeal
+                onMealUpdate(editIndex!!, updatedMeal)
+                editIndex = null
+            }
+        )
     }
 }
 
@@ -303,8 +375,13 @@ private fun NutritionStat(
 
 // Обновленная карточка приема пищи
 @Composable
-private fun MealCard(meal: Meal) {
-    Card(
+private fun MealCard(
+    meal: Meal,
+    index: Int,
+    onEdit: (Int) -> Unit,
+    onUpdate: (Int, Meal) -> Unit,
+    onDelete: (Int) -> Unit
+) {    Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFFFAFBFC)
@@ -314,24 +391,65 @@ private fun MealCard(meal: Meal) {
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
+
         ) {
+            var typeExpanded by remember { mutableStateOf(false) }
+            var menuExpanded by remember { mutableStateOf(false) }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = meal.type.displayName,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF4CAF50)
-                )
-                val totalWeight = meal.foods.sumOf { it.weight.toIntOrNull() ?: 0 }
-                Text(
-                    text = "Масса: ${totalWeight} г",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
+                Column(modifier = Modifier.clickable { typeExpanded = true }) {
+                    Text(
+                        text = meal.type.displayName,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.DarkGray
+                    )
+                    val totalWeight = meal.foods.sumOf { parseWeight(it.weight) }
+                    Text(
+                        text = "Масса: ${totalWeight} г",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "edit"
+                        )
+                    }
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Редактировать") },
+                            onClick = {
+                                menuExpanded = false
+                                onEdit(index)
+                        })
+                        DropdownMenuItem(
+                            text = { Text("Удалить") },
+                            onClick = {
+                                menuExpanded = false
+                                onDelete(index)
+                        })
+                    }
+                }
+
+                DropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
+                    val options = listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACK)
+                    options.forEach { option ->
+                        DropdownMenuItem(text = { Text(option.displayName) }, onClick = {
+                            typeExpanded = false
+                            if (option != meal.type) {
+                                onUpdate(index, meal.copy(type = option))
+                            }
+                        })
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -439,4 +557,11 @@ private fun MacroStat(
 
 private fun parseWeight(weight: String): Int {
     return weight.filter { it.isDigit() }.toIntOrNull() ?: 0
-    }
+}
+
+private data class Totals(
+    val calories: Int,
+    val protein: Float,
+    val fat: Float,
+    val carbs: Float
+)

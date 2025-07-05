@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.vector.ImageVector
+import java.util.Locale
+
 
 // Обертка для всех диалогов с анимациями
 @Composable
@@ -77,10 +79,10 @@ fun AnimatedDialogs(
             onConfirm = { data ->
                 viewModel.handleManualInput(
                     name = data.name,
-                    calories = data.totalCalories.toString(),
-                    proteins = data.totalProteins.toString(),
-                    fats = data.totalFats.toString(),
-                    carbs = data.totalCarbs.toString(),
+                    calories = String.format(Locale.US, "%.1f", data.totalCalories),
+                    proteins = String.format(Locale.US, "%.1f", data.totalProteins),
+                    fats = String.format(Locale.US, "%.1f", data.totalFats),
+                    carbs = String.format(Locale.US, "%.1f", data.totalCarbs),
                     weight = data.weight
                 )
                 viewModel.showManualInputDialog = false

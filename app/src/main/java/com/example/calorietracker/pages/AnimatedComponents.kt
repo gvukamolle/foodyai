@@ -19,6 +19,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import java.util.Locale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -353,10 +354,10 @@ fun AnimatedNutritionSummary(data: ManualInputData) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                NutrientChip("Калории", "${data.totalCalories} ккал", Color(0xFFFF5722))
-                NutrientChip("Белки", "${data.totalProteins}г", Color(0xFF9C27B0))
-                NutrientChip("Жиры", "${data.totalFats}г", Color(0xFFFFC107))
-                NutrientChip("Углеводы", "${data.totalCarbs}г", Color(0xFF795548))
+                NutrientChip("Калории", String.format(Locale.US, "%.1f ккал", data.totalCalories), Color(0xFFFF5722))
+                NutrientChip("Белки", String.format(Locale.US, "%.1fг", data.totalProteins), Color(0xFF9C27B0))
+                NutrientChip("Жиры", String.format(Locale.US, "%.1fг", data.totalFats), Color(0xFFFFC107))
+                NutrientChip("Углеводы", String.format(Locale.US, "%.1fг", data.totalCarbs), Color(0xFF795548))
             }
         }
     }

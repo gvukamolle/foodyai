@@ -60,6 +60,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
+import java.util.Locale
 
 // Цветовая схема для диалогов
 object DialogColors {
@@ -416,13 +418,6 @@ fun EnhancedPhotoConfirmDialog(
                     focusedBorderColor = DialogColors.Photo,
                     focusedLabelColor = DialogColors.Photo
                 ),
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = DialogColors.Photo
-                    )
-                },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                 singleLine = true
@@ -637,7 +632,7 @@ private fun NutritionSummary(data: ManualInputData) {
 @Composable
 private fun NutritionItem(
     label: String,
-    value: Int,
+    value: Float,
     unit: String,
     modifier: Modifier = Modifier
 ) {
@@ -660,7 +655,7 @@ private fun NutritionItem(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = value.toString(),
+                    text = String.format(Locale.US, "%.1f", value),
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                     color = Color.Black,
@@ -693,10 +688,17 @@ data class ManualInputData(
     val carbsPer100g: String = "0",
     val weight: String = "100"
 ) {
-    val totalCalories: Int get() = ((caloriesPer100g.toFloatOrNull() ?: 0f) * (weight.toFloatOrNull() ?: 100f) / 100).toInt()
-    val totalProteins: Int get() = ((proteinsPer100g.toFloatOrNull() ?: 0f) * (weight.toFloatOrNull() ?: 100f) / 100).toInt()
-    val totalFats: Int get() = ((fatsPer100g.toFloatOrNull() ?: 0f) * (weight.toFloatOrNull() ?: 100f) / 100).toInt()
-    val totalCarbs: Int get() = ((carbsPer100g.toFloatOrNull() ?: 0f) * (weight.toFloatOrNull() ?: 100f) / 100).toInt()
+    private fun calc(valuePer100g: String): Float {
+        val v = valuePer100g.toFloatOrNull() ?: 0f
+        val w = weight.toFloatOrNull() ?: 100f
+        val total = v * w / 100f
+        return (total * 10).roundToInt() / 10f
+    }
+
+    val totalCalories: Float get() = calc(caloriesPer100g)
+    val totalProteins: Float get() = calc(proteinsPer100g)
+    val totalFats: Float get() = calc(fatsPer100g)
+    val totalCarbs: Float get() = calc(carbsPer100g)
 
     fun isValid(): Boolean = name.isNotBlank() &&
             caloriesPer100g.toFloatOrNull() != null &&

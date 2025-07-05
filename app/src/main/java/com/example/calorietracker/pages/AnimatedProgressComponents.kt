@@ -30,6 +30,7 @@ import com.example.calorietracker.MealType
 import com.example.calorietracker.ui.animations.StaggeredAnimatedList
 import com.example.calorietracker.ui.animations.TypewriterText
 import kotlinx.coroutines.delay
+import kotlin.math.ceil
 
 // Анимированные прогресс-бары с коллапсом
 @Composable
@@ -111,31 +112,31 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
             ),
             NutrientData(
                 label = "Белки",
-                current = viewModel.dailyIntake.protein.toInt(),
+                current = ceil(viewModel.dailyIntake.protein.toDouble()).toInt(),
                 target = viewModel.userProfile.dailyProteins,
                 unit = "г",
                 color = viewModel.getProgressColor(
-                    viewModel.dailyIntake.protein.toInt(),
+                    ceil(viewModel.dailyIntake.protein.toDouble()).toInt(),
                     viewModel.userProfile.dailyProteins
                 )
             ),
             NutrientData(
                 label = "Жиры",
-                current = viewModel.dailyIntake.fat.toInt(),
+                current = ceil(viewModel.dailyIntake.fat.toDouble()).toInt(),
                 target = viewModel.userProfile.dailyFats,
                 unit = "г",
                 color = viewModel.getProgressColor(
-                    viewModel.dailyIntake.fat.toInt(),
+                    ceil(viewModel.dailyIntake.fat.toDouble()).toInt(),
                     viewModel.userProfile.dailyFats
                 )
             ),
             NutrientData(
                 label = "Углеводы",
-                current = viewModel.dailyIntake.carbs.toInt(),
+                current = ceil(viewModel.dailyIntake.carbs.toDouble()).toInt(),
                 target = viewModel.userProfile.dailyCarbs,
                 unit = "г",
                 color = viewModel.getProgressColor(
-                    viewModel.dailyIntake.carbs.toInt(),
+                    ceil(viewModel.dailyIntake.carbs.toDouble()).toInt(),
                     viewModel.userProfile.dailyCarbs
                 )
             )
@@ -326,9 +327,9 @@ private fun CollapsedProgressView(viewModel: CalorieTrackerViewModel) {
     ) {
         val nutrients = listOf(
             Triple("К", viewModel.dailyIntake.calories, viewModel.userProfile.dailyCalories),
-            Triple("Б", viewModel.dailyIntake.protein.toInt(), viewModel.userProfile.dailyProteins),
-            Triple("Ж", viewModel.dailyIntake.fat.toInt(), viewModel.userProfile.dailyFats),
-            Triple("У", viewModel.dailyIntake.carbs.toInt(), viewModel.userProfile.dailyCarbs)
+            Triple("Б", ceil(viewModel.dailyIntake.protein.toDouble()).toInt(), viewModel.userProfile.dailyProteins),
+            Triple("Ж", ceil(viewModel.dailyIntake.fat.toDouble()).toInt(), viewModel.userProfile.dailyFats),
+            Triple("У", ceil(viewModel.dailyIntake.carbs.toDouble()).toInt(), viewModel.userProfile.dailyCarbs)
         )
 
         nutrients.forEachIndexed { index, (label, current, target) ->
