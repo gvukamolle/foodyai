@@ -1,4 +1,4 @@
-package com.example.calorietracker.pages
+package com.example.calorietracker.pages.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -234,8 +234,8 @@ private fun SwitchSettingItem(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFF6200EE),
-                checkedTrackColor = Color(0xFF6200EE).copy(alpha = 0.5f)
+                checkedThumbColor = Color(0xFF000000),
+                checkedTrackColor = Color(0xFF000000).copy(alpha = 0.5f)
             )
         )
     }
@@ -294,7 +294,7 @@ private fun LanguageSelectionDialog(
                             selected = currentLanguage == lang,
                             onClick = { onLanguageSelected(lang) },
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = Color(0xFF6200EE)
+                                selectedColor = Color(0xFF000000)
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))

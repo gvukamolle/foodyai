@@ -1,4 +1,4 @@
-package com.example.calorietracker.pages
+package com.example.calorietracker.pages.settings
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -123,8 +122,8 @@ fun BodySettingsScreen(
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
                                 disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF6200EE),
-                                focusedLabelColor = Color(0xFF6200EE)
+                                focusedBorderColor = Color(0xFF000000),
+                                focusedLabelColor = Color(0xFF000000)
                             )
                         )
 
@@ -138,8 +137,8 @@ fun BodySettingsScreen(
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
                                 disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF6200EE),
-                                focusedLabelColor = Color(0xFF6200EE)
+                                focusedBorderColor = Color(0xFF000000),
+                                focusedLabelColor = Color(0xFF000000)
                             )
                         )
                     }
@@ -176,8 +175,8 @@ fun BodySettingsScreen(
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
                                 disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF6200EE),
-                                focusedLabelColor = Color(0xFF6200EE)
+                                focusedBorderColor = Color(0xFF000000),
+                                focusedLabelColor = Color(0xFF000000)
                             )
                         )
 
@@ -191,8 +190,8 @@ fun BodySettingsScreen(
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
                                 disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF6200EE),
-                                focusedLabelColor = Color(0xFF6200EE)
+                                focusedBorderColor = Color(0xFF000000),
+                                focusedLabelColor = Color(0xFF000000)
                             )
                         )
 
@@ -206,8 +205,8 @@ fun BodySettingsScreen(
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
                                 disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF6200EE),
-                                focusedLabelColor = Color(0xFF6200EE)
+                                focusedBorderColor = Color(0xFF000000),
+                                focusedLabelColor = Color(0xFF000000)
                             )
                         )
                     }
@@ -254,8 +253,8 @@ fun BodySettingsScreen(
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
                                 disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF6200EE),
-                                focusedLabelColor = Color(0xFF6200EE)
+                                focusedBorderColor = Color(0xFF000000),
+                                focusedLabelColor = Color(0xFF000000)
                             )
                         )
                         ExposedDropdownMenu(
@@ -303,8 +302,8 @@ fun BodySettingsScreen(
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
                                 disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF6200EE),
-                                focusedLabelColor = Color(0xFF6200EE)
+                                focusedBorderColor = Color(0xFF000000),
+                                focusedLabelColor = Color(0xFF000000)
                             )
                         )
                         ExposedDropdownMenu(
@@ -359,8 +358,8 @@ fun BodySettingsScreen(
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
                                 disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF6200EE),
-                                focusedLabelColor = Color(0xFF6200EE)
+                                focusedBorderColor = Color(0xFF000000),
+                                focusedLabelColor = Color(0xFF000000)
                             )
                         )
                         ExposedDropdownMenu(
@@ -416,7 +415,7 @@ fun BodySettingsScreen(
                 enabled = isDataValid,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF6200EE)
+                    containerColor = Color(0xFF000000)
                 )
             ) {
                 Text("Сохранить")

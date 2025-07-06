@@ -1,4 +1,4 @@
-package com.example.calorietracker.pages
+package com.example.calorietracker.pages.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -108,8 +108,8 @@ fun ProfileScreen(
                             focusedContainerColor = Color.White,
                             unfocusedContainerColor = Color.White,
                             disabledContainerColor = Color.White,
-                            focusedBorderColor = Color(0xFF6200EE),
-                            focusedLabelColor = Color(0xFF6200EE)
+                            focusedBorderColor = Color(0xFF000000),
+                            focusedLabelColor = Color(0xFF000000)
                         )
                     )
 
@@ -141,7 +141,7 @@ fun ProfileScreen(
                         enabled = displayName.isNotBlank() && displayName != currentUser?.displayName && !isLoading,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF6200EE)
+                            containerColor = Color(0xFF000000)
                         )
                     ) {
                         if (isLoading) {
@@ -171,7 +171,7 @@ fun ProfileScreen(
                     Icon(
                         Icons.Default.Person,
                         contentDescription = null,
-                        tint = Color(0xFF6200EE),
+                        tint = Color(0xFF000000),
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
@@ -212,7 +212,7 @@ fun ProfileScreen(
                         Icon(
                             Icons.Default.Lock,
                             contentDescription = null,
-                            tint = Color(0xFF6200EE),
+                            tint = Color(0xFF000000),
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(16.dp))

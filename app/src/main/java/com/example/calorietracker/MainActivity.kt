@@ -33,6 +33,8 @@ import com.example.calorietracker.pages.*
 import com.example.calorietracker.ui.theme.CalorieTrackerTheme
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
+import com.example.calorietracker.pages.settings.*
+
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {

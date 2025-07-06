@@ -107,7 +107,7 @@ fun SettingsScreenV2(
                             modifier = Modifier
                                 .size(60.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF6200EE)),
+                                .background(Color(0xFF000000)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -409,7 +409,7 @@ private fun SettingsGroup(
                             item.badge?.let { badge ->
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Surface(
-                                    color = Color(0xFF6200EE),
+                                    color = Color(0xFF000000),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Text(
