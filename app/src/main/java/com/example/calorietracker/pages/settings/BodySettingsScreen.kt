@@ -1,6 +1,8 @@
 package com.example.calorietracker.pages.settings
 
+import android.R.attr.height
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.utils.BodyParametersValidator
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,6 +51,10 @@ fun BodySettingsScreen(
     var year by remember { mutableStateOf(initialBirthdayParts.getOrNull(0)?.toString() ?: "") }
     var month by remember { mutableStateOf(initialBirthdayParts.getOrNull(1)?.toString() ?: "") }
     var day by remember { mutableStateOf(initialBirthdayParts.getOrNull(2)?.toString() ?: "") }
+
+    var heightError by remember { mutableStateOf<String?>(null) }
+    var weightError by remember { mutableStateOf<String?>(null) }
+    var birthdayError by remember { mutableStateOf<String?>(null) }
 
     // Проверка валидности
     val isDataValid by remember(height, weight, year, month, day, gender, condition, goal) {
@@ -95,7 +102,8 @@ fun BodySettingsScreen(
             // Секция основных параметров
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                colors = CardDefaults.cardColors(containerColor = Color.White), // Изменено с Color(0xFFF5F5F5)
+                border = BorderStroke(1.dp, Color.Black), // Добавлена черная обводка
             ) {
                 Column(
                     modifier = Modifier
@@ -114,7 +122,11 @@ fun BodySettingsScreen(
                     ) {
                         OutlinedTextField(
                             value = height,
-                            onValueChange = { height = it.filter(Char::isDigit) },
+                            onValueChange = {
+                                height = it
+                                val validation = BodyParametersValidator.validateHeight(it)
+                                heightError = validation.errorMessage
+                            },
                             label = { Text("Рост (см)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
@@ -129,7 +141,11 @@ fun BodySettingsScreen(
 
                         OutlinedTextField(
                             value = weight,
-                            onValueChange = { weight = it.filter(Char::isDigit) },
+                            onValueChange = {
+                                weight = it
+                                val validation = BodyParametersValidator.validateWeight(it)
+                                weightError = validation.errorMessage
+                            },
                             label = { Text("Вес (кг)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
@@ -148,7 +164,8 @@ fun BodySettingsScreen(
             // Секция даты рождения
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                colors = CardDefaults.cardColors(containerColor = Color.White), // Изменено
+                border = BorderStroke(1.dp, Color.Black), // Добавлена черная обводка
             ) {
                 Column(
                     modifier = Modifier
@@ -167,7 +184,11 @@ fun BodySettingsScreen(
                     ) {
                         OutlinedTextField(
                             value = day,
-                            onValueChange = { if (it.length <= 2) day = it.filter(Char::isDigit) },
+                            onValueChange = {
+                                height = it
+                                val validation = BodyParametersValidator.validateHeight(it)
+                                heightError = validation.errorMessage
+                            },
                             label = { Text("День") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
@@ -182,7 +203,11 @@ fun BodySettingsScreen(
 
                         OutlinedTextField(
                             value = month,
-                            onValueChange = { if (it.length <= 2) month = it.filter(Char::isDigit) },
+                            onValueChange = {
+                                height = it
+                                val validation = BodyParametersValidator.validateHeight(it)
+                                heightError = validation.errorMessage
+                            },
                             label = { Text("Месяц") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
@@ -197,7 +222,11 @@ fun BodySettingsScreen(
 
                         OutlinedTextField(
                             value = year,
-                            onValueChange = { if (it.length <= 4) year = it.filter(Char::isDigit) },
+                            onValueChange = {
+                                height = it
+                                val validation = BodyParametersValidator.validateHeight(it)
+                                heightError = validation.errorMessage
+                            },
                             label = { Text("Год") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1.5f),
@@ -216,7 +245,8 @@ fun BodySettingsScreen(
             // Секция дополнительных параметров
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                colors = CardDefaults.cardColors(containerColor = Color.White), // Изменено
+                border = BorderStroke(1.dp, Color.Black), // Добавлена черная обводка
             ) {
                 Column(
                     modifier = Modifier
@@ -242,7 +272,11 @@ fun BodySettingsScreen(
                                 "female" -> "Женский"
                                 else -> ""
                             },
-                            onValueChange = {},
+                            onValueChange = {
+                                height = it
+                                val validation = BodyParametersValidator.validateHeight(it)
+                                heightError = validation.errorMessage
+                            },
                             readOnly = true,
                             label = { Text("Пол") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
@@ -291,7 +325,11 @@ fun BodySettingsScreen(
                                 "very-active" -> "Очень активный"
                                 else -> ""
                             },
-                            onValueChange = {},
+                            onValueChange = {
+                                height = it
+                                val validation = BodyParametersValidator.validateHeight(it)
+                                heightError = validation.errorMessage
+                            },
                             readOnly = true,
                             label = { Text("Активность") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) },
@@ -347,7 +385,11 @@ fun BodySettingsScreen(
                                 "muscle-gain" -> "Набор массы"
                                 else -> ""
                             },
-                            onValueChange = {},
+                            onValueChange = {
+                                height = it
+                                val validation = BodyParametersValidator.validateHeight(it)
+                                heightError = validation.errorMessage
+                            },
                             readOnly = true,
                             label = { Text("Цель") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) },

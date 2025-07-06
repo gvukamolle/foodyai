@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.example.calorietracker.data.DailyNutritionSummary
+import com.example.calorietracker.utils.NutritionFormatter
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -87,7 +88,7 @@ data class FoodHistoryItem(
 )
 
 class CalorieTrackerViewModel(
-    private val repository: DataRepository,
+    internal val repository: DataRepository,
     private val context: Context
 ) : ViewModel() {
     val userId = getOrCreateUserId(context)
@@ -101,6 +102,12 @@ class CalorieTrackerViewModel(
         private set
     var dailyFat by mutableStateOf(0f)
         private set
+    val formattedProtein: String
+        get() = NutritionFormatter.formatMacro(dailyProtein)
+    val formattedCarbs: String
+        get() = NutritionFormatter.formatMacro(dailyCarbs)
+    val formattedFat: String
+        get() = NutritionFormatter.formatMacro(dailyFat)
 
     // Список приемов пищи
     var meals by mutableStateOf<List<Meal>>(emptyList())

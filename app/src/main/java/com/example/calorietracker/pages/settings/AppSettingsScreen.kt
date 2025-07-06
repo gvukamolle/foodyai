@@ -1,27 +1,68 @@
 package com.example.calorietracker.pages.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.utils.CacheManager
+import com.example.calorietracker.utils.ExportManager
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSettingsScreen(
+    viewModel: CalorieTrackerViewModel,
     onBack: () -> Unit
 ) {
     val systemUiController = rememberSystemUiController()
@@ -31,6 +72,9 @@ fun AppSettingsScreen(
 
     val haptic = LocalHapticFeedback.current
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var showExportDialog by remember { mutableStateOf(false) }
 
     // Состояния настроек
     var notificationsEnabled by remember { mutableStateOf(true) }
@@ -138,19 +182,30 @@ fun AppSettingsScreen(
                 ClickableSettingItem(
                     title = "Очистить кэш",
                     subtitle = "Освободить место на устройстве",
-                    onClick = { /* TODO: Clear cache */ }
+                    onClick = {
+                        scope.launch {
+                            val cacheInfo = CacheManager.getCacheDetails(context)
+                            val totalSizeStr = CacheManager.formatFileSize(cacheInfo.totalSize)
+
+                            val success = CacheManager.clearCache(context)
+                            if (success) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                Toast.makeText(
+                                    context,
+                                    "Кэш очищен! Освобождено: $totalSizeStr",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                Toast.makeText(context, "Ошибка очистки кэша", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 ClickableSettingItem(
                     title = "Экспорт данных",
                     subtitle = "Сохранить данные в файл",
-                    onClick = { /* TODO: Export data */ }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                ClickableSettingItem(
-                    title = "Импорт данных",
-                    subtitle = "Загрузить данные из файла",
-                    onClick = { /* TODO: Import data */ }
+                    onClick = { showExportDialog = true }
                 )
             }
 
@@ -174,6 +229,30 @@ fun AppSettingsScreen(
         }
     }
 
+    if (showExportDialog) {
+        ExportDataDialog(
+            onDismiss = { showExportDialog = false },
+            onExport = { format ->
+                scope.launch {
+                    try {
+                        val file = when (format) {
+                            "CSV" -> ExportManager.exportToCSV(viewModel, context)
+                            "JSON" -> ExportManager.exportToJSON(viewModel, context)
+                            else -> null
+                        }
+                        file?.let {
+                            ExportManager.shareFile(context, it)
+                            Toast.makeText(context, "Данные экспортированы", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                showExportDialog = false
+            }
+        )
+    }
+
     if (showLanguageDialog) {
         LanguageSelectionDialog(
             currentLanguage = language,
@@ -184,6 +263,68 @@ fun AppSettingsScreen(
             onDismiss = { showLanguageDialog = false }
         )
     }
+}
+
+@Composable
+private fun ExportDataDialog(
+    onDismiss: () -> Unit,
+    onExport: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Экспорт данных") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Выберите формат для экспорта:")
+
+                Card(
+                    onClick = { onExport("CSV") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.TableChart, contentDescription = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("CSV", fontWeight = FontWeight.Medium)
+                            Text("Таблица для Excel", fontSize = 12.sp, color = Color.Gray)
+                        }
+                    }
+                }
+
+                Card(
+                    onClick = { onExport("JSON") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Code, contentDescription = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("JSON", fontWeight = FontWeight.Medium)
+                            Text("Для разработчиков", fontSize = 12.sp, color = Color.Gray)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }
 
 @Composable

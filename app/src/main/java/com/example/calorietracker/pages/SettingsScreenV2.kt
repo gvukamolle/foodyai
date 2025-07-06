@@ -25,9 +25,9 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.auth.SubscriptionPlan
-import com.example.calorietracker.auth.UserData
 import kotlinx.coroutines.launch
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.ui.platform.LocalContext
 
 
 data class SettingsItem(
@@ -59,6 +59,7 @@ fun SettingsScreenV2(
     val currentUser by authManager.currentUser.collectAsState()
     var showSignOutDialog by remember { mutableStateOf(false) }
     var deleteDialogStep by remember { mutableStateOf(0) }
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -177,27 +178,6 @@ fun SettingsScreenV2(
                             subtitle = currentUser?.subscriptionPlan?.displayName ?: "Бесплатный",
                             badge = if (currentUser?.subscriptionPlan == SubscriptionPlan.FREE) "Обновить" else null,
                             onClick = { /* TODO: Subscription screen */ }
-                        )
-                    ),
-                    onItemClick = { item -> item.onClick() }
-                )
-            }
-
-            item {
-                SettingsGroup(
-                    title = "Данные",
-                    items = listOf(
-                        SettingsItem(
-                            icon = Icons.Default.Download,
-                            title = "Выгрузка данных",
-                            subtitle = "Экспорт в CSV, PDF",
-                            onClick = { /* TODO: Data export */ }
-                        ),
-                        SettingsItem(
-                            icon = Icons.Default.Storage,
-                            title = "Управление данными",
-                            subtitle = "Очистка, резервное копирование",
-                            onClick = { /* TODO: Data management */ }
                         )
                     ),
                     onItemClick = { item -> item.onClick() }

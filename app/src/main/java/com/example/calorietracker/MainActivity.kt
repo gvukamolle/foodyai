@@ -305,6 +305,7 @@ fun CalorieTrackerApp(
 
                     Screen.AppSettings -> {
                         AppSettingsScreen(
+                            viewModel = viewModel,
                             onBack = {
                                 showAppSettingsScreen = false
                                 showSettingsScreen = true

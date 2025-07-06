@@ -43,6 +43,7 @@ import com.example.calorietracker.ui.components.AnimatedRainbowBorder
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
 
 
@@ -321,7 +322,7 @@ private fun TotalNutritionCard(
                     )
                     NutritionStat(
                         "Белки",
-                        "%.1f г".format(protein),
+                        NutritionFormatter.formatMacroWithUnit(protein),
                         Color(0xFF2196F3),
                         modifier = Modifier.weight(1f)
                     )
@@ -332,13 +333,13 @@ private fun TotalNutritionCard(
                 ) {
                     NutritionStat(
                         "Жиры",
-                        "%.1f г".format(fat),
+                        NutritionFormatter.formatMacroWithUnit(fat),
                         Color(0xFFFF9800),
                         modifier = Modifier.weight(1f)
                     )
                     NutritionStat(
                         "Углеводы",
-                        "%.1f г".format(carbs),
+                        NutritionFormatter.formatMacroWithUnit(carbs),
                         Color(0xFF9C27B0),
                         modifier = Modifier.weight(1f)
                     )
