@@ -31,6 +31,8 @@ import com.example.calorietracker.ui.animations.StaggeredAnimatedList
 import com.example.calorietracker.ui.animations.TypewriterText
 import kotlinx.coroutines.delay
 import kotlin.math.ceil
+import com.example.calorietracker.utils.NutritionFormatter
+
 
 // Анимированные прогресс-бары с коллапсом
 @Composable
@@ -534,9 +536,9 @@ private fun AnimatedFoodDetails(food: FoodItem) {
     val details = listOf(
         "Блюдо: ${food.name}",
         "Калории: ${food.calories}",
-        "Белки: ${food.protein} г",
-        "Жиры: ${food.fat} г",
-        "Углеводы: ${food.carbs} г",
+        "Белки: ${NutritionFormatter.formatMacro(food.protein.toFloat())} г",
+        "Жиры: ${NutritionFormatter.formatMacro(food.fat.toFloat())} г",
+        "Углеводы: ${NutritionFormatter.formatMacro(food.carbs.toFloat())} г",
         "Вес: ${food.weight} г"
     )
 

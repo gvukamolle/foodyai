@@ -3,13 +3,13 @@ package com.example.calorietracker.pages
 import android.graphics.Bitmap
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -48,6 +48,7 @@ import kotlin.math.roundToInt
 
 
 // Основной диалог истории дня
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DayHistoryDialog(
     date: LocalDate,
@@ -152,61 +153,68 @@ fun DayHistoryDialog(
             ) {
                 AnimatedRainbowBorder(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .fillMaxHeight(0.8f)
-                        .padding(16.dp),
+                        .fillMaxSize()
+                        .padding(24.dp),
                     borderWidth = 8.dp,
                     cornerRadius = 24.dp
                 ) {
-                    Column(
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(24.dp)
+                            .padding(24.dp),
+                        contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
-                        // Заголовок с датой и кнопкой закрытия
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = date.format(dateFormatter),
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
+                        stickyHeader {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color.White)
+                                    .padding(bottom = 20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = date.format(dateFormatter),
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                            }
+                        }
+
+                        item {
+                            TotalNutritionCard(
+                                calories = totals.calories,
+                                protein = totals.protein,
+                                fat = totals.fat,
+                                carbs = totals.carbs
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        item { Spacer(modifier = Modifier.height(24.dp)) }
 
-                        // Суммарный КБЖУ
-                        TotalNutritionCard(
-                            calories = totals.calories,
-                            protein = totals.protein,
-                            fat = totals.fat,
-                            carbs = totals.carbs
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Заголовок истории
-                        Text(
-                            text = "История питания",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.Black,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
+                        stickyHeader {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color.White)
+                                    .padding(vertical = 16.dp)
+                            ) {
+                                Text(
+                                    text = "История питания",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.Black
+                                )
+                            }
+                        }
 
                         // Прокручиваемый список приемов пищи
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                        ) {
-                            if (meals.isEmpty()) {
+                        if (meals.isEmpty()) {
+                            item {
                                 Box(
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 32.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -215,27 +223,24 @@ fun DayHistoryDialog(
                                         fontSize = 16.sp
                                     )
                                 }
-                            } else {
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    contentPadding = PaddingValues(bottom = 16.dp)
-                                ) {
-                                    itemsIndexed(meals) { idx, meal ->
-                                        MealCard(
-                                            meal = meal,
-                                            index = idx,
-                                            onEdit = { editIndex = it },
-                                            onUpdate = { i, m ->
-                                                meals[i] = m
-                                                onMealUpdate(i, m)
-                                            },
-                                            onDelete = { i ->
-                                                meals.removeAt(i)
-                                                onMealDelete(i)
-                                            }
-                                        )
+                            }
+                        } else {
+                            itemsIndexed(meals) { idx, meal ->
+                                MealCard(
+                                    meal = meal,
+                                    index = idx,
+                                    onEdit = { editIndex = it },
+                                    onUpdate = { i, m ->
+                                        meals[i] = m
+                                        onMealUpdate(i, m)
+                                    },
+                                    onDelete = { i ->
+                                        meals.removeAt(i)
+                                        onMealDelete(i)
                                     }
+                                )
+                                if (idx != meals.lastIndex) {
+                                    Spacer(modifier = Modifier.height(16.dp))
                                 }
                             }
                         }
@@ -500,13 +505,13 @@ private fun FoodItemRow(food: FoodItem) {
             ) {
                 MacroStat(
                     "Калории",
-                    "${food.calories} ккал",
+                    NutritionFormatter.formatCalories(food.calories),
                     Color(0xFF4CAF50),
                     modifier = Modifier.weight(1f)
                 )
                 MacroStat(
                     "Белки",
-                    "${food.protein} г",
+                    NutritionFormatter.formatMacroWithUnit(food.protein.toFloat()),
                     Color(0xFF2196F3),
                     modifier = Modifier.weight(1f)
                 )
@@ -517,13 +522,13 @@ private fun FoodItemRow(food: FoodItem) {
             ) {
                 MacroStat(
                     "Жиры",
-                    "${food.fat} г",
+                    NutritionFormatter.formatMacroWithUnit(food.fat.toFloat()),
                     Color(0xFFFF9800),
                     modifier = Modifier.weight(1f)
                 )
                 MacroStat(
                     "Углеводы",
-                    "${food.carbs} г",
+                    NutritionFormatter.formatMacroWithUnit(food.carbs.toFloat()),
                     Color(0xFF9C27B0),
                     modifier = Modifier.weight(1f)
                 )

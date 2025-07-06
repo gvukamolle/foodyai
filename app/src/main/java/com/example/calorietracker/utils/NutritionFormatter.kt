@@ -2,7 +2,7 @@
 
 package com.example.calorietracker.utils
 
-import kotlin.math.ceil
+import kotlin.math.round
 
 /**
  * Утилита для форматирования значений КБЖУ
@@ -16,8 +16,8 @@ object NutritionFormatter {
      * @return строка с одним знаком после запятой, округление вверх
      */
     fun formatMacro(value: Float): String {
-        // Округляем вверх до 1 знака после запятой
-        val rounded = ceil(value * 10) / 10
+        // Округляем до одного знака после запятой
+        val rounded = round(value * 10) / 10f
         return "%.1f".format(rounded)
     }
 

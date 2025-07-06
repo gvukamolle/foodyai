@@ -836,9 +836,9 @@ class CalorieTrackerViewModel(
                 val yesterdayIntake = repository.getIntakeHistory(yesterday)
                 if (yesterdayIntake != null && yesterdayIntake.calories > 0) {
                     "Вчера вы употребили: ${yesterdayIntake.calories} ккал, " +
-                            "белки: ${yesterdayIntake.protein}г, " +
-                            "жиры: ${yesterdayIntake.fat}г, " +
-                            "углеводы: ${yesterdayIntake.carbs}г."
+                            "белки: ${NutritionFormatter.formatMacro(yesterdayIntake.protein.toFloat())}г, " +
+                            "жиры: ${NutritionFormatter.formatMacro(yesterdayIntake.fat.toFloat())}г, " +
+                            "углеводы: ${NutritionFormatter.formatMacro(yesterdayIntake.carbs.toFloat())}г."
                 } else {
                     "У меня нет данных о вашем питании за вчера."
                 }
