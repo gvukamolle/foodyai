@@ -31,45 +31,6 @@ import com.example.calorietracker.auth.SubscriptionPlan
 //============== КОМПОНЕНТЫ ДЛЯ ГЛАВНОГО ЭКРАНА ==============
 
 @Composable
-fun SettingsGroup(
-    title: String,
-    items: List<SettingsItem>,
-    onItemClick: (SettingsItem) -> Unit
-) {
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp)
-    ) {
-        Text(
-            text = title,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.Gray,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-        )
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            elevation = CardDefaults.cardElevation(0.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column {
-                items.forEachIndexed { index, item ->
-                    SettingsItemRow(
-                        item = item,
-                        onClick = { onItemClick(item) }
-                    )
-                    if (index < items.size - 1) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 56.dp),
-                            color = Color(0xFFF0F0F0)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun SettingsItemRow(
     item: SettingsItem,
     onClick: () -> Unit

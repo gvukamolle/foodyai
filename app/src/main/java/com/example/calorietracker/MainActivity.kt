@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
-    Setup, Main, SettingsV2, Calendar
+    Setup, Main, SettingsV2, Calendar, Profile, BodySettings, AppSettings
 }
 
 private fun decodeBitmapWithOrientation(file: java.io.File): Bitmap {
@@ -108,6 +108,9 @@ fun CalorieTrackerApp(
     var showSettingsScreen by remember { mutableStateOf(false) }
     var showCalendarScreen by remember { mutableStateOf(false) }
     var currentScreen by remember { mutableStateOf<Screen?>(null) }
+    var showProfileScreen by remember { mutableStateOf(false) }
+    var showBodySettingsScreen by remember { mutableStateOf(false) }
+    var showAppSettingsScreen by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
@@ -172,8 +175,20 @@ fun CalorieTrackerApp(
         }
     }
 
-    BackHandler(enabled = showSettingsScreen || showCalendarScreen) {
+    BackHandler(enabled = showSettingsScreen || showCalendarScreen || showProfileScreen || showBodySettingsScreen || showAppSettingsScreen) {
         when {
+            showProfileScreen -> {
+                showProfileScreen = false
+                showSettingsScreen = true
+            }
+            showBodySettingsScreen -> {
+                showBodySettingsScreen = false
+                showSettingsScreen = true
+            }
+            showAppSettingsScreen -> {
+                showAppSettingsScreen = false
+                showSettingsScreen = true
+            }
             showCalendarScreen -> {
                 showCalendarScreen = false
                 currentScreen = Screen.Main
@@ -196,8 +211,16 @@ fun CalorieTrackerApp(
         }
 
         AuthManager.AuthState.AUTHENTICATED -> {
+            val targetScreen = when {
+                showProfileScreen -> Screen.Profile
+                showBodySettingsScreen -> Screen.BodySettings
+                showAppSettingsScreen -> Screen.AppSettings
+                showSettingsScreen -> Screen.SettingsV2
+                else -> currentScreen
+            }
+
             Crossfade(
-                targetState = if (showSettingsScreen) Screen.SettingsV2 else currentScreen,
+                targetState = targetScreen,
                 animationSpec = tween(durationMillis = 300),
                 label = "main_nav"
             ) { screen ->
@@ -238,9 +261,52 @@ fun CalorieTrackerApp(
                             authManager = authManager,
                             viewModel = viewModel,
                             onBack = { showSettingsScreen = false },
-                            onNavigateToProfile = {},
-                            onNavigateToBodySettings = {},
+                            onNavigateToProfile = {
+                                showProfileScreen = true
+                                showSettingsScreen = false
+                            },
+                            onNavigateToBodySettings = {
+                                showBodySettingsScreen = true
+                                showSettingsScreen = false
+                            },
+                            onNavigateToAppSettings = {
+                                showAppSettingsScreen = true
+                                showSettingsScreen = false
+                            },
                             onSignOut = { authManager.signOut() },
+                        )
+                    }
+
+                    Screen.Profile -> {
+                        ProfileScreen(
+                            authManager = authManager,
+                            onBack = {
+                                showProfileScreen = false
+                                showSettingsScreen = true
+                            },
+                            onNavigateToBodySettings = {
+                                showProfileScreen = false
+                                showBodySettingsScreen = true
+                            }
+                        )
+                    }
+
+                    Screen.BodySettings -> {
+                        BodySettingsScreen(
+                            viewModel = viewModel,
+                            onBack = {
+                                showBodySettingsScreen = false
+                                showProfileScreen = true
+                            }
+                        )
+                    }
+
+                    Screen.AppSettings -> {
+                        AppSettingsScreen(
+                            onBack = {
+                                showAppSettingsScreen = false
+                                showSettingsScreen = true
+                            }
                         )
                     }
 
@@ -270,7 +336,7 @@ fun CalorieTrackerApp(
                                 viewModel.showDescriptionDialog = true
                             },
                             onSettingsClick = { showSettingsScreen = true },
-                            onCalendarClick = {  // Новый обработчик
+                            onCalendarClick = {
                                 currentScreen = Screen.Calendar
                                 showCalendarScreen = true
                             }

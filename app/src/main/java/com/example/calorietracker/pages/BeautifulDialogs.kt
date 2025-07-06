@@ -647,7 +647,8 @@ fun BeautifulDescribeFoodDialog(
                                     }
                                 }
                             ),
-                            maxLines = 5
+                            singleLine = true,
+                            maxLines = 1
                         )
                     }
                 }

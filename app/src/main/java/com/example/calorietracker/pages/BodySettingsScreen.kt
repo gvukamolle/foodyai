@@ -1,0 +1,426 @@
+package com.example.calorietracker.pages
+
+import android.widget.Toast
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.calorietracker.CalorieTrackerViewModel
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BodySettingsScreen(
+    viewModel: CalorieTrackerViewModel,
+    onBack: () -> Unit
+) {
+    val systemUiController = rememberSystemUiController()
+    LaunchedEffect(Unit) {
+        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
+    }
+
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val scrollState = rememberScrollState()
+
+    // Локальные состояния для редактирования
+    var height by remember { mutableStateOf(if (viewModel.userProfile.height > 0) viewModel.userProfile.height.toString() else "") }
+    var weight by remember { mutableStateOf(if (viewModel.userProfile.weight > 0) viewModel.userProfile.weight.toString() else "") }
+    var gender by remember { mutableStateOf(viewModel.userProfile.gender) }
+    var condition by remember { mutableStateOf(viewModel.userProfile.condition) }
+    var goal by remember { mutableStateOf(viewModel.userProfile.goal) }
+
+    val initialBirthdayParts = viewModel.userProfile.birthday.split("-").mapNotNull { it.toIntOrNull() }
+    var year by remember { mutableStateOf(initialBirthdayParts.getOrNull(0)?.toString() ?: "") }
+    var month by remember { mutableStateOf(initialBirthdayParts.getOrNull(1)?.toString() ?: "") }
+    var day by remember { mutableStateOf(initialBirthdayParts.getOrNull(2)?.toString() ?: "") }
+
+    // Проверка валидности
+    val isDataValid by remember(height, weight, year, month, day, gender, condition, goal) {
+        derivedStateOf {
+            height.toIntOrNull() ?: 0 > 0 &&
+                    weight.toIntOrNull() ?: 0 > 0 &&
+                    gender.isNotEmpty() &&
+                    condition.isNotEmpty() &&
+                    goal.isNotEmpty() &&
+                    (year.toIntOrNull() ?: 0) > 1900 &&
+                    (month.toIntOrNull() ?: 0) in 1..12 &&
+                    (day.toIntOrNull() ?: 0) in 1..31
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Настройки тела", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onBack()
+                    }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black,
+                    navigationIconContentColor = Color.Black
+                )
+            )
+        },
+        containerColor = Color.White
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(scrollState)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Секция основных параметров
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        "Основные параметры",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = height,
+                            onValueChange = { height = it.filter(Char::isDigit) },
+                            label = { Text("Рост (см)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                disabledContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF6200EE),
+                                focusedLabelColor = Color(0xFF6200EE)
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = weight,
+                            onValueChange = { weight = it.filter(Char::isDigit) },
+                            label = { Text("Вес (кг)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                disabledContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF6200EE),
+                                focusedLabelColor = Color(0xFF6200EE)
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Секция даты рождения
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        "Дата рождения",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = day,
+                            onValueChange = { if (it.length <= 2) day = it.filter(Char::isDigit) },
+                            label = { Text("День") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                disabledContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF6200EE),
+                                focusedLabelColor = Color(0xFF6200EE)
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = month,
+                            onValueChange = { if (it.length <= 2) month = it.filter(Char::isDigit) },
+                            label = { Text("Месяц") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                disabledContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF6200EE),
+                                focusedLabelColor = Color(0xFF6200EE)
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = year,
+                            onValueChange = { if (it.length <= 4) year = it.filter(Char::isDigit) },
+                            label = { Text("Год") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1.5f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                disabledContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF6200EE),
+                                focusedLabelColor = Color(0xFF6200EE)
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Секция дополнительных параметров
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        "Дополнительные параметры",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // Пол
+                    var genderExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = genderExpanded,
+                        onExpandedChange = { genderExpanded = !genderExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = when (gender) {
+                                "male" -> "Мужской"
+                                "female" -> "Женский"
+                                else -> ""
+                            },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Пол") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                disabledContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF6200EE),
+                                focusedLabelColor = Color(0xFF6200EE)
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = genderExpanded,
+                            onDismissRequest = { genderExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Мужской") },
+                                onClick = {
+                                    gender = "male"
+                                    genderExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Женский") },
+                                onClick = {
+                                    gender = "female"
+                                    genderExpanded = false
+                                }
+                            )
+                        }
+                    }
+
+                    // Активность
+                    var conditionExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = conditionExpanded,
+                        onExpandedChange = { conditionExpanded = !conditionExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = when (condition) {
+                                "sedentary" -> "Малоподвижный"
+                                "active" -> "Активный"
+                                "very-active" -> "Очень активный"
+                                else -> ""
+                            },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Активность") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                disabledContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF6200EE),
+                                focusedLabelColor = Color(0xFF6200EE)
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = conditionExpanded,
+                            onDismissRequest = { conditionExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Малоподвижный") },
+                                onClick = {
+                                    condition = "sedentary"
+                                    conditionExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Активный") },
+                                onClick = {
+                                    condition = "active"
+                                    conditionExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Очень активный") },
+                                onClick = {
+                                    condition = "very-active"
+                                    conditionExpanded = false
+                                }
+                            )
+                        }
+                    }
+
+                    // Цель
+                    var goalExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = goalExpanded,
+                        onExpandedChange = { goalExpanded = !goalExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = when (goal) {
+                                "weight-loss" -> "Похудение"
+                                "maintain" -> "Поддержание веса"
+                                "muscle-gain" -> "Набор массы"
+                                else -> ""
+                            },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Цель") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                disabledContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF6200EE),
+                                focusedLabelColor = Color(0xFF6200EE)
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = goalExpanded,
+                            onDismissRequest = { goalExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Похудение") },
+                                onClick = {
+                                    goal = "weight-loss"
+                                    goalExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Поддержание веса") },
+                                onClick = {
+                                    goal = "maintain"
+                                    goalExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Набор массы") },
+                                onClick = {
+                                    goal = "muscle-gain"
+                                    goalExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Кнопка сохранения
+            Button(
+                onClick = {
+                    val formattedBirthday = String.format("%04d-%02d-%02d",
+                        year.toIntOrNull() ?: 0,
+                        month.toIntOrNull() ?: 0,
+                        day.toIntOrNull() ?: 0
+                    )
+                    val finalProfile = viewModel.userProfile.copy(
+                        height = height.toInt(),
+                        weight = weight.toInt(),
+                        birthday = formattedBirthday,
+                        gender = gender,
+                        condition = condition,
+                        goal = goal
+                    )
+                    viewModel.updateUserProfile(finalProfile)
+                    Toast.makeText(context, "Настройки обновлены", Toast.LENGTH_SHORT).show()
+                    onBack()
+                },
+                enabled = isDataValid,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF6200EE)
+                )
+            ) {
+                Text("Сохранить")
+            }
+        }
+    }
+}

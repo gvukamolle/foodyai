@@ -45,7 +45,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import com.example.calorietracker.extensions.fancyShadow
-import com.example.calorietracker.ui.components.AnimatedRainbowBorder
 import kotlin.math.abs
 
 @Composable
@@ -171,187 +170,127 @@ fun CalendarScreen(
                     selectedDay = selectedDay,
                     onDayClick = { day ->
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        selectedDay = day
+                        if (selectedDay == day) {
+                            coroutineScope.launch {
+                                val dateString = day.toString()
+                                dayHistoryData = repository.getIntakeHistory(dateString)
+                                showDayHistory = true
+                            }
+                        } else {
+                            selectedDay = day
+                        }
                     }
                 )
             }
         }
+    }
 
-// Кнопка с радужной обводкой
-        AnimatedRainbowBorder(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            borderWidth = 4.dp,
-            cornerRadius = 20.dp
-        ) {
-            // 1. Определяем состояние кнопки (включена или нет) на основе selectedDay.
-            // Это сделает код более читаемым.
-            val isDaySelected = selectedDay != null
 
-            Button(
-                onClick = {
-                    // Теперь onClick будет вызван ТОЛЬКО если кнопка включена (isDaySelected = true)
+        if (showDayHistory && selectedDay != null) {
+            DayHistoryDialog(
+                date = selectedDay!!,
+                dailyIntake = dayHistoryData ?: DailyIntake(),
+                nutritionSummary = calendarData[selectedDay],
+                onDismiss = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    coroutineScope.launch {
-                        val dateString =
-                            selectedDay!!.toString() // !! здесь безопасно, т.к. кнопка неактивна, если selectedDay == null
-                        dayHistoryData = repository.getIntakeHistory(dateString)
-                        showDayHistory = true
-                    }
+                    showDayHistory = false
                 },
-                enabled = isDaySelected,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(90.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    disabledContainerColor = Color.White
-                )
-            ) {
-                AnimatedContent(
-                    targetState = isDaySelected,
-                    label = "Button Text Animation",
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(200)) togetherWith fadeOut(
-                            animationSpec = tween(
-                                200
-                            )
-                        )
-                    }
-                ) { isSelected ->
-                    if (isSelected) {
-                        Text(
-                            text = "Показать историю питания",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                    } else {
-                        Text(
-                            text = "Сначала выберите день",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.LightGray // Серый цвет, как требовалось
-                        )
-                    }
+                onMealUpdate = { idx, meal ->
+                    viewModel.updateMealInHistory(selectedDay!!.toString(), idx, meal)
+                },
+                onMealDelete = { idx ->
+                    viewModel.deleteMealFromHistory(selectedDay!!.toString(), idx)
                 }
-            }
+            )
         }
     }
 
-    if (showDayHistory && selectedDay != null) {
-        DayHistoryDialog(
-            date = selectedDay!!,
-            dailyIntake = dayHistoryData ?: DailyIntake(),
-            nutritionSummary = calendarData[selectedDay],
-            onDismiss = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                showDayHistory = false
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun CalendarTopBar(
+        currentMonth: YearMonth,
+        onBack: () -> Unit,
+        onPreviousMonth: () -> Unit,
+        onNextMonth: () -> Unit
+    ) {
+        val month = currentMonth.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale("ru"))
+            .replaceFirstChar { it.uppercase() }
+        val year = currentMonth.year
+
+        CenterAlignedTopAppBar(
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    IconButton(onClick = onPreviousMonth) {
+                        Icon(
+                            Icons.Default.KeyboardArrowLeft,
+                            contentDescription = "Предыдущий месяц"
+                        )
+                    }
+
+                    Text(
+                        text = "$month $year",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+
+                    IconButton(
+                        onClick = onNextMonth,
+                        enabled = currentMonth < YearMonth.now()
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = "Следующий месяц",
+                            tint = if (currentMonth < YearMonth.now())
+                                MaterialTheme.colorScheme.onSurface
+                            else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
+                }
             },
-            onMealUpdate = { idx, meal ->
-                repository.updateMeal(selectedDay!!.toString(), idx, meal)
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Назад"
+                    )
+                }
             },
-            onMealDelete = { idx ->
-                repository.deleteMeal(selectedDay!!.toString(), idx)
-            }
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                containerColor = Color.White
+            )
         )
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CalendarTopBar(
-    currentMonth: YearMonth,
-    onBack: () -> Unit,
-    onPreviousMonth: () -> Unit,
-    onNextMonth: () -> Unit
-) {
-    val month = currentMonth.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale("ru"))
-        .replaceFirstChar { it.uppercase() }
-    val year = currentMonth.year
-
-    CenterAlignedTopAppBar(
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                IconButton(onClick = onPreviousMonth) {
-                    Icon(
-                        Icons.Default.KeyboardArrowLeft,
-                        contentDescription = "Предыдущий месяц"
-                    )
-                }
-
-                Text(
-                    text = "$month $year",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-
-                IconButton(
-                    onClick = onNextMonth,
-                    enabled = currentMonth < YearMonth.now()
-                ) {
-                    Icon(
-                        Icons.Default.KeyboardArrowRight,
-                        contentDescription = "Следующий месяц",
-                        tint = if (currentMonth < YearMonth.now())
-                            MaterialTheme.colorScheme.onSurface
-                        else
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
-                }
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    contentDescription = "Назад"
-                )
-            }
-        },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = Color.White
-        )
-    )
-}
-
-@Composable
-private fun CalendarGrid(
-    selectedMonth: YearMonth,
-    selectedDay: LocalDate?,
-    onDayClick: (LocalDate) -> Unit
-) {
-    val daysOfWeek = listOf("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")
-    val firstDayOfMonth = selectedMonth.atDay(1)
-    val lastDayOfMonth = selectedMonth.atEndOfMonth()
-    val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value
-    val daysInMonth = selectedMonth.lengthOfMonth()
-    val today = LocalDate.now()
-
-    // Вычисляем даты для заполнения из предыдущего месяца
-    val previousMonth = selectedMonth.minusMonths(1)
-    val daysInPreviousMonth = previousMonth.lengthOfMonth()
-    val daysFromPreviousMonth = firstDayOfWeek - 1
-
-    // Фиксируем количество строк в календаре
-    val CALENDAR_ROWS = 6
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    @Composable
+    private fun CalendarGrid(
+        selectedMonth: YearMonth,
+        selectedDay: LocalDate?,
+        onDayClick: (LocalDate) -> Unit
     ) {
+        val daysOfWeek = listOf("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")
+        val firstDayOfMonth = selectedMonth.atDay(1)
+        val lastDayOfMonth = selectedMonth.atEndOfMonth()
+        val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value
+        val daysInMonth = selectedMonth.lengthOfMonth()
+        val today = LocalDate.now()
+
+        // Вычисляем даты для заполнения из предыдущего месяца
+        val previousMonth = selectedMonth.minusMonths(1)
+        val daysInPreviousMonth = previousMonth.lengthOfMonth()
+        val daysFromPreviousMonth = firstDayOfWeek - 1
+
+        // Фиксируем количество строк в календаре
+        val CALENDAR_ROWS = 6
+
         Column(
-            modifier = Modifier.padding(12.dp) // Уменьшили padding
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -374,7 +313,9 @@ private fun CalendarGrid(
             // Всегда отображаем 6 строк
             for (week in 0 until CALENDAR_ROWS) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     for (dayOfWeek in 0..6) {
@@ -383,7 +324,8 @@ private fun CalendarGrid(
                         when {
                             // Дни из предыдущего месяца
                             cellIndex < daysFromPreviousMonth -> {
-                                val dayNumber = daysInPreviousMonth - (daysFromPreviousMonth - cellIndex - 1)
+                                val dayNumber =
+                                    daysInPreviousMonth - (daysFromPreviousMonth - cellIndex - 1)
                                 val date = previousMonth.atDay(dayNumber)
 
                                 DayCell(
@@ -437,97 +379,96 @@ private fun CalendarGrid(
             }
         }
     }
-}
 
-@Composable
-private fun DayCell(
-    date: LocalDate,
-    isSelected: Boolean,
-    isToday: Boolean,
-    isFuture: Boolean,
-    isOtherMonth: Boolean = false,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val backgroundColor = when {
-        isSelected -> MaterialTheme.colorScheme.primary
-        isToday && !isOtherMonth -> Color.Gray.copy(alpha = 0.2f)
-        else -> Color.Transparent
-    }
-
-    val textColor = when {
-        isOtherMonth -> Color.Gray.copy(alpha = 0.3f) // Тускло-серый для дат из других месяцев
-        isSelected -> Color.White
-        isToday -> Color.Black
-        isFuture -> Color.DarkGray.copy(alpha = 0.5f)
-        else -> Color.DarkGray
-    }
-
-    val animatedScale by animateFloatAsState(
-        targetValue = if (isSelected && !isOtherMonth) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "cellScale"
-    )
-
-    // Анимация для выбранного дня
-    val numberOffset by animateDpAsState(
-        targetValue = if (isSelected && !isOtherMonth) (-8).dp else 0.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "numberOffset"
-    )
-
-    val dotAlpha by animateFloatAsState(
-        targetValue = if (isSelected && !isOtherMonth) 1f else 0f,
-        animationSpec = tween(300),
-        label = "dotAlpha"
-    )
-
-    Box(
-        modifier = modifier
-            .padding(horizontal = 4.dp, vertical = 4.dp) // Уменьшили padding
-            .height(80.dp) // Уменьшили высоту
-            .graphicsLayer {
-                scaleX = animatedScale
-                scaleY = animatedScale
-            }
-            .clip(RoundedCornerShape(24.dp)) // Уменьшили радиус
-            .background(backgroundColor)
-            .clickable(enabled = !isFuture && !isOtherMonth) { onClick() },
-        contentAlignment = Alignment.Center
+    @Composable
+    private fun DayCell(
+        date: LocalDate,
+        isSelected: Boolean,
+        isToday: Boolean,
+        isFuture: Boolean,
+        isOtherMonth: Boolean = false,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxHeight()
-        ) {
-            // Число с анимацией смещения
-            Text(
-                text = date.dayOfMonth.toString(),
-                fontSize = 18.sp, // Уменьшили размер
-                fontWeight = if ((isSelected || isToday) && !isOtherMonth) FontWeight.Bold else FontWeight.Medium,
-                color = textColor,
-                modifier = Modifier.offset(y = numberOffset)
-            )
+        val backgroundColor = when {
+            isSelected -> MaterialTheme.colorScheme.primary
+            isToday && !isOtherMonth -> Color.Gray.copy(alpha = 0.2f)
+            else -> Color.Transparent
+        }
 
-            // Точка, появляющаяся при выборе
-            if (isSelected && !isOtherMonth) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .graphicsLayer { alpha = dotAlpha }
-                        .background(
-                            color = Color.White,
-                            shape = RoundedCornerShape(50)
-                        )
+        val textColor = when {
+            isOtherMonth -> Color.Gray.copy(alpha = 0.3f) // Тускло-серый для дат из других месяцев
+            isSelected -> Color.White
+            isToday -> Color.Black
+            isFuture -> Color.DarkGray.copy(alpha = 0.5f)
+            else -> Color.DarkGray
+        }
+
+        val animatedScale by animateFloatAsState(
+            targetValue = if (isSelected && !isOtherMonth) 0.95f else 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            ),
+            label = "cellScale"
+        )
+
+        // Анимация для выбранного дня
+        val numberOffset by animateDpAsState(
+            targetValue = if (isSelected && !isOtherMonth) (-8).dp else 0.dp,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            ),
+            label = "numberOffset"
+        )
+
+        val dotAlpha by animateFloatAsState(
+            targetValue = if (isSelected && !isOtherMonth) 1f else 0f,
+            animationSpec = tween(300),
+            label = "dotAlpha"
+        )
+
+        Box(
+            modifier = modifier
+                .padding(horizontal = 4.dp, vertical = 4.dp) // Уменьшили padding
+                .fillMaxHeight()
+                .graphicsLayer {
+                    scaleX = animatedScale
+                    scaleY = animatedScale
+                }
+                .clip(RoundedCornerShape(24.dp)) // Уменьшили радиус
+                .background(backgroundColor)
+                .clickable(enabled = !isFuture && !isOtherMonth) { onClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                // Число с анимацией смещения
+                Text(
+                    text = date.dayOfMonth.toString(),
+                    fontSize = 18.sp, // Уменьшили размер
+                    fontWeight = if ((isSelected || isToday) && !isOtherMonth) FontWeight.Bold else FontWeight.Medium,
+                    color = textColor,
+                    modifier = Modifier.offset(y = numberOffset)
                 )
+
+                // Точка, появляющаяся при выборе
+                if (isSelected && !isOtherMonth) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp)
+                            .graphicsLayer { alpha = dotAlpha }
+                            .background(
+                                color = Color.White,
+                                shape = RoundedCornerShape(50)
+                            )
+                    )
+                }
             }
         }
     }
-}

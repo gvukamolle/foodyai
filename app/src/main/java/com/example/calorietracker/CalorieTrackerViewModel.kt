@@ -253,6 +253,46 @@ class CalorieTrackerViewModel(
         }
     }
 
+    // Подгружает актуальные данные за сегодняшний день
+    private fun refreshTodayIntake() {
+        viewModelScope.launch {
+            val intake = repository.getDailyIntake()
+            dailyCalories = intake.calories
+            dailyProtein = intake.protein
+            dailyCarbs = intake.carbs
+            dailyFat = intake.fat
+            meals = intake.meals
+        }
+    }
+
+    // Обновляет данные календаря после изменений в истории
+    private fun refreshCalendarData() {
+        viewModelScope.launch {
+            repository.getCalendarData().collect { summaries ->
+                _calendarData.value = summaries.associateBy { it.date }
+            }
+        }
+    }
+
+    // Удаление приема пищи с учётом синхронизации состояния
+    fun deleteMealFromHistory(date: String, index: Int) {
+        repository.deleteMeal(date, index)
+        refreshCalendarData()
+        if (date == DailyResetUtils.getFoodDate()) {
+            refreshTodayIntake()
+        }
+    }
+
+    // Обновление приема пищи с учётом синхронизации состояния
+    fun updateMealInHistory(date: String, index: Int, meal: Meal) {
+        repository.updateMeal(date, index, meal)
+        refreshCalendarData()
+        if (date == DailyResetUtils.getFoodDate()) {
+            refreshTodayIntake()
+        }
+    }
+
+
     fun updateDateAndCheckForReset() {
         // Обновляем строку с датой (например, с "25 Июня" на "26 Июня")
         displayDate = DailyResetUtils.getFormattedDisplayDate()
