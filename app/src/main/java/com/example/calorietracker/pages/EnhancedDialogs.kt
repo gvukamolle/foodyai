@@ -55,6 +55,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +63,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import java.util.Locale
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 
 // Цветовая схема для диалогов
 object DialogColors {
@@ -106,7 +113,6 @@ fun AnimatedDialogContainer(
         }
     }
 
-    // Обработка системной кнопки "назад" - работает правильно
     BackHandler {
         if (imeVisible) {
             focusManager.clearFocus()
@@ -127,8 +133,6 @@ fun AnimatedDialogContainer(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    // Этот код сработает ТОЛЬКО если кликнуть на фон,
-                    // т.к. клик по карточке будет перехвачен и "съеден".
                     if (imeVisible) {
                         focusManager.clearFocus()
                     } else {
@@ -166,34 +170,18 @@ fun AnimatedDialogContainer(
                         scaleIn(initialScale = 0.9f, transformOrigin = TransformOrigin.Center, animationSpec = tween(200, easing = FastOutSlowInEasing)),
                 exit = fadeOut(tween(150)) + scaleOut(targetScale = 0.9f, transformOrigin = TransformOrigin.Center)
             ) {
-                Box(
-                    // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: pointerInput вместо clickable
-                    // Он "съедает" событие нажатия, не давая ему "провалиться" на фон.
+                // ВАЖНО: Просто Card без всяких оберток, чтобы она не мешала фокусу
+                Card(
                     modifier = Modifier
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = {
-                                // Этот код сработает при клике на карточку.
-                                // И событие на этом закончится.
-                                if (imeVisible) {
-                                    // Нужно запускать в корутине, т.к. мы в suspend-контексте
-                                    coroutineScope.launch {
-                                        focusManager.clearFocus()
-                                    }
-                                }
-                            })
-                        }
+                        .padding(24.dp)
+                        .widthIn(max = 360.dp)
+                        .fancyShadow(borderRadius = 24.dp, shadowRadius = 12.dp, alpha = 0.35f, color = accentColor),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Card(
-                        modifier = Modifier
-                            .padding(24.dp) // padding теперь внутри, чтобы область нажатия была больше
-                            .widthIn(max = 360.dp)
-                            .fancyShadow(borderRadius = 24.dp, shadowRadius = 12.dp, alpha = 0.35f, color = accentColor),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                    ) {
-                        content()
-                    }
+                    // Мы просто вызываем content(), позволяя ему самому обрабатывать нажатия
+                    content()
                 }
             }
         }
@@ -262,7 +250,7 @@ fun EnhancedManualInputDialog(
 }
 
 // Диалог "Расскажи"
-@OptIn(ExperimentalAnimationApi::class)
+@OptIn(ExperimentalAnimationApi::class, ExperimentalComposeUiApi::class) // Добавлен ExperimentalComposeUiApi
 @Composable
 fun EnhancedDescribeDialog(
     onDismiss: () -> Unit,
@@ -270,7 +258,6 @@ fun EnhancedDescribeDialog(
     isAnalyzing: Boolean
 ) {
     var text by remember { mutableStateOf("") }
-    val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val haptic = LocalHapticFeedback.current
 
@@ -283,7 +270,7 @@ fun EnhancedDescribeDialog(
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            // Заголовок
+            // Заголовок (ВОССТАНОВЛЕН)
             DialogHeader(
                 icon = Icons.Default.AutoAwesome,
                 title = "Опишите блюдо",
@@ -299,7 +286,17 @@ fun EnhancedDescribeDialog(
                 onValueChange = { text = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 120.dp),
+                    .heightIn(min = 120.dp)
+                    // --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ---
+                    // Перехватываем нажатие Enter до того, как его обработает TextField
+                    .onPreviewKeyEvent {
+                        if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
+                            focusManager.clearFocus()
+                            true // Сообщаем, что мы обработали событие
+                        } else {
+                            false // Остальные клавиши обрабатываются как обычно
+                        }
+                    },
                 label = { Text("Описание блюда") },
                 placeholder = {
                     Text(
@@ -316,18 +313,20 @@ fun EnhancedDescribeDialog(
                     focusedLabelColor = DialogColors.AIAnalysis,
                     cursorColor = DialogColors.AIAnalysis
                 ),
+                // Эти параметры остаются для кнопки "Готово" (✓), если она появится
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Done
                 ),
-                keyboardActions = KeyboardActions(onDone = {
-                    focusManager.clearFocus()
-                    keyboardController?.hide()
-                }),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        focusManager.clearFocus()
+                    }
+                ),
                 maxLines = 4
             )
 
-            // AI индикатор анализа
+            // AI индикатор анализа (ВОССТАНОВЛЕН)
             if (isAnalyzing) {
                 Spacer(Modifier.height(16.dp))
                 Row(
@@ -351,12 +350,11 @@ fun EnhancedDescribeDialog(
 
             Spacer(Modifier.height(16.dp))
 
-            // Кнопки
+            // Кнопки (ВОССТАНОВЛЕНЫ)
             DialogActions(
                 onCancel = onDismiss,
                 onConfirm = {
                     focusManager.clearFocus()
-                    keyboardController?.hide()
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onAnalyze(text)
                 },
