@@ -101,6 +101,7 @@ fun AnimatedDialogs(
             onConfirm = { text ->
                 viewModel.pendingDescription = text  // Сохраняем текст
                 viewModel.showDescriptionDialog = false
+                viewModel.analyzeDescription()  // Отправляем запрос на анализ
             },
             initialText = viewModel.pendingDescription  // Восстанавливаем текст при повторном открытии
         )

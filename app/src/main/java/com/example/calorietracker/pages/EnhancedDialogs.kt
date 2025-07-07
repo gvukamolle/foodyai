@@ -251,30 +251,27 @@ fun EnhancedManualInputDialog(
     }
 }
 
-// Диалог "Расскажи"
 @OptIn(ExperimentalAnimationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun EnhancedDescribeDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,  // Изменено с onAnalyze на onConfirm
-    initialText: String = ""       // Добавлена возможность передать начальный текст
+    onConfirm: (String) -> Unit,
+    initialText: String = ""
 ) {
-    var text by remember { mutableStateOf(initialText) }
-    val textFieldRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-    val haptic = LocalHapticFeedback.current
-    val keyboardController = LocalSoftwareKeyboardController.current
 
     AnimatedDialogContainer(
         onDismiss = onDismiss,
         accentColor = DialogColors.AIAnalysis
     ) {
+        var text by remember { mutableStateOf(initialText) }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        val haptic = LocalHapticFeedback.current
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            // Заголовок (ВОССТАНОВЛЕН)
+            /* ── Заголовок ── */
             DialogHeader(
                 icon = Icons.Default.AutoAwesome,
                 title = "Опишите блюдо",
@@ -284,44 +281,25 @@ fun EnhancedDescribeDialog(
 
             Spacer(Modifier.height(16.dp))
 
-            // Поле ввода текста
+            // Поле для подписи
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(textFieldRequester)
-                    .onPreviewKeyEvent {
-                        if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
-                            keyboardController?.hide()
-                            focusManager.clearFocus()
-                            true
-                        } else {
-                            false
-                        }
-                    },
+                label = { Text("Например: роллы, 350г") },
+                modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = DialogColors.AIAnalysis,
                     focusedLabelColor = DialogColors.AIAnalysis
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    keyboardController?.hide()
-                    focusManager.clearFocus()
-                }),
+                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                 singleLine = true
             )
 
-            LaunchedEffect(Unit) {
-                textFieldRequester.requestFocus()
-            }
-
-            // Подсказка
+            /* ── Подсказка ── */
             Spacer(Modifier.height(12.dp))
             Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFFF3E0)
-                ),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Row(
@@ -348,54 +326,21 @@ fun EnhancedDescribeDialog(
 
             Spacer(Modifier.height(16.dp))
 
-            // Кнопки - только Готово и Отмена
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        keyboardController?.hide()
-                        focusManager.clearFocus()
-                        onDismiss()
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.Gray
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Отмена", fontSize = 16.sp)
-                }
-
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = text.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (text.isNotBlank()) {
-                            Color.Black  // Черная кнопка вместо оранжевой
-                        } else {
-                            Color.Gray
-                        }
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Готово", fontSize = 16.sp)
+            /* ── Кнопки ── */
+            DialogActions(
+                onCancel = onDismiss,
+                onConfirm = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    keyboardController?.hide()
+                    onConfirm(text)          // передаём строку вверх
+                },
+                confirmEnabled = true,
+                confirmText = "Отправить",
+                accentColor = DialogColors.AIAnalysis
+            )
                 }
             }
         }
-    }
-}
 
 // Диалог подтверждения фото
 @Composable
