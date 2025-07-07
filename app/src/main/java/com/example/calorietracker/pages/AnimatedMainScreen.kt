@@ -402,58 +402,160 @@ private fun AnimatedChatMessageCard(
     message: com.example.calorietracker.ChatMessage,
     animateText: Boolean
 ) {
-    val alignment = if (message.type == MessageType.USER) {
-        Alignment.CenterEnd
-    } else {
-        Alignment.CenterStart
-    }
+    var isExpanded by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = alignment
+    Column(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Card(
-            modifier = Modifier.widthIn(max = 280.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (message.type == MessageType.USER) {
-                    Color.Black
-                } else {
-                    Color(0xFFF3F4F6)
-                }
-            ),
-            shape = RoundedCornerShape(
-                topStart = 12.dp,
-                topEnd = 12.dp,
-                bottomStart = if (message.type == MessageType.USER) 12.dp else 4.dp,
-                bottomEnd = if (message.type == MessageType.USER) 4.dp else 12.dp
-            )
-        ) {
-            if (message.type == MessageType.AI) {
-                if (animateText) {
-                    TypewriterText(
-                        text = message.content,
-                        style = TextStyle(
-                            color = Color.Black,
-                            fontSize = 14.sp
-                        ),
-                        modifier = Modifier.padding(12.dp)
-                    )
-                } else {
-                    Text(
-                        text = message.content,
-                        color = Color.Black,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
+        // Основное сообщение
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = if (message.type == MessageType.USER) {
+                Alignment.CenterEnd
             } else {
-                Text(
-                    text = message.content,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(12.dp)
-                )
+                Alignment.CenterStart
             }
+        ) {
+            Card(
+                modifier = Modifier.widthIn(max = 280.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (message.type == MessageType.USER) {
+                        Color.Black
+                    } else {
+                        Color(0xFFF3F4F6)
+                    }
+                ),
+                shape = RoundedCornerShape(
+                    topStart = 12.dp,
+                    topEnd = 12.dp,
+                    bottomStart = if (message.type == MessageType.USER) 12.dp else 4.dp,
+                    bottomEnd = if (message.type == MessageType.USER) 4.dp else 12.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Текст сообщения
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (message.type == MessageType.AI) {
+                                if (animateText) {
+                                    TypewriterText(
+                                        text = message.content,
+                                        style = TextStyle(
+                                            color = Color.Black,
+                                            fontSize = 14.sp
+                                        )
+                                    )
+                                } else {
+                                    Text(
+                                        text = message.content,
+                                        color = Color.Black,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = message.content,
+                                    color = Color.White,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        // Кнопка AI если есть комментарий
+                        if (message.isExpandable && message.foodItem?.aiOpinion != null) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            AnimatedAiChip(
+                                isExpanded = isExpanded,
+                                onClick = { isExpanded = !isExpanded }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // AI комментарий (раскрывающийся)
+        if (message.type == MessageType.AI) {
+            AnimatedVisibility(
+                visible = isExpanded && message.foodItem?.aiOpinion != null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                message.foodItem?.aiOpinion?.let { opinion ->
+                    Card(
+                        modifier = Modifier
+                            .widthIn(max = 280.dp)
+                            .padding(start = 24.dp, top = 4.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFE8F5E9)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Psychology,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = opinion,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Black
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Анимированная AI таблетка для чата
+@Composable
+fun AnimatedAiChip(
+    isExpanded: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = tween(300)
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF4CAF50).copy(alpha = 0.1f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "AI",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF4CAF50)
+            )
+            Icon(
+                imageVector = Icons.Default.ExpandMore,
+                contentDescription = if (isExpanded) "Скрыть" else "Показать AI комментарий",
+                modifier = Modifier
+                    .size(16.dp)
+                    .graphicsLayer { rotationZ = rotation },
+                tint = Color(0xFF4CAF50)
+            )
         }
     }
 }

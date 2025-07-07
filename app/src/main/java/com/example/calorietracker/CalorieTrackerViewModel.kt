@@ -45,7 +45,9 @@ import kotlin.math.roundToInt
 data class ChatMessage(
     val type: MessageType,
     val content: String,
-    val timestamp: LocalDateTime = LocalDateTime.now()
+    val timestamp: LocalDateTime = LocalDateTime.now(),
+    val foodItem: FoodItem? = null, // Добавляем информацию о продукте
+    val isExpandable: Boolean = false // Флаг для раскрывающихся сообщений
 )
 
 enum class MessageType {
@@ -625,6 +627,14 @@ class CalorieTrackerViewModel(
             currentFoodSource = "manual" // Устанавливаем источник если не был установлен
         }
 
+        val aiOpinionToSave = if (currentFoodSource != "manual" && prefillFood?.aiOpinion != null) {
+            prefillFood?.aiOpinion
+        } else {
+            null
+        }
+
+        Log.d("CalorieTracker", "handleManualInput - aiOpinion: $aiOpinionToSave")
+
         pendingFood = FoodItem(
             name = name,
             calories = calories.toFloatOrNull()?.roundToInt() ?: 0,
@@ -633,7 +643,7 @@ class CalorieTrackerViewModel(
             carbs = carbs.toDoubleOrNull() ?: 0.0,
             weight = (weight.toIntOrNull() ?: 100).toString(),
             source = currentFoodSource ?: "manual",
-            aiOpinion = if (currentFoodSource != "manual") prefillFood?.aiOpinion else null
+            aiOpinion = aiOpinionToSave
         )
 
         messages = messages + ChatMessage(
@@ -675,9 +685,10 @@ class CalorieTrackerViewModel(
             }
 
             messages = messages + ChatMessage(
-                MessageType.AI,
-                "Отлично! Записал ${food.name} в ${selectedMeal.displayName.lowercase()} ($aiStatus). " +
-                        generateNutritionalAdvice(food)
+                type = MessageType.AI,
+                content = "✅ Записал ${food.name} в ${selectedMeal.displayName.lowercase()}",
+                foodItem = food,
+                isExpandable = food.aiOpinion != null
             )
 
             // Сохраняем в репозиторий

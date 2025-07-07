@@ -46,8 +46,169 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.example.calorietracker.ui.components.AnimatedRainbowBorder
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+
+@Composable
+fun AiInfoButton(
+    hasAiOpinion: Boolean,
+    aiOpinion: String
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    // Зеленая кнопка-бокс
+    Surface(
+        onClick = { if (hasAiOpinion) showDialog = true },
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFC8F3CB), // Зеленый цвет
+        modifier = Modifier.height(28.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.AutoAwesome,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = Color(0xFF00CE0D)
+            )
+            Text(
+                text = "AI",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF00CE0D)
+            )
+            if (hasAiOpinion) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .background(
+                            color = Color(0xFF00CE0D).copy(alpha = 0.2f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Информация",
+                        modifier = Modifier.size(14.dp),
+                        tint = Color(0xFF00CE0D)
+                    )
+                }
+            }
+        }
+    }
+
+    // Диалог с AI комментарием
+    if (showDialog && hasAiOpinion) {
+        Dialog(
+            onDismissRequest = { showDialog = false },
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
+            )
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 8.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Иконка AI в зеленом круге
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(
+                                color = Color(0xFFE8F5E9),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = Color(0xFF4CAF50)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Анализ от Foody AI",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Комментарий в рамке
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF5F5F5)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FormatQuote,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = Color(0xFF4CAF50).copy(alpha = 0.5f)
+                            )
+                            Text(
+                                text = aiOpinion,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Black,
+                                lineHeight = 22.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Кнопка закрытия
+                    Button(
+                        onClick = { showDialog = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF000000)
+                        )
+                    ) {
+                        Text("Понятно", color = Color.White)
+                    }
+                }
+            }
+        }
+    }
+}
 
 // Основной диалог истории дня с группировкой
 @OptIn(ExperimentalFoundationApi::class)
@@ -426,20 +587,18 @@ private fun FoodItemCard(
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
 ) {
-    var showAiOpinion by remember { mutableStateOf(false) }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Название и AI кнопка
+            // Название и кнопки действий
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -472,20 +631,6 @@ private fun FoodItemCard(
                         )
                     }
                 }
-
-                if (food.aiOpinion != null) {
-                    IconButton(
-                        onClick = { showAiOpinion = !showAiOpinion },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Psychology,
-                            contentDescription = "AI мнение",
-                            tint = if (showAiOpinion) Color(0xFF4CAF50) else Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -501,57 +646,26 @@ private fun FoodItemCard(
                 MacroChip("Углеводы", "${food.carbs}г", Color.Gray)
             }
 
-            // Вес
-            Text(
-                text = "Вес: ${food.weight}",
-                fontSize = 12.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            Spacer(modifier = Modifier.height(8.dp))
 
-            if (food.source != "manual") {
-                Text(
-                    text = "С помощью AI",
-                    fontSize = 12.sp,
-                    color = Color(0xFF4CAF50),
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
-
-            // AI мнение (раскрывающееся)
-            AnimatedVisibility(
-                visible = showAiOpinion && food.aiOpinion != null,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
+            // Нижняя часть с весом и AI меткой
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                food.aiOpinion?.let { opinion ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFF5F5F5)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = Color(0xFFFFB300),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = opinion,
-                                fontSize = 13.sp,
-                                color = Color(0xFF424242),
-                                lineHeight = 18.sp
-                            )
-                        }
-                    }
+                Text(
+                    text = "Вес: ${food.weight}г",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+
+                // AI индикатор и кнопка информации
+                if (food.source != "manual" || food.aiOpinion != null) {
+                    AiInfoButton(
+                        hasAiOpinion = food.aiOpinion != null,
+                        aiOpinion = food.aiOpinion ?: "Анализ выполнен с помощью AI"
+                    )
                 }
             }
         }

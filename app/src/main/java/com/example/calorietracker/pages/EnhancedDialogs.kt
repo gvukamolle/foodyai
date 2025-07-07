@@ -271,6 +271,7 @@ fun EnhancedDescribeDialog(
 ) {
     var text by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     val haptic = LocalHapticFeedback.current
 
     AnimatedDialogContainer(
@@ -298,7 +299,7 @@ fun EnhancedDescribeDialog(
                 onValueChange = { text = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
+                    .heightIn(min = 120.dp),
                 label = { Text("Описание блюда") },
                 placeholder = {
                     Text(
@@ -319,7 +320,11 @@ fun EnhancedDescribeDialog(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Done
                 ),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() })
+                keyboardActions = KeyboardActions(onDone = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                }),
+                maxLines = 4
             )
 
             // AI индикатор анализа
@@ -350,6 +355,8 @@ fun EnhancedDescribeDialog(
             DialogActions(
                 onCancel = onDismiss,
                 onConfirm = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onAnalyze(text)
                 },
