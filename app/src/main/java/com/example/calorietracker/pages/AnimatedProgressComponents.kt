@@ -98,7 +98,7 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
         modifier = Modifier
             .fillMaxSize()
             // *** ИЗМЕНЕНИЕ: Отступы сделаны симметричными, так как стрелки больше нет ***
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.SpaceAround
     ) {
         val nutrients = listOf(

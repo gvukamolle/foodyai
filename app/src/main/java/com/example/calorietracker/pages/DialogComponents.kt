@@ -153,7 +153,8 @@ fun DialogActions(
     onConfirm: () -> Unit,
     confirmEnabled: Boolean,
     confirmText: String,
-    accentColor: Color
+    accentColor: Color,
+    confirmTextColor: Color = Color.White
 ) {
     val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -186,11 +187,13 @@ fun DialogActions(
             enabled = confirmEnabled,
             colors = ButtonDefaults.buttonColors(
                 containerColor = accentColor,
-                disabledContainerColor = Color.LightGray
-            ),
+                contentColor = confirmTextColor,
+                disabledContainerColor = Color.LightGray,
+                disabledContentColor = confirmTextColor.copy(alpha = 0.38f)
+                ),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text(confirmText, fontSize = 16.sp)
+            Text(confirmText, fontSize = 16.sp, color = confirmTextColor)
         }
     }
 }

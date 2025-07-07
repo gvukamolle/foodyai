@@ -260,19 +260,10 @@ fun EnhancedDescribeDialog(
     initialText: String = ""       // Добавлена возможность передать начальный текст
 ) {
     var text by remember { mutableStateOf(initialText) }
+    val textFieldRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val focusRequester = remember { FocusRequester() }
-
-    // Функция для сохранения текста
-    val saveText = {
-        if (text.isNotBlank()) {
-            keyboardController?.hide()
-            focusManager.clearFocus()
-            onConfirm(text)
-        }
-    }
 
     AnimatedDialogContainer(
         onDismiss = onDismiss,
@@ -283,11 +274,11 @@ fun EnhancedDescribeDialog(
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            // Заголовок
+            // Заголовок (ВОССТАНОВЛЕН)
             DialogHeader(
-                icon = Icons.Default.Edit,  // Изменена иконка на Edit
+                icon = Icons.Default.AutoAwesome,
                 title = "Опишите блюдо",
-                subtitle = "Детально опишите состав и размер порции",
+                subtitle = "AI проанализирует состав",
                 accentColor = DialogColors.AIAnalysis
             )
 
@@ -299,32 +290,31 @@ fun EnhancedDescribeDialog(
                 onValueChange = { text = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)  // Увеличиваем высоту для многострочного ввода
-                    .focusRequester(focusRequester),
+                    .focusRequester(textFieldRequester)
+                    .onPreviewKeyEvent {
+                        if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = DialogColors.AIAnalysis,
                     focusedLabelColor = DialogColors.AIAnalysis
                 ),
-                placeholder = {
-                    Text(
-                        "Например: Овсяная каша на молоке с бананом и грецкими орехами, примерно 300 грамм",
-                        color = Color.Gray
-                    )
-                },
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (text.isNotBlank()) {
-                            saveText()
-                        }
-                    }
-                ),
-                maxLines = 4,
-                singleLine = false
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
+                }),
+                singleLine = true
             )
+
+            LaunchedEffect(Unit) {
+                textFieldRequester.requestFocus()
+            }
 
             // Подсказка
             Spacer(Modifier.height(12.dp))
@@ -382,7 +372,6 @@ fun EnhancedDescribeDialog(
                 Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        saveText()
                     },
                     modifier = Modifier.weight(1f),
                     enabled = text.isNotBlank(),
@@ -404,12 +393,6 @@ fun EnhancedDescribeDialog(
                     Text("Готово", fontSize = 16.sp)
                 }
             }
-        }
-
-        // Запрашиваем фокус при открытии диалога
-        LaunchedEffect(Unit) {
-            delay(100)
-            focusRequester.requestFocus()
         }
     }
 }

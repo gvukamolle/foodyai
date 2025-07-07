@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import java.util.Locale
 
 
+
 // Обертка для всех диалогов с анимациями
 @Composable
 fun AnimatedDialogs(
