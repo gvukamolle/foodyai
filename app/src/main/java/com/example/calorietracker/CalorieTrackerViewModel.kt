@@ -162,6 +162,7 @@ class CalorieTrackerViewModel(
     var showPhotoConfirmDialog by mutableStateOf(false)
     var pendingPhoto by mutableStateOf<Bitmap?>(null)
     var photoCaption by mutableStateOf("")
+    var pendingDescription by mutableStateOf("")
 
     init {
         loadUserData()
@@ -242,6 +243,10 @@ class CalorieTrackerViewModel(
     fun updateUserProfile(newProfile: UserProfile) {
         userProfile = newProfile
         handleSetupSubmit() // Эта функция у тебя уже есть, она пересчитывает КБЖУ и сохраняет профиль
+    }
+
+    fun canAnalyzeDescription(): Boolean {
+        return pendingDescription.isNotBlank() && !isAnalyzing && isOnline
     }
 
     fun syncWithUserData(userData: UserData) {
@@ -532,7 +537,12 @@ class CalorieTrackerViewModel(
         }
     }
 
-    fun analyzeDescription(text: String) {
+    fun analyzeDescription() {
+        if (!canAnalyzeDescription()) return
+
+        val textToAnalyze = pendingDescription
+        pendingDescription = ""  // Очищаем после отправки
+
         viewModelScope.launch {
             isAnalyzing = true
             currentFoodSource = "ai_description"
@@ -547,7 +557,7 @@ class CalorieTrackerViewModel(
                 val request = FoodAnalysisRequest(
                     weight = 100,
                     userProfile = userProfile.toNetworkProfile(),
-                    message = text,
+                    message = textToAnalyze,  // Используем сохраненный текст
                     userId = userId,
                     messageType = "analysis",
                 )
@@ -582,7 +592,6 @@ class CalorieTrackerViewModel(
                     aiOpinion = foodData.opinion
                 )
 
-                showDescriptionDialog = false
                 showManualInputDialog = true
             } catch (e: Exception) {
                 Log.e("CalorieTracker", "Ошибка анализа описания", e)

@@ -95,11 +95,13 @@ fun AnimatedDialogs(
         EnhancedDescribeDialog(
             onDismiss = {
                 viewModel.showDescriptionDialog = false
+                viewModel.pendingDescription = ""  // Очищаем сохраненное описание
             },
-            onAnalyze = { text ->
-                viewModel.analyzeDescription(text)
+            onConfirm = { text ->
+                viewModel.pendingDescription = text  // Сохраняем текст
+                viewModel.showDescriptionDialog = false
             },
-            isAnalyzing = viewModel.isAnalyzing
+            initialText = viewModel.pendingDescription  // Восстанавливаем текст при повторном открытии
         )
     }
 

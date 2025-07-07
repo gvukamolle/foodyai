@@ -57,6 +57,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -250,17 +252,27 @@ fun EnhancedManualInputDialog(
 }
 
 // Диалог "Расскажи"
-@OptIn(ExperimentalAnimationApi::class, ExperimentalComposeUiApi::class) // Добавлен ExperimentalComposeUiApi
+@OptIn(ExperimentalAnimationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun EnhancedDescribeDialog(
     onDismiss: () -> Unit,
-    onAnalyze: (String) -> Unit,
-    isAnalyzing: Boolean
+    onConfirm: (String) -> Unit,  // Изменено с onAnalyze на onConfirm
+    initialText: String = ""       // Добавлена возможность передать начальный текст
 ) {
-    var text by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf(initialText) }
     val focusManager = LocalFocusManager.current
     val haptic = LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
+
+    // Функция для сохранения текста
+    val saveText = {
+        if (text.isNotBlank()) {
+            keyboardController?.hide()
+            focusManager.clearFocus()
+            onConfirm(text)
+        }
+    }
 
     AnimatedDialogContainer(
         onDismiss = onDismiss,
@@ -271,11 +283,11 @@ fun EnhancedDescribeDialog(
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            // Заголовок (ВОССТАНОВЛЕН)
+            // Заголовок
             DialogHeader(
-                icon = Icons.Default.AutoAwesome,
+                icon = Icons.Default.Edit,  // Изменена иконка на Edit
                 title = "Опишите блюдо",
-                subtitle = "AI проанализирует состав",
+                subtitle = "Детально опишите состав и размер порции",
                 accentColor = DialogColors.AIAnalysis
             )
 
@@ -285,52 +297,119 @@ fun EnhancedDescribeDialog(
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)  // Увеличиваем высоту для многострочного ввода
+                    .focusRequester(focusRequester),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = DialogColors.AIAnalysis,
                     focusedLabelColor = DialogColors.AIAnalysis
                 ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                singleLine = true
-                )
-
-            // AI индикатор анализа (ВОССТАНОВЛЕН)
-            if (isAnalyzing) {
-                Spacer(Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = DialogColors.AIAnalysis
-                    )
-                    Spacer(Modifier.width(12.dp))
+                placeholder = {
                     Text(
-                        "AI анализирует...",
-                        fontSize = 14.sp,
-                        color = DialogColors.AIAnalysis
+                        "Например: Овсяная каша на молоке с бананом и грецкими орехами, примерно 300 грамм",
+                        color = Color.Gray
+                    )
+                },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        if (text.isNotBlank()) {
+                            saveText()
+                        }
+                    }
+                ),
+                maxLines = 4,
+                singleLine = false
+            )
+
+            // Подсказка
+            Spacer(Modifier.height(12.dp))
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFFF3E0)
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        Icons.Default.Lightbulb,
+                        contentDescription = null,
+                        tint = Color(0xFFFF6F00),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Укажите ингредиенты, способ приготовления и примерный вес порции",
+                        fontSize = 12.sp,
+                        color = Color(0xFFE65100),
+                        lineHeight = 18.sp
                     )
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Кнопки (ВОССТАНОВЛЕНЫ)
-            DialogActions(
-                onCancel = onDismiss,
-                onConfirm = {
-                    focusManager.clearFocus()
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onAnalyze(text)
-                },
-                confirmEnabled = text.isNotBlank() && !isAnalyzing,
-                confirmText = if (isAnalyzing) "Анализ..." else "Отправить",
-                accentColor = DialogColors.AIAnalysis
-            )
+            // Кнопки - только Готово и Отмена
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.Gray
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Отмена", fontSize = 16.sp)
+                }
+
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        saveText()
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = text.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (text.isNotBlank()) {
+                            Color.Black  // Черная кнопка вместо оранжевой
+                        } else {
+                            Color.Gray
+                        }
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Готово", fontSize = 16.sp)
+                }
+            }
+        }
+
+        // Запрашиваем фокус при открытии диалога
+        LaunchedEffect(Unit) {
+            delay(100)
+            focusRequester.requestFocus()
         }
     }
 }
