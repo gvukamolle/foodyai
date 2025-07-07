@@ -72,7 +72,7 @@ enum class MealType(val displayName: String) {
     BREAKFAST("Завтрак"),
     LUNCH("Обед"),
     DINNER("Ужин"),
-    SNACK("Полдник"),
+    SNACK("Перекус"),
     LATE_BREAKFAST("Ланч"),
     SUPPER("Перекус")
 }

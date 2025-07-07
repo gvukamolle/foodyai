@@ -582,36 +582,29 @@ private fun AnimatedMealSelector(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            val meals = MealType.values().toList()
-            val firstRow = meals.take(3)
-            val secondRow = meals.drop(3)
+            val meals = listOf(
+                MealType.BREAKFAST,
+                MealType.LUNCH,
+                MealType.DINNER,
+                MealType.SNACK
+            )
+
+            val rows = meals.chunked(2)
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    firstRow.forEach { meal ->
-                        AnimatedMealButton(
-                            meal = meal,
-                            isSelected = meal == selectedMeal,
-                            onClick = { onMealChange(meal) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    secondRow.forEach { meal ->
-                        AnimatedMealButton(
-                            meal = meal,
-                            isSelected = meal == selectedMeal,
-                            onClick = { onMealChange(meal) },
-                            modifier = Modifier.weight(1f)
-                        )
+                rows.forEach { rowMeals ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        rowMeals.forEach { meal ->
+                            AnimatedMealButton(
+                                meal = meal,
+                                isSelected = meal == selectedMeal,
+                                onClick = { onMealChange(meal) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
