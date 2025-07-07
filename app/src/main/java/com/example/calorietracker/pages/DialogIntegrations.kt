@@ -125,7 +125,18 @@ fun AnimatedDialogs(
             )
         }
     }
+
+    if (viewModel.showAiOpinionDialog) {
+        viewModel.aiOpinionText?.let { text ->
+            AiOpinionDialog(
+                opinion = text,
+                onDismiss = { viewModel.showAiOpinionDialog = false }
+            )
+        }
+    }
 }
+
+
 
 @Composable
 fun EnhancedPhotoUploadDialog(

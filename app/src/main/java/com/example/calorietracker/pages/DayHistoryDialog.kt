@@ -350,24 +350,24 @@ fun DayHistoryDialog(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(
-                                        Color.White.copy(alpha = 0.95f),
-                                        shape = RoundedCornerShape(16.dp)
-                                    )
-                                    .padding(vertical = 16.dp)
+                                    .background(Color.White)
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
-                                    contentAlignment = Alignment.Center
+                                Text(
+                                    text = date.format(dateFormatter),
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                                IconButton(
+                                    onClick = { animatedDismiss() },
+                                    modifier = Modifier.align(Alignment.TopStart)
                                 ) {
-                                    Text(
-                                        text = date.format(dateFormatter),
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.align(Alignment.Center)
+                                    Icon(
+                                        Icons.Default.ArrowBack,
+                                        contentDescription = "Назад",
+                                        tint = Color.Gray
                                     )
                                     IconButton(
                                         onClick = { animatedDismiss() },
@@ -640,10 +640,26 @@ private fun FoodItemCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                MacroChip("Калории", food.calories.toString(), Color.Black)
-                MacroChip("Белки", "${food.protein}г", Color.Gray)
-                MacroChip("Жиры", "${food.fat}г", Color.Gray)
-                MacroChip("Углеводы", "${food.carbs}г", Color.Gray)
+                MacroChip(
+                    "Калории",
+                    food.calories.toString(),
+                    Color.Black
+                )
+                MacroChip(
+                    "Белки",
+                    "${NutritionFormatter.formatMacro(food.protein.toFloat())}г",
+                    Color.Gray
+                )
+                MacroChip(
+                    "Жиры",
+                    "${NutritionFormatter.formatMacro(food.fat.toFloat())}г",
+                    Color.Gray
+                )
+                MacroChip(
+                    "Углеводы",
+                    "${NutritionFormatter.formatMacro(food.carbs.toFloat())}г",
+                    Color.Gray
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))

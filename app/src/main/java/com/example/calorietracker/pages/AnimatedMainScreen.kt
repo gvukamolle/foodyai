@@ -370,7 +370,14 @@ private fun AnimatedChatContent(
                     isUserMessage = message.type == MessageType.USER
                 ) {
                     val animateText = index == lastIndex && message.type == MessageType.AI
-                    AnimatedChatMessageCard(message = message, animateText = animateText)
+                    AnimatedChatMessageCard(
+                        message = message,
+                        animateText = animateText,
+                        onAiOpinionClick = { text ->
+                            viewModel.aiOpinionText = text
+                            viewModel.showAiOpinionDialog = true
+                        }
+                    )
                 }
             }
         }
@@ -401,9 +408,10 @@ private fun AnimatedChatContent(
 @Composable
 private fun AnimatedChatMessageCard(
     message: com.example.calorietracker.ChatMessage,
-    animateText: Boolean
+    animateText: Boolean,
+    onAiOpinionClick: (String) -> Unit
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
+    // no expandable content
 
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -466,55 +474,16 @@ private fun AnimatedChatMessageCard(
                                 )
                             }
                         }
-
-                        // Кнопка AI если есть комментарий
-                        if (message.isExpandable && message.foodItem?.aiOpinion != null) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            AnimatedAiChip(
-                                isExpanded = isExpanded,
-                                onClick = { isExpanded = !isExpanded }
-                            )
-                        }
                     }
-                }
-            }
-        }
-
-        // AI комментарий (раскрывающийся)
-        if (message.type == MessageType.AI) {
-            AnimatedVisibility(
-                visible = isExpanded && message.foodItem?.aiOpinion != null,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                message.foodItem?.aiOpinion?.let { opinion ->
-                    Card(
-                        modifier = Modifier
-                            .widthIn(max = 280.dp)
-                            .padding(start = 24.dp, top = 4.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFE8F5E9)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
+                    if (message.isExpandable && message.foodItem?.aiOpinion != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
                         Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Psychology,
-                                contentDescription = null,
-                                tint = Color(0xFF4CAF50),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = opinion,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.Black
-                            )
+                            AnimatedAiChip(onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) })
                         }
-                    }
-                }
+                    } }
             }
         }
     }
@@ -654,47 +623,6 @@ fun PendingDescriptionCard(
                     }
                 }
             }
-        }
-    }
-}
-
-// Анимированная AI таблетка для чата
-@Composable
-fun AnimatedAiChip(
-    isExpanded: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val rotation by animateFloatAsState(
-        targetValue = if (isExpanded) 180f else 0f,
-        animationSpec = tween(300)
-    )
-
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF4CAF50).copy(alpha = 0.1f)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = "AI",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF4CAF50)
-            )
-            Icon(
-                imageVector = Icons.Default.ExpandMore,
-                contentDescription = if (isExpanded) "Скрыть" else "Показать AI комментарий",
-                modifier = Modifier
-                    .size(16.dp)
-                    .graphicsLayer { rotationZ = rotation },
-                tint = Color(0xFF4CAF50)
-            )
         }
     }
 }
@@ -854,5 +782,36 @@ private fun AnimatedSendButton(onClick: () -> Unit) {
                 .background(Color.Black, CircleShape)
                 .padding(8.dp)
         )
+    }
+}
+@Composable
+fun AnimatedAiChip(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF4CAF50).copy(alpha = 0.1f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "Что думает Foody?",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF4CAF50)
+            )
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = null,
+                tint = Color(0xFF4CAF50),
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
