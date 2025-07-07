@@ -38,6 +38,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.example.calorietracker.data.DailyNutritionSummary
 import com.example.calorietracker.utils.NutritionFormatter
+import kotlin.math.roundToInt
+
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -620,7 +622,7 @@ class CalorieTrackerViewModel(
 
         pendingFood = FoodItem(
             name = name,
-            calories = calories.toIntOrNull() ?: 0,
+            calories = calories.toFloatOrNull()?.roundToInt() ?: 0,
             protein = proteins.toDoubleOrNull() ?: 0.0,
             fat = fats.toDoubleOrNull() ?: 0.0,
             carbs = carbs.toDoubleOrNull() ?: 0.0,
