@@ -69,10 +69,12 @@ fun DayHistoryDialog(
     // Локальное состояние списка приемов пищи
     val meals = remember { mutableStateListOf<Meal>().apply { addAll(dailyIntake.meals) } }
     var editIndex by remember { mutableStateOf<Int?>(null) }
+    var deleteIndex by remember { mutableStateOf<Int?>(null) }
 
-    // Группируем приемы пищи по типу
+    // Группируем приемы пищи по типу, сохраняя индекс
     val groupedMeals = remember(meals.toList()) {
-        meals.groupBy { it.type }
+        meals.withIndex()
+            .groupBy({ it.value.type }, { it })
             .toSortedMap(compareBy { mealType ->
                 when (mealType) {
                     MealType.BREAKFAST -> 1
@@ -178,6 +180,8 @@ fun DayHistoryDialog(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White)
                             .padding(24.dp),
                         contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
@@ -189,24 +193,28 @@ fun DayHistoryDialog(
                                         Color.White.copy(alpha = 0.95f),
                                         shape = RoundedCornerShape(16.dp)
                                     )
-                                    .padding(bottom = 16.dp)
+                                    .padding(vertical = 16.dp)
                             ) {
-                                Row(
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(horizontal = 16.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = date.format(dateFormatter),
                                         fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.align(Alignment.Center)
                                     )
-                                    IconButton(onClick = { animatedDismiss() }) {
+                                    IconButton(
+                                        onClick = { animatedDismiss() },
+                                        modifier = Modifier.align(Alignment.CenterStart)
+                                    ) {
                                         Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = "Закрыть",
+                                            Icons.Default.ArrowBack,
+                                            contentDescription = "Назад",
                                             tint = Color.Gray
                                         )
                                     }
@@ -217,31 +225,44 @@ fun DayHistoryDialog(
                         // Группированные приемы пищи
                         groupedMeals.forEach { (mealType, mealsOfType) ->
                             item {
-                                // Заголовок группы
                                 MealTypeHeader(
                                     mealType = mealType,
-                                    totalCalories = mealsOfType.sumOf { meal ->
-                                        meal.foods.sumOf { it.calories }
+                                    totalCalories = mealsOfType.sumOf { indexed ->
+                                        indexed.value.foods.sumOf { it.calories }
                                     }
                                 )
                             }
 
                             // Продукты в группе
-                            mealsOfType.forEach { meal ->
-                                meal.foods.forEach { food ->
+                            mealsOfType.forEach { indexedMeal ->
+                                val mealIndex = indexedMeal.index
+                                val meal = indexedMeal.value
+                                val food = meal.foods.firstOrNull()
+                                if (food != null) {
                                     item {
-                                        FoodItemCard(food = food)
+                                        FoodItemCard(
+                                            food = food,
+                                            onEdit = { editIndex = mealIndex },
+                                            onDelete = { deleteIndex = mealIndex }
+                                        )
                                         Spacer(modifier = Modifier.height(8.dp))
                                     }
                                 }
                             }
-
-                            item {
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
+                            item { Spacer(modifier = Modifier.height(16.dp)) }
                         }
 
                         // Итоговая статистика
+                        item {
+                            Divider(
+                                color = Color(0xFFE0E0E0),
+                                thickness = 1.dp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                            )
+                        }
+
                         item {
                             Card(
                                 modifier = Modifier
@@ -268,10 +289,10 @@ fun DayHistoryDialog(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        NutritionInfo("Калории", totals.calories.toString(), Color(0xFF4CAF50))
-                                        NutritionInfo("Белки", NutritionFormatter.formatMacro(totals.proteins), Color(0xFF2196F3))
-                                        NutritionInfo("Жиры", NutritionFormatter.formatMacro(totals.fats), Color(0xFFFFC107))
-                                        NutritionInfo("Углеводы", NutritionFormatter.formatMacro(totals.carbs), Color(0xFFFF5722))
+                                        MacroChip("Калории", totals.calories.toString(), Color.Black)
+                                        MacroChip("Белки", NutritionFormatter.formatMacro(totals.proteins), Color.Gray)
+                                        MacroChip("Жиры", NutritionFormatter.formatMacro(totals.fats), Color.Gray)
+                                        MacroChip("Углеводы", NutritionFormatter.formatMacro(totals.carbs), Color.Gray)
                                     }
                                 }
                             }
@@ -279,6 +300,78 @@ fun DayHistoryDialog(
                     }
                 }
             }
+        }
+
+
+        editIndex?.let { idx ->
+            val meal = meals[idx]
+            val food = meal.foods.first()
+
+            val weight = food.weight.toFloatOrNull() ?: 100f
+            fun per100(value: Double): String {
+                val per100 = (value * 100f / weight * 10f).roundToInt() / 10f
+                return per100.toString()
+            }
+
+            EnhancedManualInputDialog(
+                initialData = ManualInputData(
+                    name = food.name,
+                    caloriesPer100g = ((food.calories.toFloat() * 100f / weight).roundToInt()).toString(),
+                    proteinsPer100g = per100(food.protein),
+                    fatsPer100g = per100(food.fat),
+                    carbsPer100g = per100(food.carbs),
+                    weight = food.weight
+                ),
+                onDismiss = { editIndex = null },
+                onConfirm = { data ->
+                    val updatedFood = FoodItem(
+                        name = data.name,
+                        calories = data.totalCalories.roundToInt(),
+                        protein = data.totalProteins.toDouble(),
+                        fat = data.totalFats.toDouble(),
+                        carbs = data.totalCarbs.toDouble(),
+                        weight = data.weight,
+                        aiOpinion = food.aiOpinion
+                    )
+                    val updatedMeal = meal.copy(foods = listOf(updatedFood))
+                    meals[idx] = updatedMeal
+                    onMealUpdate(idx, updatedMeal)
+                    editIndex = null
+                }
+            )
+        }
+
+        deleteIndex?.let { idx ->
+            AlertDialog(
+                onDismissRequest = { deleteIndex = null },
+                icon = {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color.Red,
+                        modifier = Modifier.size(48.dp)
+                    )
+                },
+                title = { Text("Удалить запись?", textAlign = TextAlign.Center) },
+                text = { Text("Это действие нельзя отменить.", textAlign = TextAlign.Center) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            meals.removeAt(idx)
+                            onMealDelete(idx)
+                            deleteIndex = null
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                    ) {
+                        Text("Удалить")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { deleteIndex = null }) {
+                        Text("Отмена")
+                    }
+                }
+            )
         }
     }
 }
@@ -328,14 +421,18 @@ private fun MealTypeHeader(
 
 // Карточка продукта с AI мнением (если есть)
 @Composable
-private fun FoodItemCard(food: FoodItem) {
+private fun FoodItemCard(
+    food: FoodItem,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
+) {
     var showAiOpinion by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -345,7 +442,6 @@ private fun FoodItemCard(food: FoodItem) {
             // Название и AI кнопка
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -355,7 +451,28 @@ private fun FoodItemCard(food: FoodItem) {
                     modifier = Modifier.weight(1f)
                 )
 
-                // Показываем кнопку AI только если есть мнение
+                onEdit?.let {
+                    IconButton(onClick = it, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Редактировать",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                onDelete?.let {
+                    IconButton(onClick = it, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Удалить",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
                 if (food.aiOpinion != null) {
                     IconButton(
                         onClick = { showAiOpinion = !showAiOpinion },
@@ -391,6 +508,15 @@ private fun FoodItemCard(food: FoodItem) {
                 color = Color.Gray,
                 modifier = Modifier.padding(top = 4.dp)
             )
+
+            if (food.source != "manual") {
+                Text(
+                    text = "С помощью AI",
+                    fontSize = 12.sp,
+                    color = Color(0xFF4CAF50),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
 
             // AI мнение (раскрывающееся)
             AnimatedVisibility(
@@ -451,30 +577,6 @@ private fun MacroChip(
         Text(
             text = label,
             fontSize = 11.sp,
-            color = Color.Gray
-        )
-    }
-}
-
-// Компонент для отображения макронутриента
-@Composable
-private fun NutritionInfo(
-    label: String,
-    value: String,
-    color: Color
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = label,
-            fontSize = 12.sp,
             color = Color.Gray
         )
     }

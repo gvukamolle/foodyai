@@ -76,7 +76,8 @@ data class FoodItemEntity(
     val healthScore: Int? = null,
     val tags: List<String>? = null,
     val imageUri: String? = null,
-    val aiOpinion: String? = null  // Новое поле для AI мнения
+    val source: String = "manual",
+    val aiOpinion: String? = null
 )
 
 // AI Recommendation Entity
@@ -303,7 +304,9 @@ abstract class AppDatabase : RoomDatabase() {
                         micronutrients TEXT,
                         healthScore INTEGER,
                         tags TEXT,
-                        imageUri TEXT
+                        imageUri TEXT,
+                        source TEXT,
+                        aiOpinion TEXT
                     )
                 """.trimIndent())
 

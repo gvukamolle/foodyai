@@ -59,7 +59,8 @@ data class FoodItem(
     val fat: Double,
     val carbs: Double,
     val weight: String,
-    val aiOpinion: String? = null  // Новое поле для хранения мнения AI
+    val source: String = "manual",
+    val aiOpinion: String? = null
 )
 
 data class Meal(
@@ -505,7 +506,8 @@ class CalorieTrackerViewModel(
                             fat = foodData.fat,
                             carbs = foodData.carbs,
                             weight = foodData.weight,
-                            aiOpinion = foodData.opinion  // Добавляем мнение AI
+                            source = currentFoodSource ?: "ai_photo",
+                            aiOpinion = foodData.opinion
                         )
 
                         Log.d("CalorieTracker", "Установлен prefillFood с AI мнением: $prefillFood")
@@ -531,6 +533,7 @@ class CalorieTrackerViewModel(
     fun analyzeDescription(text: String) {
         viewModelScope.launch {
             isAnalyzing = true
+            currentFoodSource = "ai_description"
             checkInternetConnection()
             if (!isOnline) {
                 handleError("Нет подключения к интернету")
@@ -569,10 +572,12 @@ class CalorieTrackerViewModel(
                 prefillFood = FoodItem(
                     name = foodData.name,
                     calories = foodData.calories,
-                    protein = foodData.protein,    // FoodDataFromAnswer использует proteins
-                    fat = foodData.fat,            // FoodDataFromAnswer использует fats
+                    protein = foodData.protein,
+                    fat = foodData.fat,
                     carbs = foodData.carbs,
-                    weight = foodData.weight
+                    weight = foodData.weight,
+                    source = currentFoodSource ?: "ai_description",
+                    aiOpinion = foodData.opinion
                 )
 
                 showDescriptionDialog = false
@@ -626,7 +631,9 @@ class CalorieTrackerViewModel(
             protein = proteins.toDoubleOrNull() ?: 0.0,
             fat = fats.toDoubleOrNull() ?: 0.0,
             carbs = carbs.toDoubleOrNull() ?: 0.0,
-            weight = (weight.toIntOrNull() ?: 100).toString()
+            weight = (weight.toIntOrNull() ?: 100).toString(),
+            source = currentFoodSource ?: "manual",
+            aiOpinion = if (currentFoodSource != "manual") prefillFood?.aiOpinion else null
         )
 
         messages = messages + ChatMessage(
