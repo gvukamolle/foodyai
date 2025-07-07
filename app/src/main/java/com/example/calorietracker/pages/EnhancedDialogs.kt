@@ -260,6 +260,7 @@ fun EnhancedDescribeDialog(
     var text by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
     val haptic = LocalHapticFeedback.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     AnimatedDialogContainer(
         onDismiss = onDismiss,
@@ -284,47 +285,15 @@ fun EnhancedDescribeDialog(
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 120.dp)
-                    // --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ---
-                    // Перехватываем нажатие Enter до того, как его обработает TextField
-                    .onPreviewKeyEvent {
-                        if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
-                            focusManager.clearFocus()
-                            true // Сообщаем, что мы обработали событие
-                        } else {
-                            false // Остальные клавиши обрабатываются как обычно
-                        }
-                    },
-                label = { Text("Описание блюда") },
-                placeholder = {
-                    Text(
-                        "Например: Овсяная каша с бананом и орехами, примерно 300 грамм",
-                        fontSize = 16.sp
-                    )
-                },
-                textStyle = TextStyle(
-                    fontSize = 16.sp,
-                    color = Color.Black
-                ),
+                modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = DialogColors.AIAnalysis,
-                    focusedLabelColor = DialogColors.AIAnalysis,
-                    cursorColor = DialogColors.AIAnalysis
+                    focusedLabelColor = DialogColors.AIAnalysis
                 ),
-                // Эти параметры остаются для кнопки "Готово" (✓), если она появится
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                    }
-                ),
-                maxLines = 4
-            )
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                singleLine = true
+                )
 
             // AI индикатор анализа (ВОССТАНОВЛЕН)
             if (isAnalyzing) {

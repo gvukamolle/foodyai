@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -155,6 +156,7 @@ fun DialogActions(
     accentColor: Color
 ) {
     val haptic = LocalHapticFeedback.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -163,6 +165,7 @@ fun DialogActions(
         OutlinedButton(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                keyboardController?.hide()
                 onCancel()
             },
             modifier = Modifier.weight(1f),
@@ -176,6 +179,7 @@ fun DialogActions(
         Button(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                keyboardController?.hide()
                 onConfirm()
             },
             modifier = Modifier.weight(1f),
