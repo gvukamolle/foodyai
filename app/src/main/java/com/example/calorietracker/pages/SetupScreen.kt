@@ -41,7 +41,6 @@ fun SetupScreen(
     var weight by remember { mutableStateOf(if (viewModel.userProfile.weight > 0) viewModel.userProfile.weight.toString() else "") }
     var gender by remember { mutableStateOf(viewModel.userProfile.gender) }
     var condition by remember { mutableStateOf(viewModel.userProfile.condition) }
-    var bodyFeeling by remember { mutableStateOf(viewModel.userProfile.bodyFeeling) }
     var goal by remember { mutableStateOf(viewModel.userProfile.goal) }
 
     val initialBirthdayParts = viewModel.userProfile.birthday.split("-").mapNotNull { it.toIntOrNull() }
@@ -67,13 +66,12 @@ fun SetupScreen(
     // --- УЛУЧШЕНИЕ КОДА ---
     // Убрали избыточный derivedStateOf. remember с ключами уже делает то, что нужно:
     // пересчитывает значение, когда один из ключей изменяется.
-    val isButtonEnabled = remember(height, weight, year, month, day, gender, condition, bodyFeeling, goal) {
+    val isButtonEnabled = remember(height, weight, year, month, day, gender, condition, goal) {
         (height.toIntOrNull() ?: 0 > 0) &&
                 (weight.toIntOrNull() ?: 0 > 0) &&
                 isDateValid(year, month, day) &&
                 gender.isNotEmpty() &&
                 condition.isNotEmpty() &&
-                bodyFeeling.isNotEmpty() &&
                 goal.isNotEmpty()
     }
 
@@ -141,17 +139,6 @@ fun SetupScreen(
             }
         }
 
-        var bodyFeelingExpanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(expanded = bodyFeelingExpanded, onExpandedChange = { bodyFeelingExpanded = !bodyFeelingExpanded }) {
-            OutlinedTextField(value = when (bodyFeeling) { "thin" -> "Худой"; "normal" -> "Обычный"; "chubby" -> "Плотный"; "fat" -> "Толстый"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Ощущение тела") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bodyFeelingExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
-            ExposedDropdownMenu(expanded = bodyFeelingExpanded, onDismissRequest = { bodyFeelingExpanded = false }) {
-                DropdownMenuItem(text = { Text("Худой") }, onClick = { bodyFeeling = "thin"; bodyFeelingExpanded = false })
-                DropdownMenuItem(text = { Text("Обычный") }, onClick = { bodyFeeling = "normal"; bodyFeelingExpanded = false })
-                DropdownMenuItem(text = { Text("Плотный") }, onClick = { bodyFeeling = "chubby"; bodyFeelingExpanded = false })
-                DropdownMenuItem(text = { Text("Толстый") }, onClick = { bodyFeeling = "fat"; bodyFeelingExpanded = false })
-            }
-        }
-
         var goalExpanded by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = goalExpanded, onExpandedChange = { goalExpanded = !goalExpanded }) {
             OutlinedTextField(value = when (goal) { "lose" -> "Худеем"; "maintain" -> "Питаемся лучше"; "gain" -> "Набор массы"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Цель") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
@@ -179,7 +166,6 @@ fun SetupScreen(
                     birthday = formattedBirthday,
                     gender = gender,
                     condition = condition,
-                    bodyFeeling = bodyFeeling,
                     goal = goal,
                     isSetupComplete = true
                 )

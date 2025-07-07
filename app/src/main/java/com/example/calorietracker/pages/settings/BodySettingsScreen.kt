@@ -185,9 +185,7 @@ fun BodySettingsScreen(
                         OutlinedTextField(
                             value = day,
                             onValueChange = {
-                                height = it
-                                val validation = BodyParametersValidator.validateHeight(it)
-                                heightError = validation.errorMessage
+                                day = it
                             },
                             label = { Text("День") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -204,9 +202,7 @@ fun BodySettingsScreen(
                         OutlinedTextField(
                             value = month,
                             onValueChange = {
-                                height = it
-                                val validation = BodyParametersValidator.validateHeight(it)
-                                heightError = validation.errorMessage
+                                month = it
                             },
                             label = { Text("Месяц") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -223,9 +219,7 @@ fun BodySettingsScreen(
                         OutlinedTextField(
                             value = year,
                             onValueChange = {
-                                height = it
-                                val validation = BodyParametersValidator.validateHeight(it)
-                                heightError = validation.errorMessage
+                                year = it
                             },
                             label = { Text("Год") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -380,9 +374,9 @@ fun BodySettingsScreen(
                     ) {
                         OutlinedTextField(
                             value = when (goal) {
-                                "weight-loss" -> "Похудение"
-                                "maintain" -> "Поддержание веса"
-                                "muscle-gain" -> "Набор массы"
+                                "lose" -> "Худеем"
+                                "maintain" -> "Питаемся лучше"
+                                "gain" -> "Набор массы"
                                 else -> ""
                             },
                             onValueChange = {
@@ -425,7 +419,7 @@ fun BodySettingsScreen(
                             DropdownMenuItem(
                                 text = { Text("Набор массы") },
                                 onClick = {
-                                    goal = "muscle-gain"
+                                    goal = "gain"
                                     goalExpanded = false
                                 }
                             )

@@ -75,7 +75,8 @@ data class FoodItemEntity(
     val micronutrients: Map<String, Double>? = null,
     val healthScore: Int? = null,
     val tags: List<String>? = null,
-    val imageUri: String? = null
+    val imageUri: String? = null,
+    val aiOpinion: String? = null  // Новое поле для AI мнения
 )
 
 // AI Recommendation Entity

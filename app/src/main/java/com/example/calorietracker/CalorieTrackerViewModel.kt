@@ -55,10 +55,11 @@ enum class MessageType {
 data class FoodItem(
     val name: String,
     val calories: Int,
-    val protein: Double,    // поддержка дробных значений
+    val protein: Double,
     val fat: Double,
     val carbs: Double,
-    val weight: String
+    val weight: String,
+    val aiOpinion: String? = null  // Новое поле для хранения мнения AI
 )
 
 data class Meal(
@@ -496,17 +497,18 @@ class CalorieTrackerViewModel(
                             "✅ Распознан продукт: ${foodData.name}"
                         )
 
-                        // Создаем FoodItem из полученных данных
+                        // Создаем FoodItem из полученных данных С МНЕНИЕМ AI
                         prefillFood = FoodItem(
                             name = foodData.name,
                             calories = foodData.calories,
-                            protein = foodData.protein,    // FoodDataFromAnswer использует proteins
-                            fat = foodData.fat,            // FoodDataFromAnswer использует fats
+                            protein = foodData.protein,
+                            fat = foodData.fat,
                             carbs = foodData.carbs,
-                            weight = foodData.weight
+                            weight = foodData.weight,
+                            aiOpinion = foodData.opinion  // Добавляем мнение AI
                         )
 
-                        Log.d("CalorieTracker", "Установлен prefillFood: $prefillFood")
+                        Log.d("CalorieTracker", "Установлен prefillFood с AI мнением: $prefillFood")
                         showManualInputDialog = true
                     }
 
@@ -515,15 +517,12 @@ class CalorieTrackerViewModel(
                         handleError("Не удалось определить тип продукта")
                     }
                 }
-
             } catch (e: Exception) {
-                Log.e("CalorieTracker", "Ошибка парсинга JSON", e)
-                handleError("Не удалось обработать ответ сервера")
+                Log.e("CalorieTracker", "Ошибка парсинга ответа", e)
+                handleError("Неверный формат ответа от сервера")
             }
-
         } catch (e: Exception) {
-            Log.e("CalorieTracker", "Общая ошибка", e)
-            handleError("Произошла ошибка при анализе")
+            handleError("Ошибка анализа изображения: ${e.message}")
         } finally {
             isAnalyzing = false
         }
@@ -599,12 +598,13 @@ class CalorieTrackerViewModel(
     // Data class для парсинга ответа (должен быть в файле с моделями)
     data class FoodDataFromAnswer(
         val food: String,      // "да" или "нет"
-        val name: String,      // название продукта
-        val calories: Int,     // калории
-        val protein: Double,   // белки могут быть дробными
-        val fat: Double,       // жиры могут быть дробными
-        val carbs: Double,     // углеводы могут быть дробными
-        val weight: String     // вес (строка, т.к. может быть "100г")
+        val name: String,
+        val calories: Int,
+        val protein: Double,
+        val fat: Double,
+        val carbs: Double,
+        val weight: String,
+        val opinion: String? = null  // AI мнение о продукте
     )
 
     // Обработка ручного ввода продукта

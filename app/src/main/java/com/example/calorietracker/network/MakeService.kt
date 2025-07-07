@@ -12,6 +12,7 @@ data class FoodAnalysisRequest(
     val message: String,
     val userId: String,
     val messageType: String = "analysis",
+    val includeOpinion: Boolean = true  // Флаг для запроса мнения
 )
 
 data class ImageAnalysisRequest(
@@ -23,6 +24,15 @@ data class ImageAnalysisRequest(
 data class ImageUrlAnalysisRequest(
     val imageUrl: String,
     val userProfile: UserProfileData
+)
+
+data class FoodDataWithOpinion(
+    val name: String,
+    val calories: Int,
+    val protein: Double,
+    val fat: Double,
+    val carbs: Double,
+    val opinion: String?
 )
 
 data class MealPlanRequest(
