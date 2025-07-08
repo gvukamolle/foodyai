@@ -142,7 +142,7 @@ class CalorieTrackerViewModel(
     var showAILimitDialog by mutableStateOf(false)
     var showSubscriptionOffer by mutableStateOf(false)
     var pendingAIAction by mutableStateOf<(() -> Unit)?>(null)
-        private set
+        internal set
     var currentFoodSource by mutableStateOf<String?>(null)
     var messages by mutableStateOf(
         listOf(

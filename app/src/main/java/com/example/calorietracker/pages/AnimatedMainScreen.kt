@@ -49,11 +49,11 @@ import com.example.calorietracker.ui.animations.TypewriterText
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.Locale
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
 import java.time.format.TextStyle as DateTextStyle
 import com.example.calorietracker.pages.subscription.AILimitDialog
 import com.example.calorietracker.ui.components.AIUsageIndicator
+import com.example.calorietracker.auth.UserData
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
