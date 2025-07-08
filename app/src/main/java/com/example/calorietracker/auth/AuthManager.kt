@@ -62,7 +62,9 @@ class AuthManager(private val context: Context) {
             val firebaseUser = firebaseAuth.currentUser
             if (firebaseUser != null) {
                 // Если пользователь вошел, загружаем его данные из Firestore
-                loadUserData(firebaseUser)
+                CoroutineScope(Dispatchers.IO).launch {
+                    loadUserData(firebaseUser)
+                }
             } else {
                 // Если пользователь вышел
                 _currentUser.value = null

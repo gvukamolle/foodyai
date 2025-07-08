@@ -134,7 +134,8 @@ fun AnimatedMainScreen(
             AnimatedHeader(
                 viewModel = viewModel,
                 onSettingsClick = onSettingsClick,
-                onDateClick = onCalendarClick  // Передаем обработчик
+                onDateClick = onCalendarClick,
+                onNavigateToSubscription = onNavigateToSubscription
             )
 
             // Прогресс-бары
@@ -169,7 +170,8 @@ fun AnimatedMainScreen(
 private fun AnimatedHeader(
     viewModel: CalorieTrackerViewModel,
     onSettingsClick: () -> Unit,
-    onDateClick: () -> Unit // Новый параметр для перехода к календарю
+    onDateClick: () -> Unit, // Новый параметр для перехода к календарю
+    onNavigateToSubscription: () -> Unit
 ) {
     var visible by remember { mutableStateOf(false) }
 

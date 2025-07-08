@@ -566,9 +566,9 @@ private fun getPlanDetails(): List<PlanDetails> {
                     "Детальные графики и прогнозы"
                 )
             ),
-            isPopular = TODO(),
-            gradientColors = TODO(),
-        ))
-    ;
-    gradientColors = listOf(Color(0xFF2196F3), Color(0xFF03A9F4))
+            // Этот план не помечаем как популярный
+            isPopular = false,
+            gradientColors = listOf(Color(0xFF2196F3), Color(0xFF03A9F4))
+        )
+    )
 }
