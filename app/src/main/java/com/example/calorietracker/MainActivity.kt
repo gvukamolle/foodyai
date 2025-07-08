@@ -37,6 +37,8 @@ import com.example.calorietracker.ui.theme.CalorieTrackerTheme
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
 import com.example.calorietracker.pages.subscription.SubscriptionPlansScreen
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
@@ -85,6 +87,7 @@ private fun decodeBitmapWithOrientation(context: Context, uri: Uri): Bitmap? {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        checkGooglePlayServices()
         CleanupWorker.schedule(this)
 
         setContent {
@@ -97,6 +100,21 @@ class MainActivity : ComponentActivity() {
             CalorieTrackerTheme {
                 CalorieTrackerApp(authManager, viewModel, this@MainActivity)
             }
+        }
+    }
+
+    private fun checkGooglePlayServices(): Boolean {
+        val availability = GoogleApiAvailability.getInstance()
+        val result = availability.isGooglePlayServicesAvailable(this)
+        return if (result == ConnectionResult.SUCCESS) {
+            true
+        } else {
+            if (availability.isUserResolvableError(result)) {
+                availability.makeGooglePlayServicesAvailable(this)
+            } else {
+                Toast.makeText(this, "Google Play Services required", Toast.LENGTH_LONG).show()
+            }
+            false
         }
     }
 }
