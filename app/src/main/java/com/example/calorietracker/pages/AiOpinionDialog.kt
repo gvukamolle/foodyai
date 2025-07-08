@@ -27,7 +27,7 @@ fun AiOpinionDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header with star icon
@@ -48,7 +48,7 @@ fun AiOpinionDialog(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "Анализ от Foody AI",
@@ -56,7 +56,7 @@ fun AiOpinionDialog(
                 color = Color.Black
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -67,11 +67,6 @@ fun AiOpinionDialog(
                     modifier = Modifier.padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.FormatQuote,
-                        contentDescription = null,
-                        tint = DialogColors.Photo.copy(alpha = 0.5f)
-                    )
                     Text(
                         text = opinion,
                         style = MaterialTheme.typography.bodyMedium,
@@ -81,17 +76,23 @@ fun AiOpinionDialog(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Button(
                 onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = DialogColors.Photo
                 )
             ) {
-                Text("Спасибо!", color = Color.White)
+                Text(
+                    "Спасибо!",
+                    color = Color.White,
+                    fontSize = 18.sp
+                )
             }
         }
     }

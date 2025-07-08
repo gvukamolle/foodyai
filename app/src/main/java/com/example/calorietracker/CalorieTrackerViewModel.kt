@@ -702,11 +702,6 @@ class CalorieTrackerViewModel(
                 isExpandable = food.aiOpinion != null
             )
 
-            if (food.aiOpinion != null) {
-                aiOpinionText = food.aiOpinion
-                showAiOpinionDialog = true
-            }
-
             // Сохраняем в репозиторий
             val updatedIntake = DailyIntake(
                 calories = dailyCalories,

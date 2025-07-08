@@ -63,13 +63,12 @@ import androidx.compose.material3.FilledTonalButton
 @Composable
 fun AiInfoButton(
     hasAiOpinion: Boolean,
-    aiOpinion: String
+    onClick: () -> Unit
 ) {
-    var showDialog by remember { mutableStateOf(false) }
 
     // Зеленая кнопка-бокс
     Surface(
-        onClick = { if (hasAiOpinion) showDialog = true },
+        onClick = { if (hasAiOpinion) onClick() },
         shape = RoundedCornerShape(16.dp),
         color = Color(0xFFC8F3CB), // Зеленый цвет
         modifier = Modifier.height(28.dp)
@@ -111,103 +110,6 @@ fun AiInfoButton(
             }
         }
     }
-
-    // Диалог с AI комментарием
-    if (showDialog && hasAiOpinion) {
-        Dialog(
-            onDismissRequest = { showDialog = false },
-            properties = DialogProperties(
-                dismissOnBackPress = true,
-                dismissOnClickOutside = true
-            )
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 8.dp
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Иконка AI в зеленом круге
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .background(
-                                color = Color(0xFFE8F5E9),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = Color(0xFF4CAF50)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Анализ от Foody AI",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Комментарий в рамке
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFF5F5F5)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FormatQuote,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = Color(0xFF4CAF50).copy(alpha = 0.5f)
-                            )
-                            Text(
-                                text = aiOpinion,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Black,
-                                lineHeight = 22.sp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Кнопка закрытия
-                    Button(
-                        onClick = { showDialog = false },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF000000)
-                        )
-                    ) {
-                        Text("Понятно", color = Color.White)
-                    }
-                }
-            }
-        }
-    }
 }
 
 // Основной диалог истории дня с группировкой
@@ -231,6 +133,8 @@ fun DayHistoryDialog(
     val meals = remember { mutableStateListOf<Meal>().apply { addAll(dailyIntake.meals) } }
     var editIndex by remember { mutableStateOf<Int?>(null) }
     var deleteIndex by remember { mutableStateOf<Int?>(null) }
+    var showAiOpinionDialog by remember { mutableStateOf(false) }
+    var aiOpinionText by remember { mutableStateOf<String?>(null) }
 
     // Группируем приемы пищи по типу, сохраняя индекс
     val groupedMeals = remember(meals.toList()) {
@@ -404,8 +308,12 @@ fun DayHistoryDialog(
                                         FoodItemCard(
                                             food = food,
                                             onEdit = { editIndex = mealIndex },
-                                            onDelete = { deleteIndex = mealIndex }
-                                        )
+                                            onDelete = { deleteIndex = mealIndex },
+                                            onAiOpinionClick = {
+                                                aiOpinionText = it
+                                                showAiOpinionDialog = true
+                                            }
+                                            )
                                         Spacer(modifier = Modifier.height(8.dp))
                                     }
                                 }
@@ -534,6 +442,12 @@ fun DayHistoryDialog(
                 }
             )
         }
+        if (showAiOpinionDialog && aiOpinionText != null) {
+            AiOpinionDialog(
+                opinion = aiOpinionText!!,
+                onDismiss = { showAiOpinionDialog = false }
+            )
+        }
     }
 }
 
@@ -585,7 +499,8 @@ private fun MealTypeHeader(
 private fun FoodItemCard(
     food: FoodItem,
     onEdit: (() -> Unit)? = null,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    onAiOpinionClick: ((String) -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -680,7 +595,9 @@ private fun FoodItemCard(
                 if (food.source != "manual" || food.aiOpinion != null) {
                     AiInfoButton(
                         hasAiOpinion = food.aiOpinion != null,
-                        aiOpinion = food.aiOpinion ?: "Анализ выполнен с помощью AI"
+                        onClick = {
+                            food.aiOpinion?.let { onAiOpinionClick?.invoke(it) }
+                        }
                     )
                 }
             }
