@@ -10,8 +10,8 @@ enum class SubscriptionPlan {
             "История питания"
         )
     ),
-    PRO(
-        displayName = "Pro",
+    PLUS(
+        displayName = "PLUS",
         features = listOf(
             "Все функции Бесплатного плана",
             "Расширенные отчеты и аналитика",
@@ -19,8 +19,8 @@ enum class SubscriptionPlan {
             "Приоритетная поддержка"
         )
     ),
-    PREMIUM(
-        displayName = "Premium",
+    PRO(
+        displayName = "PRO",
         features = listOf(
             "Все функции Pro плана",
             "Персональные рекомендации от AI",

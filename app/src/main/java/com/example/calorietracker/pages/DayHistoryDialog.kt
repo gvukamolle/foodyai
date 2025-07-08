@@ -23,12 +23,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -45,20 +43,8 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.example.calorietracker.ui.components.AnimatedRainbowBorder
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 
 @Composable
 fun AiInfoButton(
@@ -255,7 +241,6 @@ fun DayHistoryDialog(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(Color.White)
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
                                 Text(
                                     text = date.format(dateFormatter),
@@ -266,23 +251,13 @@ fun DayHistoryDialog(
                                 )
                                 IconButton(
                                     onClick = { animatedDismiss() },
-                                    modifier = Modifier.align(Alignment.TopStart)
+                                    modifier = Modifier.align(Alignment.CenterStart)
                                 ) {
                                     Icon(
                                         Icons.Default.ArrowBack,
                                         contentDescription = "Назад",
                                         tint = Color.Gray
                                     )
-                                    IconButton(
-                                        onClick = { animatedDismiss() },
-                                        modifier = Modifier.align(Alignment.CenterStart)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.ArrowBack,
-                                            contentDescription = "Назад",
-                                            tint = Color.Gray
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -312,8 +287,8 @@ fun DayHistoryDialog(
                                             onAiOpinionClick = {
                                                 aiOpinionText = it
                                                 showAiOpinionDialog = true
-                                            }
-                                            )
+                            }
+                                        )
                                         Spacer(modifier = Modifier.height(8.dp))
                                     }
                                 }

@@ -113,9 +113,9 @@ fun DataExportContent() {
                     scope.launch { isExporting = true; for (i in 0..100 step 10) { exportProgress = i / 100f; kotlinx.coroutines.delay(100) }; isExporting = false }
                 })
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                ExportFormatItem(title = "PDF отчет", subtitle = "Полный отчет с графиками", icon = Icons.Default.PictureAsPdf, badge = "Pro", onClick = { /* Export PDF */ })
+                ExportFormatItem(title = "PDF отчет", subtitle = "Полный отчет с графиками", icon = Icons.Default.PictureAsPdf, badge = "PLUS", onClick = { /* Export PDF */ })
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                ExportFormatItem(title = "JSON данные", subtitle = "Для разработчиков и интеграций", icon = Icons.Default.Code, badge = "Premium", onClick = { /* Export JSON */ })
+                ExportFormatItem(title = "JSON данные", subtitle = "Для разработчиков и интеграций", icon = Icons.Default.Code, badge = "PRO", onClick = { /* Export JSON */ })
             }
         }
         if (isExporting) {

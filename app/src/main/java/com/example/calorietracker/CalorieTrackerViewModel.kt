@@ -23,6 +23,7 @@ import kotlin.math.round
 import okhttp3.RequestBody.Companion.toRequestBody
 import android.widget.Toast
 import androidx.compose.ui.graphics.Color
+import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.auth.UserData
 import com.example.calorietracker.data.DailyIntake
 import java.time.LocalDateTime
@@ -39,7 +40,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import com.example.calorietracker.data.DailyNutritionSummary
 import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
-
+import com.example.calorietracker.utils.AIUsageManager
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -95,7 +96,8 @@ data class FoodHistoryItem(
 
 class CalorieTrackerViewModel(
     internal val repository: DataRepository,
-    private val context: Context
+    private val context: Context,
+    private val authManager: AuthManager
 ) : ViewModel() {
     val userId = getOrCreateUserId(context)
 
@@ -137,6 +139,9 @@ class CalorieTrackerViewModel(
     var showSettings by mutableStateOf(false)
     var userProfile by mutableStateOf(UserProfile())
     var displayDate by mutableStateOf(DailyResetUtils.getFormattedDisplayDate())
+    var showAILimitDialog by mutableStateOf(false)
+    var showSubscriptionOffer by mutableStateOf(false)
+    var pendingAIAction by mutableStateOf<(() -> Unit)?>(null)
         private set
     var currentFoodSource by mutableStateOf<String?>(null)
     var messages by mutableStateOf(
@@ -153,6 +158,8 @@ class CalorieTrackerViewModel(
     var prefillFood by mutableStateOf<FoodItem?>(null)
     var selectedMeal by mutableStateOf(MealType.BREAKFAST)
     var isAnalyzing by mutableStateOf(false)
+    val currentUser: UserData?
+        get() = authManager.currentUser.value
 
     // AI и сетевые состояния
     var isOnline by mutableStateOf(false)
@@ -433,6 +440,17 @@ class CalorieTrackerViewModel(
             return
         }
 
+        val currentUser = authManager.currentUser.value
+        if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
+            showAILimitDialog = true
+            pendingAIAction = {
+                viewModelScope.launch {
+                    analyzePhotoWithAI(bitmap, caption)
+                }
+            }
+            return
+        }
+
         messages = messages + ChatMessage(
             MessageType.AI,
             "Анализирую фото..."
@@ -469,6 +487,12 @@ class CalorieTrackerViewModel(
 
             // Удаляем временный файл
             tempFile.delete()
+
+            if (response.isSuccess && currentUser != null) {
+                viewModelScope.launch {
+                    val updatedUserData = AIUsageManager.incrementUsage(currentUser)
+                    authManager.updateUserData(updatedUserData)
+                }}
 
             // 4. Обрабатываем ответ
             if (!response.isSuccess) {

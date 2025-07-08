@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -22,23 +24,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import android.graphics.Matrix
-import android.net.Uri
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
-import androidx.core.content.ContextCompat
 import com.example.calorietracker.auth.AuthManager
+import com.example.calorietracker.auth.SubscriptionPlan
 import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.pages.*
+import com.example.calorietracker.pages.settings.*
+import com.example.calorietracker.pages.subscription.SubscriptionPlansScreen
 import com.example.calorietracker.ui.theme.CalorieTrackerTheme
 import com.example.calorietracker.workers.CleanupWorker
 import kotlinx.coroutines.launch
-import com.example.calorietracker.pages.settings.*
-
+import com.example.calorietracker.pages.subscription.SubscriptionPlansScreen
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
-    Setup, Main, SettingsV2, Calendar, Profile, BodySettings, AppSettings
+    Setup, Main, SettingsV2, Calendar, Profile, BodySettings, AppSettings, Subscription
 }
 
 private fun decodeBitmapWithOrientation(file: java.io.File): Bitmap {
@@ -88,7 +90,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val repository = remember { DataRepository(this@MainActivity) }
             val authManager = remember { AuthManager(this@MainActivity) }
-            val viewModel: CalorieTrackerViewModel = remember { CalorieTrackerViewModel(repository, this@MainActivity) }
+            val viewModel: CalorieTrackerViewModel = remember {
+                CalorieTrackerViewModel(repository, this@MainActivity, authManager)
+            }
 
             CalorieTrackerTheme {
                 CalorieTrackerApp(authManager, viewModel, this@MainActivity)
@@ -113,6 +117,7 @@ fun CalorieTrackerApp(
     var showProfileScreen by remember { mutableStateOf(false) }
     var showBodySettingsScreen by remember { mutableStateOf(false) }
     var showAppSettingsScreen by remember { mutableStateOf(false) }
+    var showSubscriptionScreen by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
@@ -183,6 +188,10 @@ fun CalorieTrackerApp(
                 showProfileScreen = false
                 showSettingsScreen = true
             }
+            showSubscriptionScreen -> {
+                showSubscriptionScreen = false
+                showSettingsScreen = true
+            }
             showBodySettingsScreen -> {
                 showBodySettingsScreen = false
                 showSettingsScreen = true
@@ -218,6 +227,7 @@ fun CalorieTrackerApp(
                 showBodySettingsScreen -> Screen.BodySettings
                 showAppSettingsScreen -> Screen.AppSettings
                 showSettingsScreen -> Screen.SettingsV2
+                showSubscriptionScreen -> Screen.Subscription
                 else -> currentScreen
             }
 
@@ -275,6 +285,11 @@ fun CalorieTrackerApp(
                                 showAppSettingsScreen = true
                                 showSettingsScreen = false
                             },
+                            onNavigateToSubscription = {
+                                showSubscriptionScreen = true
+                                showSettingsScreen = false
+                            },
+                            // ⬆️ ДОБАВИТЬ ЭТУ ФУНКЦИЮ ⬆️
                             onSignOut = { authManager.signOut() },
                         )
                     }
@@ -289,6 +304,29 @@ fun CalorieTrackerApp(
                             onNavigateToBodySettings = {
                                 showProfileScreen = false
                                 showBodySettingsScreen = true
+                            }
+                        )
+                    }
+                    Screen.Subscription -> {
+                        SubscriptionPlansScreen(
+                            currentPlan = currentUser?.subscriptionPlan ?: SubscriptionPlan.FREE,
+                            onSelectPlan = { newPlan ->
+                                coroutineScope.launch {
+                                    val result = authManager.updateSubscriptionPlan(newPlan)
+                                    if (result.isSuccess) {
+                                        showSubscriptionScreen = false
+                                        showSettingsScreen = true
+                                        Toast.makeText(
+                                            context,
+                                            "План подписки обновлен на ${newPlan.displayName}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            },
+                            onBack = {
+                                showSubscriptionScreen = false
+                                showSettingsScreen = true
                             }
                         )
                     }
@@ -342,8 +380,12 @@ fun CalorieTrackerApp(
                             onCalendarClick = {
                                 currentScreen = Screen.Calendar
                                 showCalendarScreen = true
-                            }
-                        )
+                            },
+                                    onNavigateToSubscription = { // НОВОЕ
+                                showSubscriptionScreen = true
+                            },
+                            modifier = Modifier.fillMaxSize()
+                                )
                     }
 
                     null -> {

@@ -21,6 +21,8 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.Date
+import kotlinx.coroutines.tasks.await
+import android.util.Log
 
 // Модель данных пользователя
 data class UserData(
@@ -33,7 +35,9 @@ data class UserData(
     val createdAt: Date = Date(),
     val lastLogin: Date = Date(),
     val isEmailVerified: Boolean = false,
-    val isSetupComplete: Boolean = false // <-- ДОБАВЬ ЭТО!
+    val isSetupComplete: Boolean = false, // <-- ДОБАВЬ ЭТО!
+    val aiUsageCount: Int = 0,  // Новое поле для отслеживания использования AI
+    val aiUsageResetDate: Long = 0 // Дата сброса счетчика
 )
 
 class AuthManager(private val context: Context) {
@@ -93,23 +97,87 @@ class AuthManager(private val context: Context) {
         }
     }
 
-    private fun loadUserData(firebaseUser: FirebaseUser) {
-        firestore.collection("users").document(firebaseUser.uid).get()
-            .addOnSuccessListener { document ->
-                if (document != null && document.exists()) {
-                    // Пользователь найден в Firestore, загружаем его данные
-                    val userData = document.toObject(UserData::class.java)
-                    _currentUser.value = userData
-                } else {
-                    // Пользователя нет в Firestore, создаем новую запись
-                    createUserInFirestore(firebaseUser)
-                }
-                _authState.value = AuthState.AUTHENTICATED
+    private suspend fun loadUserData(firebaseUser: FirebaseUser) {
+        try {
+            val document = firestore.collection("users")
+                .document(firebaseUser.uid)
+                .get()
+                .await()
+
+            if (document.exists()) {
+                _currentUser.value = UserData(
+                    uid = firebaseUser.uid,
+                    email = firebaseUser.email ?: "",
+                    displayName = document.getString("displayName").toString(),
+                    isSetupComplete = document.getBoolean("isSetupComplete") ?: false,
+                    subscriptionPlan = try {
+                        SubscriptionPlan.valueOf(document.getString("subscriptionPlan") ?: "FREE")
+                    } catch (e: Exception) {
+                        SubscriptionPlan.FREE
+                    },
+                    aiUsageCount = document.getLong("aiUsageCount")?.toInt() ?: 0,
+                    aiUsageResetDate = document.getLong("aiUsageResetDate") ?: 0
+                )
+            } else {
+                val newUserData = UserData(
+                    uid = firebaseUser.uid,
+                    email = firebaseUser.email ?: "",
+                    displayName = firebaseUser.displayName.toString(),
+                    isSetupComplete = false,
+                    subscriptionPlan = SubscriptionPlan.FREE,
+                    aiUsageCount = 0,
+                    aiUsageResetDate = System.currentTimeMillis()
+                )
+
+                firestore.collection("users")
+                    .document(firebaseUser.uid)
+                    .set(newUserData)
+                    .await()
+
+                _currentUser.value = newUserData
             }
-            .addOnFailureListener {
-                // Ошибка загрузки данных
-                _authState.value = AuthState.UNAUTHENTICATED
-            }
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Error loading user data", e)
+        }
+    }
+
+    suspend fun updateSubscriptionPlan(newPlan: SubscriptionPlan): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: return Result.failure(Exception("User not authenticated"))
+
+            firestore.collection("users")
+                .document(user.uid)
+                .update("subscriptionPlan", newPlan.name)
+                .await()
+
+            _currentUser.value = _currentUser.value?.copy(subscriptionPlan = newPlan)
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateUserData(userData: UserData): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: return Result.failure(Exception("User not authenticated"))
+
+            val updates = hashMapOf<String, Any>(
+                "aiUsageCount" to userData.aiUsageCount,
+                "aiUsageResetDate" to userData.aiUsageResetDate
+            )
+
+            firestore.collection("users")
+                .document(user.uid)
+                .update(updates)
+                .await()
+
+            _currentUser.value = userData
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun updateUserSetupComplete(isComplete: Boolean): Result<Unit> {
@@ -221,8 +289,8 @@ class AuthManager(private val context: Context) {
         return try {
             val expiryDate = when (plan) {
                 SubscriptionPlan.FREE -> null
-                SubscriptionPlan.PRO -> Calendar.getInstance().apply { add(Calendar.MONTH, 1) }.time
-                SubscriptionPlan.PREMIUM -> Calendar.getInstance().apply { add(Calendar.YEAR, 1) }.time
+                SubscriptionPlan.PLUS -> Calendar.getInstance().apply { add(Calendar.MONTH, 1) }.time
+                SubscriptionPlan.PRO -> Calendar.getInstance().apply { add(Calendar.YEAR, 1) }.time
             }
 
             val updates = mapOf(
@@ -246,9 +314,9 @@ class AuthManager(private val context: Context) {
     fun isFeatureAvailable(featureKey: String): Boolean {
         val plan = _currentUser.value?.subscriptionPlan ?: return false
         return when (featureKey) {
-            "unlimited_ai" -> plan == SubscriptionPlan.PRO || plan == SubscriptionPlan.PREMIUM
-            "export_data" -> plan == SubscriptionPlan.PRO || plan == SubscriptionPlan.PREMIUM
-            "fitness_integration" -> plan == SubscriptionPlan.PREMIUM
+            "unlimited_ai" -> plan == SubscriptionPlan.PLUS || plan == SubscriptionPlan.PRO
+            "export_data" -> plan == SubscriptionPlan.PLUS || plan == SubscriptionPlan.PRO
+            "fitness_integration" -> plan == SubscriptionPlan.PRO
             else -> false // Неизвестная фича по умолчанию недоступна
         }
     }

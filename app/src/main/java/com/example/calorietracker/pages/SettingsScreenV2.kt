@@ -48,6 +48,7 @@ fun SettingsScreenV2(
     onNavigateToProfile: () -> Unit,
     onNavigateToBodySettings: () -> Unit,
     onNavigateToAppSettings: () -> Unit,
+    onNavigateToSubscription: () -> Unit, // НОВОЕ
     onSignOut: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -135,8 +136,8 @@ fun SettingsScreenV2(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Surface(
                                         color = when (plan) {
-                                            SubscriptionPlan.PRO -> Color(0xFF2196F3)
-                                            SubscriptionPlan.PREMIUM -> Color(0xFFFFD700)
+                                            SubscriptionPlan.PLUS -> Color(0xFF2196F3)
+                                            SubscriptionPlan.PRO -> Color(0xFFFFD700)
                                             else -> Color.Transparent
                                         },
                                         shape = RoundedCornerShape(12.dp)
@@ -176,8 +177,7 @@ fun SettingsScreenV2(
                             icon = Icons.Default.Star,
                             title = "Планы подписок",
                             subtitle = currentUser?.subscriptionPlan?.displayName ?: "Бесплатный",
-                            badge = if (currentUser?.subscriptionPlan == SubscriptionPlan.FREE) "Обновить" else null,
-                            onClick = { /* TODO: Subscription screen */ }
+                            onClick = onNavigateToSubscription // Изменено
                         )
                     ),
                     onItemClick = { item -> item.onClick() }

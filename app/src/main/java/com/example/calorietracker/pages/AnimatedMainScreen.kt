@@ -52,7 +52,8 @@ import java.util.Locale
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import java.time.format.TextStyle as DateTextStyle
-
+import com.example.calorietracker.pages.subscription.AILimitDialog
+import com.example.calorietracker.ui.components.AIUsageIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +64,9 @@ fun AnimatedMainScreen(
     onManualClick: () -> Unit,
     onDescribeClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onCalendarClick: () -> Unit
+    onCalendarClick: () -> Unit,
+    onNavigateToSubscription: () -> Unit, // НОВОЕ
+    modifier: Modifier = Modifier
 ) {
     val systemUiController = rememberSystemUiController()
     val context = LocalContext.current
@@ -173,6 +176,26 @@ private fun AnimatedHeader(
     LaunchedEffect(Unit) {
         delay(100)
         visible = true
+    }
+
+    AIUsageIndicator(
+        userData = viewModel.currentUser, // Нужно добавить это поле в ViewModel
+        onClick = onNavigateToSubscription,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+
+    if (viewModel.showAILimitDialog) {
+        AILimitDialog(
+            userData = viewModel.currentUser ?: UserData(),
+            onDismiss = {
+                viewModel.showAILimitDialog = false
+                viewModel.pendingAIAction = null
+            },
+            onUpgrade = {
+                viewModel.showAILimitDialog = false
+                onNavigateToSubscription()
+            }
+        )
     }
 
     AnimatedVisibility(
