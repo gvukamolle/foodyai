@@ -63,6 +63,8 @@ class AuthManager(private val context: Context) {
             if (firebaseUser != null) {
                 // Если пользователь вошел, загружаем его данные из Firestore
                 CoroutineScope(Dispatchers.IO).launch {
+                    // пока загружаем данные отображаем состояние LOADING
+                    _authState.value = AuthState.LOADING
                     loadUserData(firebaseUser)
                 }
             } else {
@@ -138,8 +140,15 @@ class AuthManager(private val context: Context) {
 
                 _currentUser.value = newUserData
             }
+            // После успешной загрузки данных отмечаем пользователя авторизованным
+            withContext(Dispatchers.Main) {
+                _authState.value = AuthState.AUTHENTICATED
+            }
         } catch (e: Exception) {
             Log.e("AuthManager", "Error loading user data", e)
+            withContext(Dispatchers.Main) {
+                _authState.value = AuthState.UNAUTHENTICATED
+            }
         }
     }
 
