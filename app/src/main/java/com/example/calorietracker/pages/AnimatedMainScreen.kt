@@ -59,6 +59,13 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +111,10 @@ fun AnimatedMainScreen(
         }
     }
 
+    val showWelcome =
+        viewModel.messages.size == 1 && viewModel.messages.first().isWelcome
+
+
     // Все диалоги
     AnimatedDialogs(
         viewModel = viewModel,
@@ -116,9 +127,9 @@ fun AnimatedMainScreen(
 
     Scaffold(
         modifier = Modifier
-            .fillMaxSize()
-            .systemBarsPadding(),
+            .fillMaxSize(),
         containerColor = Color.White,
+        contentWindowInsets = WindowInsets.systemBars, // <-- Добавьте это
         bottomBar = {
             AnimatedBottomBar(
                 viewModel = viewModel,
@@ -131,11 +142,14 @@ fun AnimatedMainScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
             // Обновленный заголовок с кликом на календарь
             AnimatedHeader(
                 viewModel = viewModel,
@@ -172,6 +186,38 @@ fun AnimatedMainScreen(
                 listState = listState,
                 modifier = Modifier.weight(1f)
             )
+        }
+            val density = LocalDensity.current
+            val ime = WindowInsets.ime
+            val imeOffset by remember {
+                derivedStateOf { ime.getBottom(density) / 4 }
+            }
+            val animatedImeOffset by animateIntAsState(
+                targetValue = imeOffset,
+                animationSpec = tween(durationMillis = 250),
+                label = "ime_offset"
+            )
+
+// И ЗАМЕНИТЕ AnimatedVisibility на простой вариант:
+            AnimatedVisibility(
+                visible = showWelcome,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.matchParentSize() // БЕЗ offset!
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = viewModel.messages.first().content,
+                        color = Color.Black,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
     }
 }
@@ -405,26 +451,6 @@ private fun AnimatedChatContent(
                     onAnimationComplete = { viewModel.markMessageAnimated(message) }
                     )
                 }
-            }
-        }
-
-        val showWelcome = viewModel.messages.size == 1 && viewModel.messages.first().isWelcome
-        AnimatedVisibility(
-            visible = showWelcome,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Box(
-                modifier = Modifier.matchParentSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = viewModel.messages.first().content,
-                    color = Color.Gray,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
             }
         }
 
@@ -687,10 +713,25 @@ private fun AnimatedBottomBar(
     onDescribeClick: () -> Unit,
     onManualClick: () -> Unit
 ) {
+
+    val density = LocalDensity.current
+    val imeHeight = WindowInsets.ime.getBottom(density)
+    val animatedBottomPadding by animateDpAsState(
+        targetValue = with(density) { imeHeight.toDp() },
+        animationSpec = tween(
+            durationMillis = 1,
+            easing = FastOutSlowInEasing
+        ),
+        label = "keyboard_animation"
+    )
+
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
+            .navigationBarsPadding() // Для навбара
+            .imePadding() // Для клавиатуры (системная анимация)
     ) {
         RoundedDivider(
             color = Color(0xFFE5E5E5),

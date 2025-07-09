@@ -39,6 +39,8 @@ import kotlinx.coroutines.launch
 import com.example.calorietracker.pages.subscription.SubscriptionPlansScreen
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import androidx.core.view.WindowCompat
+
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
@@ -89,6 +91,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         checkGooglePlayServices()
         CleanupWorker.schedule(this)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
             val repository = remember { DataRepository(this@MainActivity) }
