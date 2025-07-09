@@ -173,6 +173,7 @@ class CalorieTrackerViewModel(
     var photoCaption by mutableStateOf("")
     var pendingDescription by mutableStateOf("")
 
+
     init {
         loadUserData()
         checkInternetConnection()

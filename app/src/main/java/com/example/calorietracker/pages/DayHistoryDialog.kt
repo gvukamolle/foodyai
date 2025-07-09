@@ -56,7 +56,7 @@ fun AiInfoButton(
     Surface(
         onClick = { if (hasAiOpinion) onClick() },
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFFC8F3CB), // Зеленый цвет
+        color = Color(0xFFDBF0E4), // Зеленый цвет
         modifier = Modifier.height(28.dp)
     ) {
         Row(
@@ -68,20 +68,20 @@ fun AiInfoButton(
                 imageVector = Icons.Default.AutoAwesome,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = Color(0xFF00CE0D)
+                tint = Color(0xFF00BA65)
             )
             Text(
-                text = "AI",
+                text = "Foody AI",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF00CE0D)
+                color = Color(0xFF00BA65)
             )
             if (hasAiOpinion) {
                 Box(
                     modifier = Modifier
                         .size(20.dp)
                         .background(
-                            color = Color(0xFF00CE0D).copy(alpha = 0.2f),
+                            color = Color(0xFF00BA65).copy(alpha = 0.2f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -90,7 +90,7 @@ fun AiInfoButton(
                         imageVector = Icons.Default.Info,
                         contentDescription = "Информация",
                         modifier = Modifier.size(14.dp),
-                        tint = Color(0xFF00CE0D)
+                        tint = Color(0xFF00BA65)
                     )
                 }
             }

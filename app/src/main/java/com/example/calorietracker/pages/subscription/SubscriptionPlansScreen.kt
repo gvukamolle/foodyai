@@ -1,10 +1,9 @@
 package com.example.calorietracker.pages.subscription
 
-import androidx.compose.animation.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,21 +11,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.calorietracker.auth.SubscriptionPlan
-import kotlinx.coroutines.delay
-import kotlin.math.cos
-import kotlin.math.sin
 
 // Расширенная модель с фичами
 data class PlanFeature(
@@ -53,9 +46,16 @@ fun SubscriptionPlansScreen(
     onSelectPlan: (SubscriptionPlan) -> Unit,
     onBack: () -> Unit
 ) {
+
+    BackHandler {
+        onBack()
+    }
+
     val planDetails = remember { getPlanDetails() }
-    var selectedPlan by remember { mutableStateOf<SubscriptionPlan?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var pendingPlan by remember { mutableStateOf<SubscriptionPlan?>(null) }
+    var selectedPlan by remember { mutableStateOf<SubscriptionPlan?>(null) }
+
 
     Scaffold(
         topBar = {
@@ -72,7 +72,7 @@ fun SubscriptionPlansScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
+                    containerColor = Color.White
                 )
             )
         }
@@ -83,8 +83,8 @@ fun SubscriptionPlansScreen(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFF5F5F5),
-                            Color(0xFFE8E8E8)
+                            Color(0xFFFFFFFF),
+                            Color(0xFFFFFFFF)
                         )
                     )
                 )
@@ -152,7 +152,7 @@ fun SubscriptionPlansScreen(
                             tint = Color(0xFF2196F3),
                             modifier = Modifier.size(24.dp)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Все планы включают базовые функции отслеживания калорий",
                             fontSize = 14.sp,
@@ -163,10 +163,8 @@ fun SubscriptionPlansScreen(
             }
         }
     }
-
-    // Диалог подтверждения
     if (showConfirmDialog && selectedPlan != null) {
-        ConfirmSubscriptionDialog(
+        SubscriptionConfirmationDialog(  // новый красивый диалог
             plan = selectedPlan!!,
             onConfirm = {
                 onSelectPlan(selectedPlan!!)
@@ -197,46 +195,30 @@ fun PlanCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .scale(animatedScale)
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(enabled = !isCurrentPlan) { onSelect() },
+            .clickable { onSelect() },
+        shape = RoundedCornerShape(20.dp), // Увеличенное закругление как в EnhancedDialogs
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (details.isPopular) 8.dp else 4.dp
+            defaultElevation = if (isSelected) 8.dp else 2.dp
         ),
-        border = if (isCurrentPlan) {
-            BorderStroke(2.dp, Color(0xFF4CAF50))
-        } else if (details.isPopular) {
-            BorderStroke(2.dp, Brush.linearGradient(details.gradientColors))
-        } else null
-    ) {
-        Box {
-            // Популярный баннер
-            if (details.isPopular) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .background(
-                            brush = Brush.linearGradient(details.gradientColors),
-                            shape = RoundedCornerShape(bottomStart = 16.dp)
-                        )
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "ПОПУЛЯРНЫЙ",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+        border = if (isSelected) {
+            BorderStroke(
+                width = 2.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF4CAF50),
+                        Color(0xFF45A049)
                     )
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
+                )
+            )
+        } else {
+            BorderStroke(1.dp, Color(0xFFE5E5E5))
+        }
+    ) {
+         Column(
+             modifier = Modifier.padding(20.dp) // Увеличенный паддинг
             ) {
                 // Заголовок плана
                 Row(
@@ -337,7 +319,6 @@ fun PlanCard(
             }
         }
     }
-}
 
 @Composable
 fun FeatureRow(feature: PlanFeature) {

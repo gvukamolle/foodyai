@@ -53,7 +53,7 @@ import java.time.format.TextStyle as DateTextStyle
 import com.example.calorietracker.pages.subscription.AILimitDialog
 import com.example.calorietracker.ui.components.AIUsageIndicator
 import com.example.calorietracker.auth.UserData
-
+import com.example.calorietracker.ui.components.AIUsageMiniIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,12 +180,6 @@ private fun AnimatedHeader(
         visible = true
     }
 
-    AIUsageIndicator(
-        userData = viewModel.currentUser, // Нужно добавить это поле в ViewModel
-        onClick = onNavigateToSubscription,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    )
-
     if (viewModel.showAILimitDialog) {
         AILimitDialog(
             userData = viewModel.currentUser ?: UserData(),
@@ -252,7 +246,10 @@ private fun AnimatedHeader(
                 )
             }
 
-            AnimatedOnlineStatus(isOnline = viewModel.isOnline)
+            AIUsageMiniIndicator(
+                userData = viewModel.currentUser,
+                onClick = onNavigateToSubscription
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -264,52 +261,6 @@ private fun AnimatedHeader(
                 )
             }
         }
-    }
-}
-
-// Анимированный статус подключения
-@Composable
-private fun AnimatedOnlineStatus(isOnline: Boolean) {
-    val color by animateColorAsState(
-        targetValue = if (isOnline) Color(0xFF4CAF50) else Color(0xFFF44336),
-        animationSpec = tween(300),
-        label = "status_color"
-    )
-
-    val scale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale"
-    )
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .background(
-                color = color.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(color, CircleShape)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = if (isOnline) "Online" else "Offline",
-            fontSize = 12.sp,
-            color = color,
-            fontWeight = FontWeight.Medium
-        )
     }
 }
 
@@ -818,7 +769,7 @@ fun AnimatedAiChip(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF4CAF50).copy(alpha = 0.1f)
+        color = Color(0xFFDBF0E4).copy(alpha = 1f)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -828,13 +779,13 @@ fun AnimatedAiChip(
             Text(
                 text = "Что думает Foody?",
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF4CAF50)
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF00BA65)
             )
             Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = null,
-                tint = Color(0xFF4CAF50),
+                tint = Color(0xFF00BA65),
                 modifier = Modifier.size(20.dp)
             )
         }
