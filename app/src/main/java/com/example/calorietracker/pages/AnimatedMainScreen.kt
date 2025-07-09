@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -184,13 +185,8 @@ private fun AnimatedHeader(
     isStatusBarVisible: Boolean,
     onToggleStatusBar: () -> Unit
 ) {
-    var visible by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
 
-    LaunchedEffect(Unit) {
-        delay(100)
-        visible = true
-    }
 
     if (viewModel.showAILimitDialog) {
         AILimitDialog(
@@ -206,10 +202,6 @@ private fun AnimatedHeader(
         )
     }
 
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + slideInVertically(initialOffsetY = { -30 })
-    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -314,7 +306,6 @@ private fun AnimatedHeader(
             }
         }
     }
-}
 
 // Кастомный Divider с закругленными краями
 @Composable
@@ -391,22 +382,49 @@ private fun AnimatedChatContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            val lastIndex = viewModel.messages.lastIndex
-            itemsIndexed(viewModel.messages) { index, message ->
-                AnimatedMessage(
-                    visible = true,
-                    isUserMessage = message.type == MessageType.USER
-                ) {
-                    val animateText = index == lastIndex && message.type == MessageType.AI
-                    AnimatedChatMessageCard(
-                        message = message,
-                        animateText = animateText,
-                        onAiOpinionClick = { text ->
-                            viewModel.aiOpinionText = text
-                            viewModel.showAiOpinionDialog = true
-                        }
+                val messagesToDisplay = if (viewModel.messages.firstOrNull()?.isWelcome == true && viewModel.messages.size > 1) {
+                    viewModel.messages.drop(1)
+                } else {
+                    viewModel.messages
+                }
+
+                itemsIndexed(messagesToDisplay) { index, message ->
+                    AnimatedMessage(
+                        visible = true,
+                        isUserMessage = message.type == MessageType.USER
+                    ) {
+                        val animateText = message.animate && message.type == MessageType.AI
+                        AnimatedChatMessageCard(
+                            message = message,
+                            animateText = animateText,
+                            onAiOpinionClick = { text ->
+                                viewModel.aiOpinionText = text
+                                viewModel.showAiOpinionDialog = true
+
+                    },
+                    onAnimationComplete = { viewModel.markMessageAnimated(message) }
                     )
                 }
+            }
+        }
+
+        val showWelcome = viewModel.messages.size == 1 && viewModel.messages.first().isWelcome
+        AnimatedVisibility(
+            visible = showWelcome,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = viewModel.messages.first().content,
+                    color = Color.Gray,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
             }
         }
 
@@ -437,7 +455,8 @@ private fun AnimatedChatContent(
 private fun AnimatedChatMessageCard(
     message: com.example.calorietracker.ChatMessage,
     animateText: Boolean,
-    onAiOpinionClick: (String) -> Unit
+    onAiOpinionClick: (String) -> Unit,
+    onAnimationComplete: () -> Unit = {}
 ) {
     // no expandable content
 
@@ -485,7 +504,8 @@ private fun AnimatedChatMessageCard(
                                         style = TextStyle(
                                             color = Color.Black,
                                             fontSize = 14.sp
-                                        )
+                                        ),
+                                        onComplete = onAnimationComplete
                                     )
                                 } else {
                                     Text(

@@ -48,7 +48,9 @@ data class ChatMessage(
     val content: String,
     val timestamp: LocalDateTime = LocalDateTime.now(),
     val foodItem: FoodItem? = null, // Добавляем информацию о продукте
-    val isExpandable: Boolean = false // Флаг для раскрывающихся сообщений
+    val isExpandable: Boolean = false, // Флаг для раскрывающихся сообщений
+    val isWelcome: Boolean = false,
+    val animate: Boolean = true
 )
 
 enum class MessageType {
@@ -148,8 +150,10 @@ class CalorieTrackerViewModel(
         listOf(
             ChatMessage(
                 MessageType.AI,
-                "Привет! Я ваш персональный AI-диетолог. Готов помочь с анализом питания и дать советы по здоровому образу жизни.",
-                LocalDateTime.now()
+                "Привет!\nГотов помочь с анализом питания и дать советы по здоровому образу жизни!",
+                LocalDateTime.now(),
+                isWelcome = true,
+                animate = false
             )
         )
     )
@@ -427,8 +431,11 @@ class CalorieTrackerViewModel(
     suspend fun analyzePhotoWithAI(bitmap: Bitmap, caption: String = "") {
         isAnalyzing = true
         currentFoodSource = "ai_photo"
-        messages = messages + ChatMessage(MessageType.USER, "Фото загружено")
-
+        messages = messages + ChatMessage(
+            MessageType.USER,
+            "Фото загружено",
+            animate = false
+        )
         // Проверяем интернет
         checkInternetConnection()
         if (!isOnline) {
@@ -684,7 +691,8 @@ class CalorieTrackerViewModel(
 
         messages = messages + ChatMessage(
             MessageType.USER,
-            "Добавлен продукт: $name"
+            "Добавлен продукт: $name",
+            animate = false
         )
 
         messages = messages + ChatMessage(
@@ -830,7 +838,11 @@ class CalorieTrackerViewModel(
     fun sendMessage() {
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
-            messages = messages + ChatMessage(MessageType.USER, userMessage)
+            messages = messages + ChatMessage(
+                MessageType.USER,
+                userMessage,
+                animate = false
+            )
             inputMessage = ""
 
             viewModelScope.launch {
@@ -938,6 +950,15 @@ class CalorieTrackerViewModel(
             else ->
                 "Для полноценных консультаций AI необходимо подключение к интернету. " +
                         "Сейчас могу помочь с базовыми вопросами о калориях, белках, воде, истории питания и похудении."
+        }
+    }
+
+    fun markMessageAnimated(message: ChatMessage) {
+        val index = messages.indexOf(message)
+        if (index != -1) {
+            val list = messages.toMutableList()
+            list[index] = list[index].copy(animate = false)
+            messages = list
         }
     }
 }
