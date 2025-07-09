@@ -32,62 +32,33 @@ import com.example.calorietracker.ui.animations.TypewriterText
 import kotlinx.coroutines.delay
 import kotlin.math.ceil
 import com.example.calorietracker.utils.NutritionFormatter
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 
 
 // Анимированные прогресс-бары с коллапсом
 @Composable
-fun AnimatedProgressBars(viewModel: CalorieTrackerViewModel) {
-    var expanded by remember { mutableStateOf(true) }
+fun AnimatedProgressBars(
+    viewModel: CalorieTrackerViewModel,
+    isVisible: Boolean // Новый параметр
+) {
     val haptic = LocalHapticFeedback.current
 
-    // Анимация при изменении значений
-    LaunchedEffect(viewModel.dailyIntake) {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-    }
-
-    val containerHeight by animateDpAsState(
-        targetValue = if (expanded) 200.dp else 100.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "height"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(containerHeight)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                expanded = !expanded
-            }
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut()
     ) {
-        // Развернутый вид
-        AnimatedVisibility(
-            visible = expanded,
-            enter = fadeIn(),
-            exit = fadeOut()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp) // Фиксированная высота для развернутого вида
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
         ) {
             ExpandedProgressView(viewModel = viewModel)
         }
-
-        // Свернутый вид
-        AnimatedVisibility(
-            visible = !expanded,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            CollapsedProgressView(viewModel = viewModel)
-        }
-
-        // *** ИЗМЕНЕНИЕ: СТРЕЛКА-ИНДИКАТОР ПОЛНОСТЬЮ УДАЛЕНА ***
     }
 }
 
@@ -314,112 +285,6 @@ private fun AnimatedNutrientBar(nutrient: NutrientData) {
                 }
             }
         }
-    }
-}
-
-// Свернутый вид прогресса
-@Composable
-private fun CollapsedProgressView(viewModel: CalorieTrackerViewModel) {
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp), // Добавили вертикальные отступы
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        val nutrients = listOf(
-            Triple("К", viewModel.dailyIntake.calories, viewModel.userProfile.dailyCalories),
-            Triple("Б", ceil(viewModel.dailyIntake.protein.toDouble()).toInt(), viewModel.userProfile.dailyProteins),
-            Triple("Ж", ceil(viewModel.dailyIntake.fat.toDouble()).toInt(), viewModel.userProfile.dailyFats),
-            Triple("У", ceil(viewModel.dailyIntake.carbs.toDouble()).toInt(), viewModel.userProfile.dailyCarbs)
-        )
-
-        nutrients.forEachIndexed { index, (label, current, target) ->
-            Box( // Используем Box для фиксированного размера
-                modifier = Modifier
-                    .weight(1f)
-                    .height(180.dp), // Фиксированная высота
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    // Кольцо БЕЗ анимации масштаба
-                    SimpleRingIndicator(
-                        label = label,
-                        current = current,
-                        target = target,
-                        color = viewModel.getProgressColor(current, target)
-                    )
-                }
-            }
-        }
-    }
-}
-
-// Простое кольцо без анимации масштабирования
-@Composable
-fun SimpleRingIndicator(
-    label: String,
-    current: Int,
-    target: Int,
-    color: Color
-) {
-    val progress = if (target > 0) current.toFloat() / target.toFloat() else 0f
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-        label = "ring"
-    )
-
-    var animateScale by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (animateScale) 1f else 0f,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-        label = "ring_scale"
-    )
-
-    LaunchedEffect(animatedProgress) {
-        animateScale = true
-    }
-
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(60.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-    ) {
-        // Фоновое кольцо
-        CircularProgressIndicator(
-            progress = { 1f },
-            color = Color(0xFFE5E7EB).copy(alpha = 0.3f),
-            strokeWidth = 6.dp,
-            strokeCap = StrokeCap.Round,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Прогресс с плавной анимацией
-        CircularProgressIndicator(
-            progress = { animatedProgress.coerceIn(0f, 1f) },
-            color = color,
-            strokeWidth = 6.dp,
-            strokeCap = StrokeCap.Round,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Буква в центре
-        Text(
-            text = label,
-            fontSize = 18.sp,
-            color = Color.Black,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 

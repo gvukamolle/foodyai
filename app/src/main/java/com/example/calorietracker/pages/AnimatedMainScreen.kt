@@ -51,9 +51,13 @@ import java.time.LocalDateTime
 import java.util.Locale
 import java.time.format.TextStyle as DateTextStyle
 import com.example.calorietracker.pages.subscription.AILimitDialog
-import com.example.calorietracker.ui.components.AIUsageIndicator
 import com.example.calorietracker.auth.UserData
-import com.example.calorietracker.ui.components.AIUsageMiniIndicator
+import com.example.calorietracker.ui.components.AIUsageToolbarIndicator
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.material3.TextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,6 +111,7 @@ fun AnimatedMainScreen(
     )
 
     var menuExpanded by remember { mutableStateOf(false) }
+    var isStatusBarVisible by remember { mutableStateOf(false) } // Новое состояние
 
     Scaffold(
         modifier = Modifier
@@ -135,11 +140,16 @@ fun AnimatedMainScreen(
                 viewModel = viewModel,
                 onSettingsClick = onSettingsClick,
                 onDateClick = onCalendarClick,
-                onNavigateToSubscription = onNavigateToSubscription
-            )
+                onNavigateToSubscription = onNavigateToSubscription,
+                isStatusBarVisible = isStatusBarVisible,
+                onToggleStatusBar = { isStatusBarVisible = !isStatusBarVisible }
+                )
 
             // Прогресс-бары
-            AnimatedProgressBars(viewModel = viewModel)
+            AnimatedProgressBars(
+                viewModel = viewModel,
+                isVisible = isStatusBarVisible
+            )
 
             // Разделитель с анимацией
             AnimatedContentDivider()
@@ -165,15 +175,17 @@ fun AnimatedMainScreen(
     }
 }
 
-// Обновленный AnimatedHeader с датой и стрелкой
 @Composable
 private fun AnimatedHeader(
     viewModel: CalorieTrackerViewModel,
     onSettingsClick: () -> Unit,
-    onDateClick: () -> Unit, // Новый параметр для перехода к календарю
-    onNavigateToSubscription: () -> Unit
+    onDateClick: () -> Unit,
+    onNavigateToSubscription: () -> Unit,
+    isStatusBarVisible: Boolean,
+    onToggleStatusBar: () -> Unit
 ) {
     var visible by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(Unit) {
         delay(100)
@@ -205,11 +217,11 @@ private fun AnimatedHeader(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Кликабельная область с датой
+            // Левая часть - Кликабельная область с датой
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .clickable { onDateClick() }
                     .padding(vertical = 4.dp, horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -242,23 +254,63 @@ private fun AnimatedHeader(
                     imageVector = Icons.Default.KeyboardArrowRight,
                     contentDescription = "Открыть календарь",
                     tint = Color.Gray,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            AIUsageMiniIndicator(
-                userData = viewModel.currentUser,
-                onClick = onNavigateToSubscription
-            )
+            // Центральная часть - Кнопка Foody Stat
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleStatusBar()
+                    }
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            "Foody",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            if (isStatusBarVisible) Icons.Default.KeyboardArrowUp
+                            else Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.Black
+                        )
+                    }
+                }
+            }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Настройки",
-                    tint = Color.Gray
+            // Правая часть - AI индикатор и настройки
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AIUsageToolbarIndicator(
+                    userData = viewModel.currentUser,
+                    onClick = onNavigateToSubscription
                 )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Настройки",
+                        tint = Color.Gray
+                    )
+                }
             }
         }
     }

@@ -72,7 +72,7 @@ object AIUsageManager {
             SubscriptionPlan.FREE ->
                 "AI-анализ недоступен в бесплатном плане. Перейдите на PLUS или PRO для использования этой функции."
             SubscriptionPlan.PLUS ->
-                "Вы использовали все 5 AI-анализов в этом месяце. Перейдите на PRO для безлимитного доступа."
+                "Вы использовали все 5 AI-анализов сегодня. Перейдите на PRO для безлимитного доступа."
             else ->
                 "Произошла ошибка. Пожалуйста, попробуйте позже."
         }
@@ -81,7 +81,7 @@ object AIUsageManager {
     fun getUpgradeProposal(currentPlan: SubscriptionPlan): Pair<SubscriptionPlan, String>? {
         return when (currentPlan) {
             SubscriptionPlan.FREE ->
-                SubscriptionPlan.PLUS to "Попробуйте PLUS всего за 299₽/мес и получите 5 AI-анализов!"
+                SubscriptionPlan.PLUS to "Выбирайте PLUS всего за 299₽/мес!"
             SubscriptionPlan.PLUS ->
                 SubscriptionPlan.PRO to "Безлимитный AI всего за 499₽/мес в PRO плане!"
             else -> null
