@@ -289,8 +289,7 @@ fun SubscriptionScreen(
 fun SubscriptionPlanCard(plan: SubscriptionPlan, isSelected: Boolean, isCurrent: Boolean, onSelect: () -> Unit) {
     val (price, period) = when (plan) {
         SubscriptionPlan.FREE -> "0₽" to "навсегда"
-        SubscriptionPlan.PLUS -> "299₽" to "в месяц"
-        SubscriptionPlan.PRO -> "2499₽" to "в год"
+        SubscriptionPlan.PRO -> "399₽" to "в месяц"
     }
 
     val borderColor = when {

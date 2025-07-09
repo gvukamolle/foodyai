@@ -300,7 +300,6 @@ class AuthManager(private val context: Context) {
         return try {
             val expiryDate = when (plan) {
                 SubscriptionPlan.FREE -> null
-                SubscriptionPlan.PLUS -> Calendar.getInstance().apply { add(Calendar.MONTH, 1) }.time
                 SubscriptionPlan.PRO -> Calendar.getInstance().apply { add(Calendar.YEAR, 1) }.time
             }
 
@@ -325,8 +324,8 @@ class AuthManager(private val context: Context) {
     fun isFeatureAvailable(featureKey: String): Boolean {
         val plan = _currentUser.value?.subscriptionPlan ?: return false
         return when (featureKey) {
-            "unlimited_ai" -> plan == SubscriptionPlan.PLUS || plan == SubscriptionPlan.PRO
-            "export_data" -> plan == SubscriptionPlan.PLUS || plan == SubscriptionPlan.PRO
+            "unlimited_ai" -> plan == SubscriptionPlan.PRO
+            "export_data" -> plan == SubscriptionPlan.PRO
             "fitness_integration" -> plan == SubscriptionPlan.PRO
             else -> false // Неизвестная фича по умолчанию недоступна
         }

@@ -136,7 +136,6 @@ fun SettingsScreenV2(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Surface(
                                         color = when (plan) {
-                                            SubscriptionPlan.PLUS -> Color(0xFFFF9800)
                                             SubscriptionPlan.PRO -> Color(0xFF2196F3)
                                             else -> Color.Transparent
                                         },

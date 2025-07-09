@@ -376,44 +376,13 @@ private fun getPlanDetails(): List<PlanDetails> {
             gradientColors = listOf(Color(0xFF757575), Color(0xFF9E9E9E))
         ),
         PlanDetails(
-            plan = SubscriptionPlan.PLUS,
-            price = "299₽",
-            period = "в месяц",
-            features = listOf(
-                PlanFeature(
-                    Icons.Default.Edit,
-                    "Всё из бесплатного плана",
-                    "Базовые функции включены"
-                ),
-                PlanFeature(
-                    Icons.Default.CameraAlt,
-                    "5 AI-анализов в месяц",
-                    "Распознавание еды по фото",
-                    isHighlighted = true
-                ),
-                PlanFeature(
-                    Icons.Default.Lightbulb,
-                    "Foody Insights",
-                    "Умные подсказки о продуктах и их пользе"
-                ),
-                PlanFeature(
-                    Icons.Default.Psychology,
-                    "AI-чат консультант",
-                    "Задавайте вопросы о питании"
-                )
-            ),
-            isPopular = true,
-            gradientColors = listOf(Color(0xFFFF9800), Color(0xFFFFC107))
-        ),
-        PlanDetails(
             plan = SubscriptionPlan.PRO,
-            price = "499₽",
+            price = "399₽",
             period = "в месяц",
-            savings = "Экономия 1200₽/год",
             features = listOf(
                 PlanFeature(
                     Icons.Default.Star,
-                    "Всё из PLUS плана",
+                    "Всё из бесплатного плана",
                     "Все предыдущие функции включены"
                 ),
                 PlanFeature(

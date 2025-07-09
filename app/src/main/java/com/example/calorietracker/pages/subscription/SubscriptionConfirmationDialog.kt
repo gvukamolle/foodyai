@@ -32,7 +32,6 @@ fun SubscriptionConfirmationDialog(
 ) {
     // Определяем акцентный цвет в зависимости от плана
     val accentColor = when (plan) {
-        SubscriptionPlan.PLUS -> Color(0xFFFF9800)
         SubscriptionPlan.PRO -> Color(0xFF2196F3)
         else -> Color(0xFF4CAF50)
     }
@@ -66,7 +65,6 @@ fun SubscriptionConfirmationDialog(
                 colors = CardDefaults.cardColors(
                     containerColor = when (plan) {
                         SubscriptionPlan.FREE -> Color(0xFFF5F5F5)
-                        SubscriptionPlan.PLUS -> Color(0xFFFFF3E0)
                         SubscriptionPlan.PRO -> Color(0xFFE3F2FD)
                     }
                 ),
@@ -88,7 +86,6 @@ fun SubscriptionConfirmationDialog(
                         if (plan != SubscriptionPlan.FREE) {
                             Icon(
                                 imageVector = when (plan) {
-                                    SubscriptionPlan.PLUS -> Icons.Default.Star
                                     SubscriptionPlan.PRO -> Icons.Default.AllInclusive
                                     else -> Icons.Default.AccountCircle
                                 },
@@ -226,7 +223,6 @@ private fun AnimatedSuccessIcon() {
 private fun getConfirmationMessage(plan: SubscriptionPlan): String {
     return when (plan) {
         SubscriptionPlan.FREE -> "Вы переходите на бесплатный план. Доступ к AI-анализу будет ограничен."
-        SubscriptionPlan.PLUS -> "Отличный выбор! Вы получите 10 AI-анализов в день для точного отслеживания питания."
         SubscriptionPlan.PRO -> "Превосходно! Безлимитный доступ к AI-анализу поможет достичь ваших целей быстрее."
     }
 }

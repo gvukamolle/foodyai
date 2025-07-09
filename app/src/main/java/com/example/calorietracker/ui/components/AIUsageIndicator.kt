@@ -38,9 +38,6 @@ fun AIUsageToolbarIndicator(
             SubscriptionPlan.FREE -> {
                 FreeUserPill(onClick = onClick, modifier = modifier)
             }
-            SubscriptionPlan.PLUS -> {
-                PlusUserPill(userData = user, onClick = onClick, modifier = modifier)
-            }
             SubscriptionPlan.PRO -> {
                 ProUserPill(onClick = onClick, modifier = modifier)
             }
@@ -289,23 +286,6 @@ fun AIUsageCompactIndicator(
                     icon = Icons.Default.Lock,
                     backgroundColor = Color(0xFFFFF3E0),
                     contentColor = Color(0xFFFF9800),
-                    onClick = onClick,
-                    modifier = modifier
-                )
-            }
-            SubscriptionPlan.PLUS -> {
-                val remaining = AIUsageManager.getRemainingUsage(user)
-                val color = when {
-                    remaining == 0 -> Color(0xFFF44336)
-                    remaining <= 2 -> Color(0xFFFF9800)
-                    else -> Color(0xFF4CAF50)
-                }
-
-                CompactPill(
-                    text = remaining.toString(),
-                    icon = Icons.Default.AutoAwesome,
-                    backgroundColor = color.copy(alpha = 0.1f),
-                    contentColor = color,
                     onClick = onClick,
                     modifier = modifier
                 )

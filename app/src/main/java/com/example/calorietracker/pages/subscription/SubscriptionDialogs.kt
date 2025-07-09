@@ -89,15 +89,6 @@ fun AILimitDialog(
                     lineHeight = 22.sp
                 )
 
-                // Прогресс-бар для PLUS плана
-                if (userData.subscriptionPlan == SubscriptionPlan.PLUS) {
-                    Spacer(modifier = Modifier.height(20.dp))
-                    UsageProgressBar(
-                        used = userData.aiUsageCount,
-                        total = planLimit
-                    )
-                }
-
                 // Предложение апгрейда
                 upgradeProposal?.let { (plan, message) ->
                     Spacer(modifier = Modifier.height(20.dp))
@@ -106,7 +97,6 @@ fun AILimitDialog(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
                             containerColor = when (plan) {
-                                SubscriptionPlan.PLUS -> Color(0xFFFFF3E0)
                                 SubscriptionPlan.PRO -> Color(0xFFE3F2FD)
                                 else -> Color(0xFFF5F5F5)
                             }
@@ -121,7 +111,6 @@ fun AILimitDialog(
                                 Icons.Default.Lightbulb,
                                 contentDescription = null,
                                 tint = when (plan) {
-                                    SubscriptionPlan.PLUS -> Color(0xFFFF9800)
                                     SubscriptionPlan.PRO -> Color(0xFF2196F3)
                                     else -> Color.Black
                                 },
@@ -160,8 +149,7 @@ fun AILimitDialog(
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = when (userData.subscriptionPlan) {
-                                    SubscriptionPlan.FREE -> Color(0xFFFF9800)
-                                    SubscriptionPlan.PLUS -> Color(0xFF2196F3)
+                                    SubscriptionPlan.PRO -> Color(0xFF2196F3)
                                     else -> Color.Black
                                 }
                             ),
@@ -259,54 +247,6 @@ fun AnimatedLimitIcon(
 }
 
 @Composable
-fun UsageProgressBar(
-    used: Int,
-    total: Int
-) {
-    val progress = (used.toFloat() / total).coerceIn(0f, 1f)
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy
-        )
-    )
-
-    Column {
-        LinearProgressIndicator(
-            progress = { animatedProgress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp)),
-            color = when {
-                progress < 0.5f -> Color(0xFF4CAF50)
-                progress < 0.8f -> Color(0xFFFF9800)
-                else -> Color(0xFFF44336)
-            },
-            trackColor = Color(0xFFE0E0E0)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Использовано: $used",
-                fontSize = 12.sp,
-                color = Color(0xFF666666)
-            )
-            Text(
-                text = "Всего: $total",
-                fontSize = 12.sp,
-                color = Color(0xFF666666)
-            )
-        }
-    }
-}
-
-@Composable
 fun AIFeatureLockedDialog(
     feature: String,
     currentPlan: SubscriptionPlan,
@@ -387,8 +327,7 @@ fun AIFeatureLockedDialog(
 
 private fun getRequiredPlan(feature: String): String {
     return when (feature) {
-        "AI-анализ фото", "Foody Insights" -> "PLUS или PRO"
-        "Дневные сводки", "Планы питания", "Продвинутая аналитика" -> "PRO"
+        "AI-анализ фото", "Foody Insights", "Дневные сводки", "Планы питания", "Продвинутая аналитика" -> "PRO"
         else -> "платном"
     }
 }

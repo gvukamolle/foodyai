@@ -9,7 +9,6 @@ object AIUsageManager {
 
     private val planLimits = mapOf(
         SubscriptionPlan.FREE to 0,
-        SubscriptionPlan.PLUS to 5,
         SubscriptionPlan.PRO to Int.MAX_VALUE,
     )
 
@@ -33,14 +32,6 @@ object AIUsageManager {
 
     fun getPlanLimit(plan: SubscriptionPlan): Int {
         return planLimits[plan] ?: 0
-    }
-
-    fun getLimitDescription(plan: SubscriptionPlan): String {
-        return when (val limit = planLimits[plan] ?: 0) {
-            0 -> "Недоступно"
-            Int.MAX_VALUE -> "Безлимит"
-            else -> "$limit в месяц"
-        }
     }
 
     private fun shouldResetUsage(lastResetDate: Long): Boolean {
@@ -70,9 +61,7 @@ object AIUsageManager {
     fun getLimitExceededMessage(plan: SubscriptionPlan): String {
         return when (plan) {
             SubscriptionPlan.FREE ->
-                "AI-анализ недоступен в бесплатном плане. Перейдите на PLUS или PRO для использования этой функции."
-            SubscriptionPlan.PLUS ->
-                "Вы использовали все 5 AI-анализов сегодня. Перейдите на PRO для безлимитного доступа."
+                "AI-анализ недоступен в бесплатном плане. Перейдите на PRO для использования этой функции."
             else ->
                 "Произошла ошибка. Пожалуйста, попробуйте позже."
         }
@@ -81,9 +70,7 @@ object AIUsageManager {
     fun getUpgradeProposal(currentPlan: SubscriptionPlan): Pair<SubscriptionPlan, String>? {
         return when (currentPlan) {
             SubscriptionPlan.FREE ->
-                SubscriptionPlan.PLUS to "Выбирайте PLUS всего за 299₽/мес!"
-            SubscriptionPlan.PLUS ->
-                SubscriptionPlan.PRO to "Безлимитный AI всего за 499₽/мес в PRO плане!"
+                SubscriptionPlan.PRO to "Безлимитный AI всего за 399₽/мес в PRO плане!"
             else -> null
         }
     }
