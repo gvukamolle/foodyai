@@ -382,7 +382,7 @@ private fun AnimatedChatContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-                val messagesToDisplay = if (viewModel.messages.firstOrNull()?.isWelcome == true && viewModel.messages.size > 1) {
+            val messagesToDisplay = if (viewModel.messages.firstOrNull()?.isWelcome == true) {
                     viewModel.messages.drop(1)
                 } else {
                     viewModel.messages
@@ -415,7 +415,7 @@ private fun AnimatedChatContent(
             exit = fadeOut()
         ) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.matchParentSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -473,7 +473,7 @@ private fun AnimatedChatMessageCard(
             }
         ) {
             Card(
-                modifier = Modifier.widthIn(max = 280.dp),
+                modifier = Modifier.wrapContentWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = if (message.type == MessageType.USER) {
                         Color.Black
