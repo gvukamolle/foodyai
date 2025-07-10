@@ -427,7 +427,7 @@ class CalorieTrackerViewModel(
         return Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
     }
 
-    // Обновленный метод analyzePhotoWithAI с правильным удалением временного сообщения
+    // Анализ фото с AI
     suspend fun analyzePhotoWithAI(bitmap: Bitmap, caption: String = "") {
         isAnalyzing = true
         currentFoodSource = "ai_photo"
@@ -463,7 +463,8 @@ class CalorieTrackerViewModel(
         // Сохраняем временное сообщение для последующего удаления
         val tempMessage = ChatMessage(
             MessageType.AI,
-            "Анализирую фото..."
+            "Анализирую фото...",
+            animate = true  // Анимируем временное сообщение
         )
         messages = messages + tempMessage
 
@@ -600,7 +601,8 @@ class CalorieTrackerViewModel(
             // Добавляем временное сообщение
             val tempMessage = ChatMessage(
                 MessageType.AI,
-                "Анализирую описание..."
+                "Анализирую описание...",
+                animate = true  // Анимируем временное сообщение
             )
             messages = messages + tempMessage
 
@@ -756,7 +758,9 @@ class CalorieTrackerViewModel(
             messages = messages.filterNot {
                 it.type == MessageType.AI && (
                         it.content.contains("Анализирую") ||
-                                it.content.contains("Обрабатываю")
+                                it.content.contains("Обрабатываю") ||
+                                it.content.contains("анализирую") ||
+                                it.content.contains("обрабатываю")
                         )
             }
 

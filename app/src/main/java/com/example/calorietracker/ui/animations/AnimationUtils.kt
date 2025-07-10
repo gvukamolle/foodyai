@@ -2,6 +2,7 @@ package com.example.calorietracker.ui.animations
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -9,8 +10,6 @@ import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
-import androidx.compose.animation.core.snap
-import androidx.compose.foundation.layout.Box
 
 /* -------------------------------------------------------------------------- */
 /*                              Сообщение в чате                              */
@@ -26,11 +25,14 @@ fun AnimatedMessage(
     onDisplayed: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
-    // Запоминаем, была ли уже проиграна анимация для этого сообщения
-    var hasAnimated by remember { mutableStateOf(false) }
-    var show by remember { mutableStateOf(false) }
+    // Уникальный ключ для каждого сообщения, чтобы remember работал правильно
+    val messageKey = remember { System.currentTimeMillis() }
 
-    LaunchedEffect(visible) {
+    // Запоминаем, была ли уже проиграна анимация для ЭТОГО сообщения
+    var hasAnimated by remember(messageKey) { mutableStateOf(false) }
+    var show by remember(messageKey) { mutableStateOf(false) }
+
+    LaunchedEffect(visible, messageKey) {
         if (visible && !hasAnimated) {
             // Задержка перед началом анимации (100 мс = 0.1 сек)
             delay(100)
@@ -39,17 +41,17 @@ fun AnimatedMessage(
             hasAnimated = true
             onDisplayed()
         } else if (visible && hasAnimated) {
-            // Если уже анимировали, просто показываем без анимации
+            // Если уже анимировали, просто показываем без задержки
             show = true
-        } else {
+        } else if (!visible) {
             show = false
         }
     }
 
-    // Анимация прозрачности - только если не анимировали ранее
+    // Анимация прозрачности - только для новых сообщений
     val animatedAlpha by animateFloatAsState(
         targetValue = if (show) 1f else 0f,
-        animationSpec = if (!hasAnimated) {
+        animationSpec = if (!hasAnimated || !show) {
             tween(
                 durationMillis = 300,
                 easing = FastOutSlowInEasing
@@ -61,10 +63,10 @@ fun AnimatedMessage(
         label = "alpha"
     )
 
-    // Анимация размытия - только если не анимировали ранее
+    // Анимация размытия - только для новых сообщений
     val animatedBlur by animateDpAsState(
-        targetValue = if (show && !hasAnimated) 0.dp else if (!show) 10.dp else 0.dp,
-        animationSpec = if (!hasAnimated) {
+        targetValue = if (show) 0.dp else 10.dp,
+        animationSpec = if (!hasAnimated || !show) {
             tween(
                 durationMillis = 300,
                 easing = FastOutSlowInEasing
@@ -75,13 +77,19 @@ fun AnimatedMessage(
         label = "blur"
     )
 
-    if (show || animatedAlpha > 0f) {
+    if (visible) {
         Box(
             modifier = modifier
                 .graphicsLayer {
                     alpha = animatedAlpha
                 }
-                .blur(radius = animatedBlur)
+                .then(
+                    if (!hasAnimated || animatedBlur > 0.dp) {
+                        Modifier.blur(radius = animatedBlur)
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             content()
         }

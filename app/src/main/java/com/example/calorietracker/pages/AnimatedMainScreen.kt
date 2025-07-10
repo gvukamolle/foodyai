@@ -483,6 +483,9 @@ private fun AnimatedChatContent(
 }
 
 // Анимированная карточка сообщения
+// В файле AnimatedMainScreen.kt замените функцию AnimatedChatMessageCard на эту:
+
+// Анимированная карточка сообщения
 @Composable
 private fun AnimatedChatMessageCard(
     message: com.example.calorietracker.ChatMessage,
@@ -521,7 +524,7 @@ private fun AnimatedChatMessageCard(
                 Column(
                     modifier = Modifier.padding(12.dp)
                 ) {
-                    // Убираем внутреннюю анимацию - просто показываем текст
+                    // БЕЗ AnimatedVisibility! Просто показываем текст
                     Text(
                         text = message.content,
                         color = Color.Black,
@@ -545,65 +548,60 @@ private fun AnimatedChatMessageCard(
 
         // Информация о продукте (если есть)
         message.foodItem?.let { food ->
-            AnimatedVisibility(
-                visible = true,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .animateContentSize(), // Плавная анимация размера
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFF5F5F5)
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFF5F5F5)
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                    Text(
+                        text = food.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = food.name,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                        Column {
+                            Text(
+                                text = "Калории: ${food.calories}",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = "Вес: ${food.weight}",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Column(
+                            horizontalAlignment = Alignment.End
                         ) {
-                            Column {
-                                Text(
-                                    text = "Калории: ${food.calories}",
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = "Вес: ${food.weight}",
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                            Column(
-                                horizontalAlignment = Alignment.End
-                            ) {
-                                Text(
-                                    text = "Б: ${food.protein}г",
-                                    fontSize = 12.sp,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = "Ж: ${food.fat}г",
-                                    fontSize = 12.sp,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = "У: ${food.carbs}г",
-                                    fontSize = 12.sp,
-                                    color = Color.Gray
-                                )
-                            }
+                            Text(
+                                text = "Б: ${food.protein}г",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = "Ж: ${food.fat}г",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = "У: ${food.carbs}г",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
                         }
                     }
                 }
