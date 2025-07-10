@@ -312,7 +312,7 @@ private fun CompactMenuItem(
             // 2. Затем делаем ее кликабельной с ripple-эффектом
             .clickable(
                 interactionSource = interactionSource,
-                indication = rememberRipple(
+                indication = ripple(
                     bounded = true, // Ripple не выходит за границы
                     color = iconColor
                 ),

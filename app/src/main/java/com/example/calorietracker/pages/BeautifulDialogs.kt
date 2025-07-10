@@ -55,6 +55,7 @@ import com.example.calorietracker.utils.filterDecimal
 import kotlin.math.roundToInt
 import java.util.Locale
 
+
 // =========================================================================
 // НОВАЯ УНИВЕРСАЛЬНАЯ ОБЕРТКА ДЛЯ ПРАВИЛЬНОЙ АНИМАЦИИ
 // Она заменяет старый BeautifulDialogWrapper.
@@ -1082,16 +1083,18 @@ private fun PhotoOptionCard(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
-    Surface(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
+            .background(color.copy(alpha = 0.08f))
             .clickable(
                 interactionSource = interactionSource,
-                indication = rememberRipple(color = color)
-            ) { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        color = color.copy(alpha = 0.08f)
+                indication = ripple(
+                    bounded = true,
+                    color = color
+                )
+            ) { onClick() }
     ) {
         Row(
             modifier = Modifier
