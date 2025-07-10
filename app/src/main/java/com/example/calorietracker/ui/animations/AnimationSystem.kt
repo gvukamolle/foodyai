@@ -42,12 +42,14 @@ fun TypewriterText(
     text: String,
     modifier: Modifier = Modifier,
     style: androidx.compose.ui.text.TextStyle = androidx.compose.ui.text.TextStyle.Default,
+    startDelay: Long = 0L,
     onComplete: () -> Unit = {}
 ) {
     var displayedText by remember(text) { mutableStateOf("") }
 
     LaunchedEffect(text) {
         displayedText = ""
+        if (startDelay > 0) delay(startDelay)
         text.forEachIndexed { index, _ ->
             delay(AnimationConstants.TYPE_WRITER_DELAY)
             displayedText = text.substring(0, index + 1)

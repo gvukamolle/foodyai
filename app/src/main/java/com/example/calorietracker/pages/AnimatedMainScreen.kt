@@ -438,19 +438,19 @@ private fun AnimatedChatContent(
             }
 
             itemsIndexed(messagesToDisplay) { index, message ->
+                val animateText = message.animate && message.type == MessageType.AI
                 AnimatedMessage(
                     visible = true,
-                    isUserMessage = message.type == MessageType.USER
+                    isUserMessage = message.type == MessageType.USER,
+                    startDelay = if (animateText) 750L else 0L,
+                    onDisplayed = { if (animateText) viewModel.markMessageAnimated(message) }
                 ) {
-                    val animateText = message.animate && message.type == MessageType.AI
                     AnimatedChatMessageCard(
                         message = message,
-                        animateText = animateText,
                         onAiOpinionClick = { text ->
                             viewModel.aiOpinionText = text
                             viewModel.showAiOpinionDialog = true
-                        },
-                        onAnimationComplete = { viewModel.markMessageAnimated(message) }
+                        }
                     )
                 }
             }
@@ -485,9 +485,7 @@ private fun AnimatedChatContent(
 @Composable
 private fun AnimatedChatMessageCard(
     message: com.example.calorietracker.ChatMessage,
-    animateText: Boolean,
-    onAiOpinionClick: (String) -> Unit,
-    onAnimationComplete: () -> Unit = {}
+    onAiOpinionClick: (String) -> Unit
 ) {
 
     Column(
@@ -533,15 +531,6 @@ private fun AnimatedChatMessageCard(
                                         Alignment.End else Alignment.Start
                                 )
                     ) {
-                        // Текст сообщения
-                        Text(
-                            text = message.content,
-                            color = Color.Black,
-                            fontSize = 14.sp
-                        )
-                        if (animateText) {
-                            LaunchedEffect(Unit) { onAnimationComplete() }
-                        }
                     }
                     if (message.isExpandable && message.foodItem?.aiOpinion != null) {
                         Spacer(modifier = Modifier.height(2.dp))

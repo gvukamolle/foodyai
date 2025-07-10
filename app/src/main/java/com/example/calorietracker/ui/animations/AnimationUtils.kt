@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.delay
 
 /* -------------------------------------------------------------------------- */
 /*                              Сообщение в чате                              */
@@ -16,11 +17,24 @@ import androidx.compose.ui.Alignment
 fun AnimatedMessage(
     visible: Boolean,
     isUserMessage: Boolean,
+    startDelay: Long = 0L,
     modifier: Modifier = Modifier,
+    onDisplayed: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
+    var show by remember { mutableStateOf(false) }
+
+    LaunchedEffect(visible) {
+        if (visible) {
+            if (startDelay > 0) delay(startDelay)
+            show = true
+            onDisplayed()
+        } else {
+            show = false
+        }
+    }
     AnimatedVisibility(
-        visible = visible,
+        visible = show,
         modifier = modifier,
         enter =
             slideInHorizontally(

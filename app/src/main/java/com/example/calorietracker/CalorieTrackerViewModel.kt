@@ -723,9 +723,9 @@ class CalorieTrackerViewModel(
 
             val aiStatus = if (isOnline) "с помощью AI" else "вручную"
 
-            // Удаляем временное сообщение "Обрабатываю..." если оно есть
+            // Удаляем временное сообщение "Обрабатываю ваш запрос..." если оно есть
             messages = messages.filterNot {
-                it.type == MessageType.AI && it.content.contains("Обрабатываю")
+                it.type == MessageType.AI && it.content.contains("Обрабатываю ваш запрос")
             }
 
             messages = messages + ChatMessage(
