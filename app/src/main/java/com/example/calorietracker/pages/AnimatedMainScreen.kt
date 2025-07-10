@@ -531,6 +531,11 @@ private fun AnimatedChatMessageCard(
                                         Alignment.End else Alignment.Start
                                 )
                     ) {
+                        Text(
+                            text = message.content,
+                            color = Color.Black,
+                            fontSize = 14.sp
+                        )
                     }
                     if (message.isExpandable && message.foodItem?.aiOpinion != null) {
                         Spacer(modifier = Modifier.height(2.dp))
