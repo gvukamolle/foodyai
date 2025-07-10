@@ -4,8 +4,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.Alignment
 
 /* -------------------------------------------------------------------------- */
 /*                              Сообщение в чате                              */
@@ -17,29 +17,32 @@ fun AnimatedMessage(
     visible: Boolean,
     isUserMessage: Boolean,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit  // Упрощаем - убираем AnimatedVisibilityScope
+    content: @Composable () -> Unit
 ) {
     AnimatedVisibility(
         visible = visible,
         modifier = modifier,
-        enter = slideInHorizontally(
-            initialOffsetX = { if (isUserMessage) it else -it },
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            )
-        ) + fadeIn() + scaleIn(
-            initialScale = 0.8f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
-            transformOrigin = if (isUserMessage)
-                TransformOrigin(1f, 0.5f)
-            else
-                TransformOrigin(0f, 0.5f)
-        ),
-        exit = fadeOut(animationSpec = tween(150))
+        enter =
+            slideInHorizontally(
+                initialOffsetX = { if (isUserMessage) it else -it },
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            ) +
+                    expandHorizontally(
+                        expandFrom = if (isUserMessage) Alignment.End else Alignment.Start,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    ) +
+                    fadeIn(animationSpec = tween(200)),
+        exit = fadeOut(animationSpec = tween(150)) +
+                shrinkHorizontally(
+                    shrinkTowards = if (isUserMessage) Alignment.End else Alignment.Start,
+                    animationSpec = tween(150)
+                )
     ) {
         content()
     }

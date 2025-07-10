@@ -45,7 +45,6 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
-import com.example.calorietracker.ui.animations.TypewriterText
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.Locale
@@ -67,6 +66,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import com.example.calorietracker.ui.animations.SparklingStarsLoader
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -502,7 +503,9 @@ private fun AnimatedChatMessageCard(
             }
         ) {
             Card(
-                modifier = Modifier.wrapContentWidth(),
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .animateContentSize(),
                 colors = CardDefaults.cardColors(
                     containerColor = if (message.type == MessageType.USER) {
                         Color(0xFFDADADA)
@@ -520,21 +523,24 @@ private fun AnimatedChatMessageCard(
                 Column(
                     modifier = Modifier.padding(12.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+                    var textVisible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { textVisible = true }
+                    AnimatedVisibility(
+                        visible = textVisible,
+                        enter = fadeIn() +
+                                expandHorizontally(
+                                    expandFrom = if (message.type == MessageType.USER)
+                                        Alignment.End else Alignment.Start
+                                )
                     ) {
                         // Текст сообщения
-                        Box {
-                            Text(
-                                text = message.content,
-                                color = Color.Black,
-                                fontSize = 14.sp
-                            )
-                            if (animateText) {
-                                LaunchedEffect(Unit) {
-                                    onAnimationComplete()
-                                }
-                            }
+                        Text(
+                            text = message.content,
+                            color = Color.Black,
+                            fontSize = 14.sp
+                        )
+                        if (animateText) {
+                            LaunchedEffect(Unit) { onAnimationComplete() }
                         }
                     }
                     if (message.isExpandable && message.foodItem?.aiOpinion != null) {
