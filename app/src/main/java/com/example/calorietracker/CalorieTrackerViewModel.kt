@@ -41,9 +41,11 @@ import com.example.calorietracker.data.DailyNutritionSummary
 import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
 import com.example.calorietracker.utils.AIUsageManager
+import java.util.UUID
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
+    val id: String = UUID.randomUUID().toString(),
     val type: MessageType,
     val content: String,
     val timestamp: LocalDateTime = LocalDateTime.now(),
@@ -149,9 +151,9 @@ class CalorieTrackerViewModel(
     var messages by mutableStateOf(
         listOf(
             ChatMessage(
-                MessageType.AI,
-                "Привет!\nГотов помочь с анализом питания и дать советы по здоровому образу жизни!",
-                LocalDateTime.now(),
+                type = MessageType.AI,
+                content = "Привет!\nГотов помочь с анализом питания и дать советы по здоровому образу жизни!",
+                timestamp = LocalDateTime.now(),
                 isWelcome = true,
                 animate = false
             )
@@ -432,8 +434,8 @@ class CalorieTrackerViewModel(
         isAnalyzing = true
         currentFoodSource = "ai_photo"
         messages = messages + ChatMessage(
-            MessageType.USER,
-            "Фото загружено",
+            type = MessageType.USER,
+            content = "Фото загружено",
             animate = false
         )
 
@@ -441,8 +443,8 @@ class CalorieTrackerViewModel(
         checkInternetConnection()
         if (!isOnline) {
             messages = messages + ChatMessage(
-                MessageType.AI,
-                "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
+                type = MessageType.AI,
+                content = "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
             )
             isAnalyzing = false
             showManualInputDialog = true
@@ -462,8 +464,8 @@ class CalorieTrackerViewModel(
 
         // Сохраняем временное сообщение для последующего удаления
         val tempMessage = ChatMessage(
-            MessageType.AI,
-            "Анализирую фото...",
+            type = MessageType.AI,
+            content = "Анализирую фото...",
             animate = true  // Анимируем временное сообщение
         )
         messages = messages + tempMessage
@@ -501,7 +503,7 @@ class CalorieTrackerViewModel(
             tempFile.delete()
 
             // Удаляем временное сообщение перед добавлением результата
-            messages = messages.filterNot { it == tempMessage }
+            messages = messages.filterNot { it.id == tempMessage.id }
 
             if (response.isSuccess && currentUser != null) {
                 viewModelScope.launch {
@@ -533,8 +535,8 @@ class CalorieTrackerViewModel(
                     "нет", "no" -> {
                         // Еда не найдена
                         messages = messages + ChatMessage(
-                            MessageType.AI,
-                            "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
+                            type = MessageType.AI,
+                            content = "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
                         )
                         Toast.makeText(context, "На фото не обнаружено еды", Toast.LENGTH_LONG).show()
                         showPhotoDialog = false
@@ -543,8 +545,8 @@ class CalorieTrackerViewModel(
                     "да", "yes" -> {
                         // Еда найдена - заполняем данные
                         messages = messages + ChatMessage(
-                            MessageType.AI,
-                            "✅ Распознан продукт: ${foodData.name}"
+                            type = MessageType.AI,
+                            content = "✅ Распознан продукт: ${foodData.name}"
                         )
 
                         // Создаем FoodItem из полученных данных С МНЕНИЕМ AI
@@ -574,7 +576,7 @@ class CalorieTrackerViewModel(
             }
         } catch (e: Exception) {
             // В случае ошибки также удаляем временное сообщение
-            messages = messages.filterNot { it == tempMessage }
+            messages = messages.filterNot { it.id == tempMessage.id }
             handleError("Ошибка анализа изображения: ${e.message}")
         } finally {
             isAnalyzing = false
@@ -600,8 +602,8 @@ class CalorieTrackerViewModel(
 
             // Добавляем временное сообщение
             val tempMessage = ChatMessage(
-                MessageType.AI,
-                "Анализирую описание...",
+                type = MessageType.AI,
+                content = "Анализирую описание...",
                 animate = true  // Анимируем временное сообщение
             )
             messages = messages + tempMessage
@@ -623,7 +625,7 @@ class CalorieTrackerViewModel(
                 }
 
                 // Удаляем временное сообщение
-                messages = messages.filterNot { it == tempMessage }
+                messages = messages.filterNot { it.id == tempMessage.id }
 
                 if (!response.isSuccess) {
                     handleError("Ошибка соединения")
@@ -640,8 +642,8 @@ class CalorieTrackerViewModel(
 
                 // Добавляем сообщение о результате
                 messages = messages + ChatMessage(
-                    MessageType.AI,
-                    "✅ Распознан продукт: ${foodData.name}"
+                    type = MessageType.AI,
+                    content = "✅ Распознан продукт: ${foodData.name}"
                 )
 
                 prefillFood = FoodItem(
@@ -658,7 +660,7 @@ class CalorieTrackerViewModel(
                 showManualInputDialog = true
             } catch (e: Exception) {
                 // В случае ошибки также удаляем временное сообщение
-                messages = messages.filterNot { it == tempMessage }
+                messages = messages.filterNot { it.id == tempMessage.id }
                 Log.e("CalorieTracker", "Ошибка анализа описания", e)
                 handleError("Не удалось проанализировать")
             } finally {
@@ -670,8 +672,8 @@ class CalorieTrackerViewModel(
     // Вспомогательная функция для обработки ошибок
     private fun handleError(errorMessage: String) {
         messages = messages + ChatMessage(
-            MessageType.AI,
-            "$errorMessage. Введите данные вручную."
+            type = MessageType.AI,
+            content = "$errorMessage. Введите данные вручную."
         )
         showManualInputDialog = true
     }
@@ -721,14 +723,14 @@ class CalorieTrackerViewModel(
         )
 
         messages = messages + ChatMessage(
-            MessageType.USER,
-            "Добавлен продукт: $name",
+            type = MessageType.USER,
+            content = "Добавлен продукт: $name",
             animate = false
         )
 
         messages = messages + ChatMessage(
-            MessageType.AI,
-            "Записал данные о продукте. Выберите прием пищи и подтвердите."
+            type = MessageType.AI,
+            content = "Записал данные о продукте. Выберите прием пищи и подтвердите."
         )
 
         showManualInputDialog = false
@@ -875,8 +877,8 @@ class CalorieTrackerViewModel(
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
             messages = messages + ChatMessage(
-                MessageType.USER,
-                userMessage,
+                type = MessageType.USER,
+                content = userMessage,
                 animate = false
             )
             inputMessage = ""
@@ -885,8 +887,8 @@ class CalorieTrackerViewModel(
                 if (isOnline) {
                     // Добавляем временное сообщение
                     val tempMessage = ChatMessage(
-                        MessageType.AI,
-                        "Обрабатываю ваш вопрос..."
+                        type = MessageType.AI,
+                        content = "Обрабатываю ваш вопрос..."
                     )
                     messages = messages + tempMessage
 
@@ -905,28 +907,34 @@ class CalorieTrackerViewModel(
                         }
 
                         // Удаляем временное сообщение
-                        messages = messages.filterNot { it == tempMessage }
+                        messages = messages.filterNot { it.id == tempMessage.id }
 
                         if (response.isSuccess) {
                             val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
-                            messages = messages + ChatMessage(MessageType.AI, answer)
+                            messages = messages + ChatMessage(
+                                type = MessageType.AI,
+                                content = answer
+                            )
                         } else {
                             messages = messages + ChatMessage(
-                                MessageType.AI,
-                                "Ошибка сервера: не удалось получить ответ от AI."
+                                type = MessageType.AI,
+                                content = "Ошибка сервера: не удалось получить ответ от AI."
                             )
                         }
                     } catch (e: Exception) {
                         // Удаляем временное сообщение в случае ошибки
-                        messages = messages.filterNot { it == tempMessage }
+                        messages = messages.filterNot { it.id == tempMessage.id }
                         messages = messages + ChatMessage(
-                            MessageType.AI,
-                            "Произошла ошибка при обращении к AI: ${e.message}"
+                            type = MessageType.AI,
+                            content = "Произошла ошибка при обращении к AI: ${e.message}"
                         )
                     }
                 } else {
                     val offlineResponse = getOfflineResponse(userMessage)
-                    messages = messages + ChatMessage(MessageType.AI, offlineResponse)
+                    messages = messages + ChatMessage(
+                        type = MessageType.AI,
+                        content = offlineResponse
+                    )
                 }
             }
         }
@@ -990,7 +998,7 @@ class CalorieTrackerViewModel(
     }
 
     fun markMessageAnimated(message: ChatMessage) {
-        val index = messages.indexOf(message)
+        val index = messages.indexOfFirst { it.id == message.id }
         if (index != -1) {
             val list = messages.toMutableList()
             list[index] = list[index].copy(animate = false)

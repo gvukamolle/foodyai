@@ -438,9 +438,10 @@ private fun AnimatedChatContent(
                 viewModel.messages
             }
 
-            itemsIndexed(messagesToDisplay) { index, message ->
+            itemsIndexed(items = messagesToDisplay, key = { _, msg -> msg.id }) { index, message ->
                 val animateText = message.animate && message.type == MessageType.AI
                 AnimatedMessage(
+                    id = message.timestamp,
                     visible = true,
                     isUserMessage = message.type == MessageType.USER,
                     startDelay = if (animateText) 750L else 0L,
@@ -481,9 +482,6 @@ private fun AnimatedChatContent(
         }
     }
 }
-
-// Анимированная карточка сообщения
-// В файле AnimatedMainScreen.kt замените функцию AnimatedChatMessageCard на эту:
 
 // Анимированная карточка сообщения
 @Composable

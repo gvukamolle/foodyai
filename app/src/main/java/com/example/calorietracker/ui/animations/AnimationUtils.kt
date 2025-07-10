@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun AnimatedMessage(
+    id: Any,
     visible: Boolean,
     isUserMessage: Boolean,
     startDelay: Long = 0L,
@@ -25,14 +26,11 @@ fun AnimatedMessage(
     onDisplayed: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
-    // Уникальный ключ для каждого сообщения, чтобы remember работал правильно
-    val messageKey = remember { System.currentTimeMillis() }
+    // Запоминаем состояние анимации отдельно для каждого сообщения
+    var hasAnimated by remember(id) { mutableStateOf(false) }
+    var show by remember(id) { mutableStateOf(false) }
 
-    // Запоминаем, была ли уже проиграна анимация для ЭТОГО сообщения
-    var hasAnimated by remember(messageKey) { mutableStateOf(false) }
-    var show by remember(messageKey) { mutableStateOf(false) }
-
-    LaunchedEffect(visible, messageKey) {
+    LaunchedEffect(visible, id) {
         if (visible && !hasAnimated) {
             // Задержка перед началом анимации (100 мс = 0.1 сек)
             delay(100)
