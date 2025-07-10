@@ -527,29 +527,15 @@ private fun AnimatedChatMessageCard(
                     ) {
                         // Текст сообщения
                         Box {
-                            if (message.type == MessageType.AI) {
-                                if (animateText) {
-                                    TypewriterText(
-                                        text = message.content,
-                                        style = TextStyle(
-                                            color = Color.Black,
-                                            fontSize = 14.sp
-                                        ),
-                                        onComplete = onAnimationComplete
-                                    )
-                                } else {
-                                    Text(
-                                        text = message.content,
-                                        color = Color.Black,
-                                        fontSize = 14.sp
-                                    )
+                            Text(
+                                text = message.content,
+                                color = Color.Black,
+                                fontSize = 14.sp
+                            )
+                            if (animateText) {
+                                LaunchedEffect(Unit) {
+                                    onAnimationComplete()
                                 }
-                            } else {
-                                Text(
-                                    text = message.content,
-                                    color = Color.Black,
-                                    fontSize = 14.sp
-                                )
                             }
                         }
                     }

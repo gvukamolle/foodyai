@@ -3,13 +3,12 @@ package com.example.calorietracker.ui.animations
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.Color // добавь импорт
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateColorAsState as composeAnimateColorAsState
 
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -21,58 +20,29 @@ fun AnimatedMessage(
 ) {
     AnimatedVisibility(
         visible = visible,
-        enter = if (isUserMessage) {
-            slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
-            ) + fadeIn()
-        } else {
-            slideInHorizontally(
-                initialOffsetX = { -it },
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
-            ) + fadeIn() + scaleIn(
-                initialScale = 0.8f,
-                transformOrigin = TransformOrigin(0f, 0.5f)
+        initiallyVisible = false,
+        enter = slideInHorizontally(
+            initialOffsetX = { if (isUserMessage) it else -it },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
             )
-        },
+        ) + fadeIn() + scaleIn(
+            initialScale = 0.8f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            ),
+            transformOrigin = if (isUserMessage) {
+                TransformOrigin(1f, 0.5f)
+            } else {
+                TransformOrigin(0f, 0.5f)
+            }
+        ),
         exit = fadeOut(animationSpec = tween(150))
     ) {
         content()
     }
-}
-
-@Composable
-fun animateProgressAsFloat(
-    targetValue: Float,
-    animationSpec: AnimationSpec<Float> = spring(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium
-    )
-): State<Float> {
-    return animateFloatAsState(
-        targetValue = targetValue,
-        animationSpec = animationSpec
-    )
-}
-
-@Composable
-fun animateColorAsState(
-    targetValue: Color,
-    animationSpec: AnimationSpec<Color> = spring(
-        stiffness = Spring.StiffnessMedium
-    )
-): State<Color> {
-    return animateColorAsState(
-        targetValue = targetValue,
-        animationSpec = animationSpec
-    )
-
 }
 
 @OptIn(ExperimentalAnimationApi::class)
