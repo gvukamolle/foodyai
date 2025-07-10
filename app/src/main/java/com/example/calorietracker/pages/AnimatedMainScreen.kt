@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import com.example.calorietracker.ui.animations.SparklingStarsLoader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,8 +113,9 @@ fun AnimatedMainScreen(
     }
 
     val showWelcome =
-        viewModel.messages.size == 1 && viewModel.messages.first().isWelcome
-
+        viewModel.messages.size == 1 &&
+                viewModel.messages.first().isWelcome &&
+                !viewModel.isAnalyzing
 
     // Все диалоги
     AnimatedDialogs(
@@ -214,7 +216,8 @@ fun AnimatedMainScreen(
                         color = Color.Black,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.offset(y = 40.dp)
                     )
                 }
             }
@@ -466,11 +469,14 @@ private fun AnimatedChatContent(
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                EnhancedAILoadingIndicator(
+                Box(
                     modifier = Modifier.padding(24.dp),
-                    text = if (viewModel.isOnline) "AI анализирует" else "Обрабатываем",
-                    accentColor = Color(0xFFFF9800)
-                )
+                    contentAlignment = Alignment.Center
+                ) {
+                    SparklingStarsLoader(
+                        text = if (viewModel.isOnline) "AI анализирует" else "Обрабатываем"
+                    )
+                }
             }
         }
     }
