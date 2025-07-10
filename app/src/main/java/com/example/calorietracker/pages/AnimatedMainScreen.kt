@@ -415,7 +415,6 @@ private fun AnimatedContentDivider() {
     }
 }
 
-// Анимированный чат
 @Composable
 private fun AnimatedChatContent(
     viewModel: CalorieTrackerViewModel,
@@ -432,26 +431,25 @@ private fun AnimatedChatContent(
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             val messagesToDisplay = if (viewModel.messages.firstOrNull()?.isWelcome == true) {
-                    viewModel.messages.drop(1)
-                } else {
-                    viewModel.messages
-                }
+                viewModel.messages.drop(1)
+            } else {
+                viewModel.messages
+            }
 
-                itemsIndexed(messagesToDisplay) { index, message ->
-                    AnimatedMessage(
-                        visible = true,
-                        isUserMessage = message.type == MessageType.USER
-                    ) {
-                        val animateText = message.animate && message.type == MessageType.AI
-                        AnimatedChatMessageCard(
-                            message = message,
-                            animateText = animateText,
-                            onAiOpinionClick = { text ->
-                                viewModel.aiOpinionText = text
-                                viewModel.showAiOpinionDialog = true
-
-                    },
-                    onAnimationComplete = { viewModel.markMessageAnimated(message) }
+            itemsIndexed(messagesToDisplay) { index, message ->
+                AnimatedMessage(
+                    visible = true,
+                    isUserMessage = message.type == MessageType.USER
+                ) {
+                    val animateText = message.animate && message.type == MessageType.AI
+                    AnimatedChatMessageCard(
+                        message = message,
+                        animateText = animateText,
+                        onAiOpinionClick = { text ->
+                            viewModel.aiOpinionText = text
+                            viewModel.showAiOpinionDialog = true
+                        },
+                        onAnimationComplete = { viewModel.markMessageAnimated(message) }
                     )
                 }
             }
