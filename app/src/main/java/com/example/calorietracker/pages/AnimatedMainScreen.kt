@@ -490,25 +490,23 @@ private fun AnimatedChatMessageCard(
     onAiOpinionClick: (String) -> Unit,
     onAnimationComplete: () -> Unit = {}
 ) {
-    // no expandable content
 
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.wrapContentWidth()
     ) {
         // Основное сообщение
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = if (message.type == MessageType.USER) {
-                Alignment.CenterEnd
+        Row(
+            horizontalArrangement = if (message.type == MessageType.USER) {
+                Arrangement.End
             } else {
-                Alignment.CenterStart
+                Arrangement.Start
             }
         ) {
             Card(
                 modifier = Modifier.wrapContentWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = if (message.type == MessageType.USER) {
-                        Color.Black
+                        Color(0xFFDADADA)
                     } else {
                         Color(0xFFF3F4F6)
                     }
@@ -524,11 +522,10 @@ private fun AnimatedChatMessageCard(
                     modifier = Modifier.padding(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Текст сообщения
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box {
                             if (message.type == MessageType.AI) {
                                 if (animateText) {
                                     TypewriterText(
@@ -549,7 +546,7 @@ private fun AnimatedChatMessageCard(
                             } else {
                                 Text(
                                     text = message.content,
-                                    color = Color.White,
+                                    color = Color.Black,
                                     fontSize = 14.sp
                                 )
                             }
