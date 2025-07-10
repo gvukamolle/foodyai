@@ -492,10 +492,11 @@ private fun AnimatedChatMessageCard(
 ) {
 
     Column(
-        modifier = Modifier.wrapContentWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         // Основное сообщение
         Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = if (message.type == MessageType.USER) {
                 Arrangement.End
             } else {
