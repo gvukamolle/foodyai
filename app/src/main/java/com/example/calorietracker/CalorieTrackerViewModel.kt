@@ -427,7 +427,7 @@ class CalorieTrackerViewModel(
         return Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
     }
 
-    // Анализ фото с AI
+    // Обновленный метод analyzePhotoWithAI с правильным удалением временного сообщения
     suspend fun analyzePhotoWithAI(bitmap: Bitmap, caption: String = "") {
         isAnalyzing = true
         currentFoodSource = "ai_photo"
@@ -436,6 +436,7 @@ class CalorieTrackerViewModel(
             "Фото загружено",
             animate = false
         )
+
         // Проверяем интернет
         checkInternetConnection()
         if (!isOnline) {
@@ -459,10 +460,12 @@ class CalorieTrackerViewModel(
             return
         }
 
-        messages = messages + ChatMessage(
+        // Сохраняем временное сообщение для последующего удаления
+        val tempMessage = ChatMessage(
             MessageType.AI,
             "Анализирую фото..."
         )
+        messages = messages + tempMessage
 
         try {
             // 1. Подготавливаем изображение
@@ -496,11 +499,15 @@ class CalorieTrackerViewModel(
             // Удаляем временный файл
             tempFile.delete()
 
+            // Удаляем временное сообщение перед добавлением результата
+            messages = messages.filterNot { it == tempMessage }
+
             if (response.isSuccess && currentUser != null) {
                 viewModelScope.launch {
                     val updatedUserData = AIUsageManager.incrementUsage(currentUser)
                     authManager.updateUserData(updatedUserData)
-                }}
+                }
+            }
 
             // 4. Обрабатываем ответ
             if (!response.isSuccess) {
@@ -565,12 +572,15 @@ class CalorieTrackerViewModel(
                 handleError("Неверный формат ответа от сервера")
             }
         } catch (e: Exception) {
+            // В случае ошибки также удаляем временное сообщение
+            messages = messages.filterNot { it == tempMessage }
             handleError("Ошибка анализа изображения: ${e.message}")
         } finally {
             isAnalyzing = false
         }
     }
 
+    // Обновленный метод analyzeDescription с правильным удалением временного сообщения
     fun analyzeDescription() {
         if (!canAnalyzeDescription()) return
 
@@ -587,11 +597,18 @@ class CalorieTrackerViewModel(
                 return@launch
             }
 
+            // Добавляем временное сообщение
+            val tempMessage = ChatMessage(
+                MessageType.AI,
+                "Анализирую описание..."
+            )
+            messages = messages + tempMessage
+
             try {
                 val request = FoodAnalysisRequest(
                     weight = 100,
                     userProfile = userProfile.toNetworkProfile(),
-                    message = textToAnalyze,  // Используем сохраненный текст
+                    message = textToAnalyze,
                     userId = userId,
                     messageType = "analysis",
                 )
@@ -602,6 +619,9 @@ class CalorieTrackerViewModel(
                         request = request
                     )
                 }
+
+                // Удаляем временное сообщение
+                messages = messages.filterNot { it == tempMessage }
 
                 if (!response.isSuccess) {
                     handleError("Ошибка соединения")
@@ -615,6 +635,13 @@ class CalorieTrackerViewModel(
                 }
 
                 val foodData = Gson().fromJson(answer, FoodDataFromAnswer::class.java)
+
+                // Добавляем сообщение о результате
+                messages = messages + ChatMessage(
+                    MessageType.AI,
+                    "✅ Распознан продукт: ${foodData.name}"
+                )
+
                 prefillFood = FoodItem(
                     name = foodData.name,
                     calories = foodData.calories,
@@ -628,6 +655,8 @@ class CalorieTrackerViewModel(
 
                 showManualInputDialog = true
             } catch (e: Exception) {
+                // В случае ошибки также удаляем временное сообщение
+                messages = messages.filterNot { it == tempMessage }
                 Log.e("CalorieTracker", "Ошибка анализа описания", e)
                 handleError("Не удалось проанализировать")
             } finally {
@@ -703,7 +732,7 @@ class CalorieTrackerViewModel(
         showManualInputDialog = false
     }
 
-    // Подтверждение добавления продукта
+    // Обновленный метод confirmFood без удаления несуществующего сообщения
     fun confirmFood() {
         Log.d("CalorieTracker", "confirmFood called, source: $currentFoodSource")
         pendingFood?.let { food ->
@@ -723,9 +752,12 @@ class CalorieTrackerViewModel(
 
             val aiStatus = if (isOnline) "с помощью AI" else "вручную"
 
-            // Удаляем временное сообщение "Обрабатываю ваш запрос..." если оно есть
+            // Удаляем все временные сообщения анализа
             messages = messages.filterNot {
-                it.type == MessageType.AI && it.content.contains("Обрабатываю ваш запрос")
+                it.type == MessageType.AI && (
+                        it.content.contains("Анализирую") ||
+                                it.content.contains("Обрабатываю")
+                        )
             }
 
             messages = messages + ChatMessage(

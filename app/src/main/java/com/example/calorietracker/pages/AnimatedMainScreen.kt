@@ -68,6 +68,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import com.example.calorietracker.ui.animations.SparklingStarsLoader
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -487,7 +488,6 @@ private fun AnimatedChatMessageCard(
     message: com.example.calorietracker.ChatMessage,
     onAiOpinionClick: (String) -> Unit
 ) {
-
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -521,33 +521,112 @@ private fun AnimatedChatMessageCard(
                 Column(
                     modifier = Modifier.padding(12.dp)
                 ) {
-                    var textVisible by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) { textVisible = true }
-                    AnimatedVisibility(
-                        visible = textVisible,
-                        enter = fadeIn() +
-                                expandHorizontally(
-                                    expandFrom = if (message.type == MessageType.USER)
-                                        Alignment.End else Alignment.Start
-                                )
-                    ) {
-                        Text(
-                            text = message.content,
-                            color = Color.Black,
-                            fontSize = 14.sp
-                        )
-                    }
+                    // Убираем внутреннюю анимацию - просто показываем текст
+                    Text(
+                        text = message.content,
+                        color = Color.Black,
+                        fontSize = 14.sp
+                    )
+
                     if (message.isExpandable && message.foodItem?.aiOpinion != null) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Start
                         ) {
-                            AnimatedAiChip(onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) })
+                            AnimatedAiChip(
+                                onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) }
+                            )
                         }
-                    } }
+                    }
+                }
             }
         }
+
+        // Информация о продукте (если есть)
+        message.foodItem?.let { food ->
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFF5F5F5)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = food.name,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Калории: ${food.calories}",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = "Вес: ${food.weight}",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    text = "Б: ${food.protein}г",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = "Ж: ${food.fat}г",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = "У: ${food.carbs}г",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Время сообщения
+        Text(
+            text = message.timestamp.format(
+                DateTimeFormatter.ofPattern("HH:mm")
+            ),
+            fontSize = 11.sp,
+            color = Color.Gray,
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .align(
+                    if (message.type == MessageType.USER) {
+                        Alignment.End
+                    } else {
+                        Alignment.Start
+                    }
+                )
+        )
     }
 }
 
