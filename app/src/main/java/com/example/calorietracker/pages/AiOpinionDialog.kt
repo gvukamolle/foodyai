@@ -6,14 +6,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.calorietracker.ui.theme.GilroyFontFamily // Импортируем
 
 @Composable
 fun AiOpinionDialog(
@@ -69,9 +70,10 @@ fun AiOpinionDialog(
                 ) {
                     Text(
                         text = opinion,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Black,
-                        lineHeight = 22.sp
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = 22.sp  // Сохраняем lineHeight
+                        ),
+                        color = Color.Black
                     )
                 }
             }
@@ -83,15 +85,18 @@ fun AiOpinionDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                        shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = DialogColors.Photo
                 )
             ) {
                 Text(
                     "Спасибо!",
-                    color = Color.White,
-                    fontSize = 18.sp
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 18.sp,  // Переопределяем размер
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = Color.White
                 )
             }
         }

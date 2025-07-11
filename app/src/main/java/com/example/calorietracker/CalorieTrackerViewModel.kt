@@ -178,6 +178,8 @@ class CalorieTrackerViewModel(
     var aiOpinionText by mutableStateOf<String?>(null)
     var photoCaption by mutableStateOf("")
     var pendingDescription by mutableStateOf("")
+    var showAILoadingScreen by mutableStateOf(false)
+        private set
 
 
     init {
@@ -429,10 +431,14 @@ class CalorieTrackerViewModel(
         return Bitmap.createScaledBitmap(bitmap, maxWidth, newHeight, true)
     }
 
-    // Анализ фото с AI
+    // Обновленный метод analyzePhotoWithAI
     suspend fun analyzePhotoWithAI(bitmap: Bitmap, caption: String = "") {
         isAnalyzing = true
         currentFoodSource = "ai_photo"
+
+        // Показываем новый экран загрузки вместо временного сообщения
+        showAILoadingScreen = true
+
         messages = messages + ChatMessage(
             type = MessageType.USER,
             content = "Фото загружено",
@@ -442,6 +448,7 @@ class CalorieTrackerViewModel(
         // Проверяем интернет
         checkInternetConnection()
         if (!isOnline) {
+            showAILoadingScreen = false  // Скрываем экран загрузки
             messages = messages + ChatMessage(
                 type = MessageType.AI,
                 content = "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
@@ -453,6 +460,7 @@ class CalorieTrackerViewModel(
 
         val currentUser = authManager.currentUser.value
         if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
+            showAILoadingScreen = false  // Скрываем экран загрузки
             showAILimitDialog = true
             pendingAIAction = {
                 viewModelScope.launch {
@@ -462,13 +470,8 @@ class CalorieTrackerViewModel(
             return
         }
 
-        // Сохраняем временное сообщение для последующего удаления
-        val tempMessage = ChatMessage(
-            type = MessageType.AI,
-            content = "Анализирую фото...",
-            animate = true  // Анимируем временное сообщение
-        )
-        messages = messages + tempMessage
+        // Больше не нужно временное сообщение - у нас есть полноэкранная загрузка
+        // val tempMessage = ChatMessage(...) - УДАЛЕНО
 
         try {
             // 1. Подготавливаем изображение
@@ -502,8 +505,8 @@ class CalorieTrackerViewModel(
             // Удаляем временный файл
             tempFile.delete()
 
-            // Удаляем временное сообщение перед добавлением результата
-            messages = messages.filterNot { it.id == tempMessage.id }
+            // Скрываем экран загрузки после получения ответа
+            showAILoadingScreen = false
 
             if (response.isSuccess && currentUser != null) {
                 viewModelScope.launch {
@@ -575,15 +578,15 @@ class CalorieTrackerViewModel(
                 handleError("Неверный формат ответа от сервера")
             }
         } catch (e: Exception) {
-            // В случае ошибки также удаляем временное сообщение
-            messages = messages.filterNot { it.id == tempMessage.id }
+            showAILoadingScreen = false  // Скрываем экран загрузки при ошибке
             handleError("Ошибка анализа изображения: ${e.message}")
         } finally {
+            showAILoadingScreen = false  // Обязательно скрываем экран загрузки
             isAnalyzing = false
         }
     }
 
-    // Обновленный метод analyzeDescription с правильным удалением временного сообщения
+    // Обновленный метод analyzeDescription
     fun analyzeDescription() {
         if (!canAnalyzeDescription()) return
 
@@ -593,20 +596,20 @@ class CalorieTrackerViewModel(
         viewModelScope.launch {
             isAnalyzing = true
             currentFoodSource = "ai_description"
+
+            // Показываем новый экран загрузки
+            showAILoadingScreen = true
+
             checkInternetConnection()
             if (!isOnline) {
+                showAILoadingScreen = false  // Скрываем экран загрузки
                 handleError("Нет подключения к интернету")
                 isAnalyzing = false
                 return@launch
             }
 
-            // Добавляем временное сообщение
-            val tempMessage = ChatMessage(
-                type = MessageType.AI,
-                content = "Анализирую описание...",
-                animate = true  // Анимируем временное сообщение
-            )
-            messages = messages + tempMessage
+            // Больше не нужно временное сообщение
+            // val tempMessage = ChatMessage(...) - УДАЛЕНО
 
             try {
                 val request = FoodAnalysisRequest(
@@ -624,8 +627,8 @@ class CalorieTrackerViewModel(
                     )
                 }
 
-                // Удаляем временное сообщение
-                messages = messages.filterNot { it.id == tempMessage.id }
+                // Скрываем экран загрузки после получения ответа
+                showAILoadingScreen = false
 
                 if (!response.isSuccess) {
                     handleError("Ошибка соединения")
@@ -659,14 +662,20 @@ class CalorieTrackerViewModel(
 
                 showManualInputDialog = true
             } catch (e: Exception) {
-                // В случае ошибки также удаляем временное сообщение
-                messages = messages.filterNot { it.id == tempMessage.id }
+                showAILoadingScreen = false  // Скрываем экран загрузки при ошибке
                 Log.e("CalorieTracker", "Ошибка анализа описания", e)
                 handleError("Не удалось проанализировать")
             } finally {
+                showAILoadingScreen = false  // Обязательно скрываем экран загрузки
                 isAnalyzing = false
             }
         }
+    }
+
+    fun cancelAIAnalysis() {
+        showAILoadingScreen = false
+        isAnalyzing = false
+        // Можно добавить отмену корутин если используете Job
     }
 
     // Вспомогательная функция для обработки ошибок

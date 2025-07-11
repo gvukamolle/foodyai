@@ -65,7 +65,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
-import com.example.calorietracker.ui.animations.SparklingStarsLoader
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import java.time.format.DateTimeFormatter
@@ -202,30 +201,24 @@ fun AnimatedMainScreen(
                 label = "ime_offset"
             )
 
-// И ЗАМЕНИТЕ AnimatedVisibility на простой вариант:
+            // Новый экран загрузки AI поверх всего остального
             AnimatedVisibility(
-                visible = showWelcome,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.matchParentSize() // БЕЗ offset!
+                visible = viewModel.showAILoadingScreen,
+                enter = fadeIn(animationSpec = tween(300)),
+                exit = fadeOut(animationSpec = tween(300))
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = viewModel.messages.first().content,
-                        color = Color.Black,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.offset(y = 40.dp)
-                    )
-                }
+                AIAnalysisLoadingScreen(
+                    onDismiss = {
+                        // Позволяем пользователю отменить анализ
+                        viewModel.cancelAIAnalysis()
+                    },
+                    showDismissButton = true // Показывать кнопку отмены
+                )
             }
         }
     }
-}
+    }
+
 
 @Composable
 private fun AnimatedHeader(
@@ -462,30 +455,10 @@ private fun AnimatedChatContent(
             }
         }
 
-        // Индикатор анализа AI
-        AnimatedVisibility(
-            visible = viewModel.isAnalyzing,
-            enter = fadeIn() + scaleIn(),
-            exit = fadeOut() + scaleOut(),
-            modifier = Modifier.align(Alignment.Center)
-        ) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Box(
-                    modifier = Modifier.padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    SparklingStarsLoader(
-                        text = if (viewModel.isOnline) "AI анализирует" else "Обрабатываем"
-                    )
                 }
             }
-        }
-    }
-}
+
+
 
 // Анимированная карточка сообщения
 @Composable
