@@ -137,8 +137,8 @@ fun AnimatedMessageWithBlur(
     onAnimationStart: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
-    var show by remember(id) { mutableStateOf(!playAnimation || isVisible) }
-    var blur by remember(id) { mutableStateOf(if (playAnimation && !isVisible) 8.dp else 0.dp) }
+    var show by remember(id) { mutableStateOf(!playAnimation) }
+    var blur by remember(id) { mutableStateOf(if (playAnimation) 8.dp else 0.dp) }
 
     // Анимация появления
     LaunchedEffect(id, isVisible) {
