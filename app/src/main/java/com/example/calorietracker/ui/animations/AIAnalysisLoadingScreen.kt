@@ -32,6 +32,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.drawToBitmap
 import kotlinx.coroutines.delay
 import kotlin.random.Random
+import androidx.compose.ui.platform.LocalDensity
 
 /**
  * Универсальный контейнер, который реализует эффект размытия фона в новом окне.
@@ -49,6 +50,8 @@ private fun FullscreenEffectContainer(
             null
         }
     }
+
+    val density = LocalDensity.current
 
     val focusManager = LocalFocusManager.current
     LaunchedEffect(Unit) {

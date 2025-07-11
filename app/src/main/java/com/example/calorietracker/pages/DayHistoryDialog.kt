@@ -46,6 +46,7 @@ import com.example.calorietracker.ui.components.AnimatedRainbowBorder
 import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
 
+
 @Composable
 fun AiInfoButton(
     hasAiOpinion: Boolean,

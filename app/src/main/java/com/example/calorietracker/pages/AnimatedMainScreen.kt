@@ -60,6 +60,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.ime
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.imePadding
@@ -490,8 +491,11 @@ private fun AnimatedChatMessageCard(
                 Arrangement.Start
             }
         ) {
+            val configuration = LocalConfiguration.current
+            val maxMessageWidth = (configuration.screenWidthDp * 2 / 3).dp
             Card(
                 modifier = Modifier
+                    .widthIn(max = maxMessageWidth)
                     .wrapContentWidth()
                     .animateContentSize(),
                 colors = CardDefaults.cardColors(
@@ -526,10 +530,13 @@ private fun AnimatedChatMessageCard(
                         }
                         else -> {
                             // Обычный текст
+                            val textStyle = MaterialTheme.typography.bodyMedium
                             Text(
                                 text = message.content,
-                                color = Color.Black,
-                                fontSize = 14.sp
+                                style = textStyle.copy(
+                                    lineHeight = textStyle.lineHeight * 1.2f
+                                ),
+                                color = Color.Black
                             )
 
                             if (message.isExpandable && message.foodItem?.aiOpinion != null) {
