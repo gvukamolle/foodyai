@@ -19,78 +19,61 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun AnimatedMessage(
     id: Any,
-    visible: Boolean,
-    isUserMessage: Boolean,
+    playAnimation: Boolean,
     startDelay: Long = 0L,
     modifier: Modifier = Modifier,
-    onDisplayed: () -> Unit = {},
+    onAnimationStart: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
-    // Запоминаем состояние анимации отдельно для каждого сообщения
-    var hasAnimated by remember(id) { mutableStateOf(false) }
-    var show by remember(id) { mutableStateOf(false) }
+    // 1. Запоминаем, нужно ли анимировать именно ЭТОТ экземпляр компонента.
+    //    Это значение захватится при первой композиции и больше не изменится.
+    val isAnimationTriggered by remember { mutableStateOf(playAnimation) }
 
-    LaunchedEffect(visible, id) {
-        if (visible && !hasAnimated) {
-            // Задержка перед началом анимации (100 мс = 0.1 сек)
-            delay(100)
+    // 2. Состояние видимости. Изначально невидимо, если анимация запускается.
+    var show by remember { mutableStateOf(!isAnimationTriggered) }
+
+    // 3. LaunchedEffect запускается ОДИН РАЗ при входе компонента в композицию.
+    LaunchedEffect(Unit) {
+        // Если была команда на анимацию, выполняем ее.
+        if (isAnimationTriggered) {
+            delay(100) // Небольшая задержка для плавности
             if (startDelay > 0) delay(startDelay)
-            show = true
-            hasAnimated = true
-            onDisplayed()
-        } else if (visible && hasAnimated) {
-            // Если уже анимировали, просто показываем без задержки
-            show = true
-        } else if (!visible) {
-            show = false
+            show = true // Запускаем саму анимацию (меняем целевое значение)
+            onAnimationStart() // Сообщаем ViewModel, что анимация для этого сообщения проиграна
         }
     }
 
-    // Анимация прозрачности - только для новых сообщений
+    // 4. Спецификация анимации зависит от того, была ли она запущена изначально.
+    val animationSpec = if (isAnimationTriggered) {
+        tween<Float>(durationMillis = 400, easing = FastOutSlowInEasing)
+    } else {
+        snap()
+    }
+
     val animatedAlpha by animateFloatAsState(
         targetValue = if (show) 1f else 0f,
-        animationSpec = if (!hasAnimated || !show) {
-            tween(
-                durationMillis = 300,
-                easing = FastOutSlowInEasing
-            )
-        } else {
-            // Мгновенное появление для уже анимированных сообщений
-            snap()
-        },
+        animationSpec = animationSpec,
         label = "alpha"
     )
 
-    // Анимация размытия - только для новых сообщений
     val animatedBlur by animateDpAsState(
-        targetValue = if (show) 0.dp else 10.dp,
-        animationSpec = if (!hasAnimated || !show) {
-            tween(
-                durationMillis = 300,
-                easing = FastOutSlowInEasing
-            )
+        targetValue = if (show) 0.dp else 8.dp,
+        animationSpec = if (isAnimationTriggered) {
+            tween(durationMillis = 400, easing = FastOutSlowInEasing)
         } else {
             snap()
         },
         label = "blur"
     )
 
-    if (visible) {
-        Box(
-            modifier = modifier
-                .graphicsLayer {
-                    alpha = animatedAlpha
-                }
-                .then(
-                    if (!hasAnimated || animatedBlur > 0.dp) {
-                        Modifier.blur(radius = animatedBlur)
-                    } else {
-                        Modifier
-                    }
-                )
-        ) {
-            content()
-        }
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                alpha = animatedAlpha
+            }
+            .blur(radius = animatedBlur)
+    ) {
+        content()
     }
 }
 

@@ -436,7 +436,7 @@ class CalorieTrackerViewModel(
         messages = messages + ChatMessage(
             type = MessageType.USER,
             content = "Фото загружено",
-            animate = false
+            animate = true
         )
 
         // Проверяем интернет
@@ -725,7 +725,7 @@ class CalorieTrackerViewModel(
         messages = messages + ChatMessage(
             type = MessageType.USER,
             content = "Добавлен продукт: $name",
-            animate = false
+            animate = true
         )
 
         messages = messages + ChatMessage(
@@ -879,7 +879,7 @@ class CalorieTrackerViewModel(
             messages = messages + ChatMessage(
                 type = MessageType.USER,
                 content = userMessage,
-                animate = false
+                animate = true
             )
             inputMessage = ""
 

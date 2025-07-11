@@ -439,13 +439,17 @@ private fun AnimatedChatContent(
             }
 
             itemsIndexed(items = messagesToDisplay, key = { _, msg -> msg.id }) { index, message ->
-                val animateText = message.animate && message.type == MessageType.AI
+                // Определяем, нужно ли анимировать. Имя переменной - animateText
                 AnimatedMessage(
-                    id = message.timestamp,
-                    visible = true,
-                    isUserMessage = message.type == MessageType.USER,
-                    startDelay = if (animateText) 750L else 0L,
-                    onDisplayed = { if (animateText) viewModel.markMessageAnimated(message) }
+                    id = message.id,
+                    // Используем существующую переменную animateText
+                    playAnimation = message.animate,
+                    startDelay = if (message.animate && message.type == MessageType.AI) 750L else 0L,
+                    onAnimationStart = {
+                        // Этот колбэк вызовется только если playAnimation был true,
+                        // поэтому дополнительная проверка не нужна.
+                        viewModel.markMessageAnimated(message)
+                    }
                 ) {
                     AnimatedChatMessageCard(
                         message = message,
