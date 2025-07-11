@@ -68,6 +68,12 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import java.time.format.DateTimeFormatter
+import com.example.calorietracker.ui.animations.AIProcessingMessage
+import com.example.calorietracker.ui.animations.SimpleChatTypingIndicator
+import com.example.calorietracker.ui.animations.AnimatedMessageRemoval
+import androidx.compose.foundation.lazy.items
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -209,10 +215,10 @@ fun AnimatedMainScreen(
             ) {
                 AIAnalysisLoadingScreen(
                     onDismiss = {
-                        // Позволяем пользователю отменить анализ
                         viewModel.cancelAIAnalysis()
                     },
-                    showDismissButton = true // Показывать кнопку отмены
+                    showDismissButton = true,
+                    inputMethod = viewModel.inputMethod // Передаем метод ввода
                 )
             }
         }
@@ -410,6 +416,9 @@ private fun AnimatedContentDivider() {
     }
 }
 
+// В AnimatedMainScreen.kt обновите AnimatedChatContent:
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AnimatedChatContent(
     viewModel: CalorieTrackerViewModel,
@@ -431,36 +440,41 @@ private fun AnimatedChatContent(
                 viewModel.messages
             }
 
-            itemsIndexed(items = messagesToDisplay, key = { _, msg -> msg.id }) { index, message ->
-                // Определяем, нужно ли анимировать. Имя переменной - animateText
-                AnimatedMessage(
-                    id = message.id,
-                    // Используем существующую переменную animateText
-                    playAnimation = message.animate,
-                    startDelay = if (message.animate && message.type == MessageType.AI) 750L else 0L,
-                    onAnimationStart = {
-                        // Этот колбэк вызовется только если playAnimation был true,
-                        // поэтому дополнительная проверка не нужна.
-                        viewModel.markMessageAnimated(message)
-                    }
-                ) {
-                    AnimatedChatMessageCard(
-                        message = message,
-                        onAiOpinionClick = { text ->
-                            viewModel.aiOpinionText = text
-                            viewModel.showAiOpinionDialog = true
-                        }
+            items(
+                items = messagesToDisplay,
+                key = { msg -> msg.id }
+            ) { message ->
+                // Используем AnimatedMessageRemoval для плавного исчезновения
+                AnimatedMessageRemoval(
+                    isVisible = true, // Сообщение всегда видимо в списке
+                    modifier = Modifier.animateItemPlacement(
+                        animationSpec = tween(300)
                     )
+                ) {
+                    AnimatedMessage(
+                        id = message.id,
+                        playAnimation = message.animate,
+                        startDelay = if (message.animate && message.type == MessageType.AI) 750L else 0L,
+                        onAnimationStart = {
+                            viewModel.markMessageAnimated(message)
+                        }
+                    ) {
+                        AnimatedChatMessageCard(
+                            message = message,
+                            onAiOpinionClick = { text ->
+                                viewModel.aiOpinionText = text
+                                viewModel.showAiOpinionDialog = true
+                            }
+                        )
+                    }
                 }
             }
         }
+    }
+}
 
-                }
-            }
+// В AnimatedMainScreen.kt, обновите AnimatedChatMessageCard:
 
-
-
-// Анимированная карточка сообщения
 @Composable
 private fun AnimatedChatMessageCard(
     message: com.example.calorietracker.ChatMessage,
@@ -499,22 +513,38 @@ private fun AnimatedChatMessageCard(
                 Column(
                     modifier = Modifier.padding(12.dp)
                 ) {
-                    // БЕЗ AnimatedVisibility! Просто показываем текст
-                    Text(
-                        text = message.content,
-                        color = Color.Black,
-                        fontSize = 14.sp
-                    )
-
-                    if (message.isExpandable && message.foodItem?.aiOpinion != null) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            AnimatedAiChip(
-                                onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) }
+                    // Проверяем, нужно ли показывать анимированные точки
+                    when {
+                        message.isProcessing -> {
+                            // Показываем только точки без текста
+                            Box(
+                                modifier = Modifier.padding(
+                                    horizontal = 8.dp,
+                                    vertical = 4.dp
+                                )
+                            ) {
+                                SimpleChatTypingIndicator()
+                            }
+                        }
+                        else -> {
+                            // Обычный текст
+                            Text(
+                                text = message.content,
+                                color = Color.Black,
+                                fontSize = 14.sp
                             )
+
+                            if (message.isExpandable && message.foodItem?.aiOpinion != null) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Start
+                                ) {
+                                    AnimatedAiChip(
+                                        onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -527,7 +557,7 @@ private fun AnimatedChatMessageCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
-                    .animateContentSize(), // Плавная анимация размера
+                    .animateContentSize(),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFFF5F5F5)
                 ),
@@ -583,160 +613,24 @@ private fun AnimatedChatMessageCard(
             }
         }
 
-        // Время сообщения
-        Text(
-            text = message.timestamp.format(
-                DateTimeFormatter.ofPattern("HH:mm")
-            ),
-            fontSize = 11.sp,
-            color = Color.Gray,
-            modifier = Modifier
-                .padding(top = 4.dp)
-                .align(
-                    if (message.type == MessageType.USER) {
-                        Alignment.End
-                    } else {
-                        Alignment.Start
-                    }
-                )
-        )
-    }
-}
-
-@Composable
-fun PendingDescriptionCard(
-    description: String,
-    isAnalyzing: Boolean,
-    onAnalyze: () -> Unit,
-    onEdit: () -> Unit,
-    onClear: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    AnimatedVisibility(
-        visible = description.isNotBlank(),
-        enter = expandVertically() + fadeIn(),
-        exit = shrinkVertically() + fadeOut()
-    ) {
-        Card(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFFFF8E1)  // Светло-желтый фон
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Column(
+        // Время сообщения - только если не processing
+        if (!message.isProcessing) {
+            Text(
+                text = message.timestamp.format(
+                    DateTimeFormatter.ofPattern("HH:mm")
+                ),
+                fontSize = 11.sp,
+                color = Color.Gray,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                // Заголовок
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            Icons.Default.Description,
-                            contentDescription = null,
-                            tint = Color(0xFFFF9800),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "Описание блюда",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        )
-                    }
-
-                    // Кнопка очистки
-                    IconButton(
-                        onClick = onClear,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Очистить",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Текст описания
-                Text(
-                    text = description,
-                    fontSize = 14.sp,
-                    color = Color(0xFF424242),
-                    lineHeight = 20.sp,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                // Кнопки действий
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Кнопка редактирования
-                    OutlinedButton(
-                        onClick = onEdit,
-                        modifier = Modifier.weight(1f),
-                        enabled = !isAnalyzing,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFFFF9800)
-                        ),
-                        border = BorderStroke(1.dp, Color(0xFFFF9800))
-                    ) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text("Изменить")
-                    }
-
-                    // Кнопка анализа
-                    Button(
-                        onClick = onAnalyze,
-                        modifier = Modifier.weight(1f),
-                        enabled = !isAnalyzing,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFF9800),
-                            disabledContainerColor = Color(0xFFFFCC80)
-                        )
-                    ) {
-                        if (isAnalyzing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text("Анализ...")
+                    .padding(top = 4.dp)
+                    .align(
+                        if (message.type == MessageType.USER) {
+                            Alignment.End
                         } else {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text("Анализировать")
+                            Alignment.Start
                         }
-                    }
-                }
-            }
+                    )
+            )
         }
     }
 }

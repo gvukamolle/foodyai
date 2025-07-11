@@ -31,6 +31,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.drawToBitmap
 import kotlinx.coroutines.delay
+import kotlin.random.Random
 
 /**
  * Универсальный контейнер, который реализует эффект размытия фона в новом окне.
@@ -40,50 +41,48 @@ private fun FullscreenEffectContainer(
     onDismiss: () -> Unit,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val focusManager = LocalFocusManager.current
     val view = LocalView.current
-    var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var isVisible by remember { mutableStateOf(false) }
+    val backgroundScreenshot by produceState<Bitmap?>(null) {
+        value = try {
+            view.drawToBitmap()
+        } catch (_: Exception) {
+            null
+        }
+    }
 
+    val focusManager = LocalFocusManager.current
     LaunchedEffect(Unit) {
         focusManager.clearFocus()
-        delay(100)
-        try {
-            backgroundBitmap = view.drawToBitmap()
-        } catch (e: Exception) { /* Игнорируем */ }
-        isVisible = true
     }
 
     Popup(
         onDismissRequest = onDismiss,
-        properties = PopupProperties(focusable = true)
+        properties = PopupProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AnimatedVisibility(
-                visible = isVisible,
-                enter = fadeIn(animationSpec = tween(300)),
-                exit = fadeOut(animationSpec = tween(300))
-            ) {
-                backgroundBitmap?.let { bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Blurred background",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .blur(radius = 20.dp),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                Box(
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White.copy(alpha = 0.35f))
+        ) {
+            backgroundScreenshot?.let { bitmap ->
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.White.copy(alpha = 0.7f))
+                        .blur(30.dp),
+                    contentScale = ContentScale.Crop,
+                    alpha = 1f
                 )
             }
 
             AnimatedVisibility(
-                visible = isVisible,
-                enter = fadeIn(animationSpec = tween(300, delayMillis = 50)),
+                visible = true,
+                enter = fadeIn(animationSpec = tween(300)),
                 exit = fadeOut(animationSpec = tween(300))
             ) {
                 content()
@@ -92,77 +91,8 @@ private fun FullscreenEffectContainer(
     }
 }
 
-
 /**
- * Полноэкранный компонент загрузки для AI анализа
- */
-@Composable
-fun AIAnalysisLoadingScreen(
-    modifier: Modifier = Modifier,
-    onDismiss: () -> Unit = {},
-    showDismissButton: Boolean = false
-) {
-    FullscreenEffectContainer(onDismiss = onDismiss) {
-        // Основной контент
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(bottom = 16.dp, top = 24.dp, start = 24.dp, end = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Верхний отступ, чтобы центрировать кольцо
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Центральная часть - кольцо загрузки
-            AILoadingRing()
-
-            // Нижняя часть - анимированный текст и кнопка
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Bottom // Прижимаем все к низу
-            ) {
-                // Контейнер для фраз, чтобы они не прыгали по ширине
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp), // Даем высоту, чтобы текст не прыгал
-                    contentAlignment = Alignment.Center
-                ) {
-                    AnimatedPhrases()
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Кнопка отмены
-                if (showDismissButton) {
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                            .padding(horizontal = 32.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            // Полупрозрачный фон для кнопки
-                            containerColor = Color.Black.copy(alpha = 0.1f),
-                            contentColor = Color.Black.copy(alpha = 0.8f)
-                        )
-                    ) {
-                        Text("Отмена", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-/**
- * Анимированное кольцо загрузки (без изменений)
+ * Анимированное кольцо загрузки AI
  */
 @Composable
 private fun AILoadingRing() {
@@ -231,61 +161,209 @@ private fun AILoadingRing() {
 
 /**
  * Компонент с анимированными забавными фразами
+ *
+ * @param inputMethod Метод ввода данных: "photo" или "text"
  */
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-private fun AnimatedPhrases() {
-    val phrases = remember {
-        listOf(
-            "Дайте подумать... 🤔",
-            "Так, это похоже на еду... 🍽️",
-            "Считаю калории по пикселям... 📸",
-            "Мне кажется это съедобно... 🧐",
-            "Активирую нейросети... 🧠",
-            "Анализирую молекулярный состав... 🔬",
-            "Это точно не торт? 🎂",
-            "Проверяю базу данных вкусняшек... 📚",
-            "Хм, выглядит аппетитно... 😋",
-            "Применяю магию подсчета КБЖУ... ✨",
-            "Сканирую на предмет белков... 🥩",
-            "Ищу спрятанные углеводы... 🍞",
-            "Жиры, покажитесь! 🧈",
-            "Почти готово, еще чуть-чуть... ⏳",
-            "AI в замешательстве... 🤖"
-        )
+private fun AnimatedPhrases(inputMethod: String? = null) {
+    // Базовые фразы
+    val basePhrases = listOf(
+        "Дайте подумать... 🤔",
+        "Так, это похоже на еду... 🍽️",
+        "Мне кажется это съедобно... 🧐",
+        "Активирую нейросети... 🧠",
+        "Анализирую молекулярный состав... 🔬",
+        "Проверяю базу данных вкусняшек... 📚",
+        "Хм, выглядит аппетитно... 😋",
+        "Применяю магию подсчета КБЖУ... ✨",
+        "Почти готово, еще чуть-чуть... ⏳",
+        "AI в замешательстве... 🤖"
+    )
+
+    // Фразы для фото
+    val photoPhrases = listOf(
+        "Считаю калории по пикселям... 📸",
+        "Сканирую изображение... 🖼️",
+        "Рассматриваю под микроскопом... 🔍",
+        "Это точно не торт? 🎂",
+        "Определяю продукт по фото... 📷",
+        "Анализирую цвета и текстуры... 🎨"
+    )
+
+    // Фразы для текста
+    val textPhrases = listOf(
+        "Читаю ваше описание... 📖",
+        "Разбираю текст по буквам... 📝",
+        "Понимаю, о чем вы говорите... 💬",
+        "Ищу в базе по описанию... 🔎",
+        "Обрабатываю ваши слова... 💭",
+        "Перевожу текст в калории... 📊"
+    )
+
+    // Фразы для поиска макронутриентов
+    val macrosPhrases = listOf(
+        "Сканирую на предмет белков... 🥩",
+        "Ищу спрятанные углеводы... 🍞",
+        "Жиры, покажитесь! 🧈",
+        "Подсчитываю БЖУ... 🧮"
+    )
+
+    // Комбинируем фразы в зависимости от метода
+    val phrases = remember(inputMethod) {
+        val combinedPhrases = mutableListOf<String>()
+
+        // Добавляем базовые фразы
+        combinedPhrases.addAll(basePhrases)
+
+        // Добавляем специфичные фразы
+        when (inputMethod) {
+            "photo" -> combinedPhrases.addAll(photoPhrases)
+            "text" -> combinedPhrases.addAll(textPhrases)
+        }
+
+        // Добавляем фразы про макронутриенты
+        combinedPhrases.addAll(macrosPhrases)
+
+        // Перемешиваем для рандомизации
+        combinedPhrases.shuffled()
     }
 
+    // Индекс текущей фразы и список показанных
     var currentPhraseIndex by remember { mutableStateOf(0) }
+    var shownIndices by remember { mutableStateOf(setOf<Int>()) }
+
+    // Получаем следующую случайную фразу
+    fun getNextRandomIndex(): Int {
+        // Если показали все фразы, сбрасываем
+        if (shownIndices.size >= phrases.size) {
+            shownIndices = setOf()
+        }
+
+        // Находим индекс, который еще не показывали
+        var nextIndex: Int
+        do {
+            nextIndex = Random.nextInt(phrases.size)
+        } while (shownIndices.contains(nextIndex))
+
+        return nextIndex
+    }
 
     LaunchedEffect(Unit) {
+        // Начинаем со случайной фразы
+        currentPhraseIndex = getNextRandomIndex()
+        shownIndices = shownIndices + currentPhraseIndex
+
         while (true) {
-            delay(3000)
-            currentPhraseIndex = (currentPhraseIndex + 1) % phrases.size
+            delay(2500) // Показываем каждую фразу 2.5 секунды
+            val nextIndex = getNextRandomIndex()
+            shownIndices = shownIndices + nextIndex
+            currentPhraseIndex = nextIndex
         }
     }
 
-    // Анимация смены фраз
+    // Анимация смены фраз с эффектом растворения
     AnimatedContent(
         targetState = currentPhraseIndex,
         transitionSpec = {
-            // Анимация: въезд строго снизу и выезд вниз
-            (fadeIn(animationSpec = tween(400)) +
-                    slideInVertically(animationSpec = tween(400)) { fullHeight -> fullHeight }) with
-                    (fadeOut(animationSpec = tween(400)) +
-                            slideOutVertically(animationSpec = tween(400)) { fullHeight -> -fullHeight })
+            // Плавное растворение и появление
+            (fadeIn(
+                animationSpec = tween(
+                    durationMillis = 600,
+                    easing = FastOutSlowInEasing
+                )
+            ) + scaleIn(
+                initialScale = 0.92f,
+                animationSpec = tween(
+                    durationMillis = 600,
+                    easing = FastOutSlowInEasing
+                )
+            )) with (fadeOut(
+                animationSpec = tween(
+                    durationMillis = 400,
+                    easing = FastOutSlowInEasing
+                )
+            ) + scaleOut(
+                targetScale = 1.08f,
+                animationSpec = tween(
+                    durationMillis = 400,
+                    easing = FastOutSlowInEasing
+                )
+            ))
         },
         label = "phrase_animation"
     ) { index ->
-        // Текст без фона, с жирным начертанием для читаемости
         Text(
             text = phrases[index],
-            modifier = Modifier.padding(horizontal = 24.dp),
+            modifier = Modifier.padding(horizontal = 18.dp),
             style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold // Делаем жирнее
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
             ),
             textAlign = TextAlign.Center,
-            color = Color.Black.copy(alpha = 0.8f) // Темный цвет для контраста
+            color = Color.Black.copy(alpha = 0.8f)
         )
+    }
+}
+
+@Composable
+fun AIAnalysisLoadingScreen(
+    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit = {},
+    showDismissButton: Boolean = false,
+    inputMethod: String? = null // Новый параметр
+) {
+    FullscreenEffectContainer(onDismiss = onDismiss) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(bottom = 16.dp, top = 24.dp, start = 24.dp, end = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Spacer(modifier = Modifier.weight(1f))
+
+            AILoadingRing()
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AnimatedPhrases(inputMethod = inputMethod)
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                if (showDismissButton) {
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Black,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text(
+                            text = "Отменить",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                }
+            }
+        }
     }
 }

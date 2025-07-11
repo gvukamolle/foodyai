@@ -52,7 +52,9 @@ data class ChatMessage(
     val foodItem: FoodItem? = null, // Добавляем информацию о продукте
     val isExpandable: Boolean = false, // Флаг для раскрывающихся сообщений
     val isWelcome: Boolean = false,
-    val animate: Boolean = true
+    val animate: Boolean = true,
+    val isProcessing: Boolean = false // Новое поле для индикации обработки
+
 )
 
 enum class MessageType {
@@ -137,6 +139,8 @@ class CalorieTrackerViewModel(
     // Состояние для календаря
     private val _calendarData = MutableStateFlow<Map<LocalDate, DailyNutritionSummary>>(emptyMap())
     val calendarData: StateFlow<Map<LocalDate, DailyNutritionSummary>> = _calendarData.asStateFlow()
+
+    var inputMethod by mutableStateOf<String?>(null)
 
     // UI состояния
     var currentStep by mutableStateOf("setup")
@@ -438,6 +442,7 @@ class CalorieTrackerViewModel(
 
         // Показываем новый экран загрузки вместо временного сообщения
         showAILoadingScreen = true
+        inputMethod = "photo" // Добавить это поле в ViewModel
 
         messages = messages + ChatMessage(
             type = MessageType.USER,
@@ -599,6 +604,7 @@ class CalorieTrackerViewModel(
 
             // Показываем новый экран загрузки
             showAILoadingScreen = true
+            inputMethod = "text" // Указываем метод ввода
 
             checkInternetConnection()
             if (!isOnline) {
@@ -607,9 +613,6 @@ class CalorieTrackerViewModel(
                 isAnalyzing = false
                 return@launch
             }
-
-            // Больше не нужно временное сообщение
-            // val tempMessage = ChatMessage(...) - УДАЛЕНО
 
             try {
                 val request = FoodAnalysisRequest(
@@ -881,7 +884,7 @@ class CalorieTrackerViewModel(
         }
     }
 
-    // Обновим sendMessage для работы с историей
+    // 3. Обновить метод sendMessage для использования анимированных точек
     fun sendMessage() {
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
@@ -894,10 +897,11 @@ class CalorieTrackerViewModel(
 
             viewModelScope.launch {
                 if (isOnline) {
-                    // Добавляем временное сообщение
+                    // Добавляем сообщение с анимированными точками
                     val tempMessage = ChatMessage(
                         type = MessageType.AI,
-                        content = "Обрабатываю ваш вопрос..."
+                        content = "", // Пустое содержимое
+                        isProcessing = true // Флаг для отображения точек
                     )
                     messages = messages + tempMessage
 

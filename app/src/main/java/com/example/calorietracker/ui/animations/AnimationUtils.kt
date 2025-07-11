@@ -77,6 +77,116 @@ fun AnimatedMessage(
     }
 }
 
+// Добавьте эту функцию в AnimationUtils.kt
+
+/**
+ * Компонент для анимированного удаления сообщения
+ * Анимация обратная появлению - исчезновение с размытием
+ */
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+fun AnimatedMessageRemoval(
+    isVisible: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable AnimatedVisibilityScope.() -> Unit
+) {
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(
+            animationSpec = tween(
+                durationMillis = 400,
+                easing = FastOutSlowInEasing
+            )
+        ) + expandVertically(
+            animationSpec = tween(
+                durationMillis = 400,
+                easing = FastOutSlowInEasing
+            )
+        ),
+        exit = fadeOut(
+            animationSpec = tween(
+                durationMillis = 300,
+                easing = FastOutSlowInEasing
+            )
+        ) + shrinkVertically(
+            animationSpec = tween(
+                durationMillis = 300,
+                easing = FastOutSlowInEasing
+            )
+        ) + scaleOut(
+            targetScale = 0.95f,
+            animationSpec = tween(
+                durationMillis = 300,
+                easing = FastOutSlowInEasing
+            )
+        ),
+        modifier = modifier
+    ) {
+        content()
+    }
+}
+
+// Альтернативный вариант с blur эффектом
+@Composable
+fun AnimatedMessageWithBlur(
+    id: Any,
+    isVisible: Boolean,
+    playAnimation: Boolean,
+    startDelay: Long = 0L,
+    modifier: Modifier = Modifier,
+    onAnimationStart: () -> Unit = {},
+    content: @Composable () -> Unit
+) {
+    var show by remember(id) { mutableStateOf(!playAnimation || isVisible) }
+    var blur by remember(id) { mutableStateOf(if (playAnimation && !isVisible) 8.dp else 0.dp) }
+
+    // Анимация появления
+    LaunchedEffect(id, isVisible) {
+        if (playAnimation && isVisible) {
+            delay(100)
+            if (startDelay > 0) delay(startDelay)
+            show = true
+            blur = 0.dp
+            onAnimationStart()
+        } else if (!isVisible) {
+            // Анимация исчезновения
+            blur = 8.dp
+            delay(300)
+            show = false
+        }
+    }
+
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (show && isVisible) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (isVisible) 400 else 300,
+            easing = FastOutSlowInEasing
+        ),
+        label = "alpha"
+    )
+
+    val animatedBlur by animateDpAsState(
+        targetValue = blur,
+        animationSpec = tween(
+            durationMillis = if (isVisible) 400 else 300,
+            easing = FastOutSlowInEasing
+        ),
+        label = "blur"
+    )
+
+    if (show || animatedAlpha > 0.01f) {
+        Box(
+            modifier = modifier
+                .graphicsLayer {
+                    alpha = animatedAlpha
+                }
+                .blur(radius = animatedBlur)
+        ) {
+            content()
+        }
+    }
+}
+
 @Composable
 fun Modifier.pulsate(): Modifier {
     val infinite = rememberInfiniteTransition(label = "pulsate-transition")
