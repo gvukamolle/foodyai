@@ -71,6 +71,7 @@ import java.time.format.DateTimeFormatter
 import com.example.calorietracker.ui.animations.AIProcessingMessage
 import com.example.calorietracker.ui.animations.SimpleChatTypingIndicator
 import com.example.calorietracker.ui.animations.AnimatedMessageRemoval
+import com.example.calorietracker.ui.animations.AnimatedMessageWithBlur
 import androidx.compose.foundation.lazy.items
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -445,28 +446,25 @@ private fun AnimatedChatContent(
                 key = { msg -> msg.id }
             ) { message ->
                 // Используем AnimatedMessageRemoval для плавного исчезновения
-                AnimatedMessageRemoval(
-                    isVisible = true, // Сообщение всегда видимо в списке
+                AnimatedMessageWithBlur(
+                    id = message.id,
+                    isVisible = message.isVisible,
+                    playAnimation = message.animate,
+                    startDelay = if (message.animate && message.type == MessageType.AI) 750L else 0L,
                     modifier = Modifier.animateItemPlacement(
                         animationSpec = tween(300)
-                    )
-                ) {
-                    AnimatedMessage(
-                        id = message.id,
-                        playAnimation = message.animate,
-                        startDelay = if (message.animate && message.type == MessageType.AI) 750L else 0L,
-                        onAnimationStart = {
-                            viewModel.markMessageAnimated(message)
-                        }
-                    ) {
-                        AnimatedChatMessageCard(
-                            message = message,
-                            onAiOpinionClick = { text ->
-                                viewModel.aiOpinionText = text
-                                viewModel.showAiOpinionDialog = true
-                            }
-                        )
+                    ),
+                    onAnimationStart = {
+                        viewModel.markMessageAnimated(message)
                     }
+                ) {
+                    AnimatedChatMessageCard(
+                        message = message,
+                        onAiOpinionClick = { text ->
+                            viewModel.aiOpinionText = text
+                            viewModel.showAiOpinionDialog = true
+                        }
+                    )
                 }
             }
         }

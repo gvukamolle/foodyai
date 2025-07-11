@@ -53,8 +53,8 @@ data class ChatMessage(
     val isExpandable: Boolean = false, // Флаг для раскрывающихся сообщений
     val isWelcome: Boolean = false,
     val animate: Boolean = true,
-    val isProcessing: Boolean = false // Новое поле для индикации обработки
-
+    val isProcessing: Boolean = false, // Новое поле для индикации обработки
+    val isVisible: Boolean = true // Для анимации удаления сообщений
 )
 
 enum class MessageType {
@@ -919,8 +919,8 @@ class CalorieTrackerViewModel(
                             )
                         }
 
-                        // Удаляем временное сообщение
-                        messages = messages.filterNot { it.id == tempMessage.id }
+                        // Удаляем временное сообщение с анимацией
+                        removeMessageWithAnimation(tempMessage.id)
 
                         if (response.isSuccess) {
                             val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
@@ -936,7 +936,7 @@ class CalorieTrackerViewModel(
                         }
                     } catch (e: Exception) {
                         // Удаляем временное сообщение в случае ошибки
-                        messages = messages.filterNot { it.id == tempMessage.id }
+                        removeMessageWithAnimation(tempMessage.id)
                         messages = messages + ChatMessage(
                             type = MessageType.AI,
                             content = "Произошла ошибка при обращении к AI: ${e.message}"
@@ -1016,6 +1016,16 @@ class CalorieTrackerViewModel(
             val list = messages.toMutableList()
             list[index] = list[index].copy(animate = false)
             messages = list
+        }
+    }
+
+    fun removeMessageWithAnimation(messageId: String) {
+        messages = messages.map { msg ->
+            if (msg.id == messageId) msg.copy(isVisible = false) else msg
+        }
+        viewModelScope.launch {
+            delay(300)
+            messages = messages.filterNot { it.id == messageId }
         }
     }
 }
