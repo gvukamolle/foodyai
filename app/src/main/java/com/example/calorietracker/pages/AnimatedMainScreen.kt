@@ -197,6 +197,30 @@ fun AnimatedMainScreen(
                 modifier = Modifier.weight(1f)
             )
         }
+
+
+            AnimatedVisibility(
+                visible = showWelcome,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = viewModel.messages.first().content,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        textAlign = TextAlign.Center,
+                        color = Color.Black,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
             val density = LocalDensity.current
             val ime = WindowInsets.ime
             val imeOffset by remember {

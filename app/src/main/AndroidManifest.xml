@@ -15,9 +15,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/foody_ai_logo"
+        android:icon="@mipmap/foody"
         android:label="Foody AI"
-        android:roundIcon="@drawable/foody_ai_logo"
+        android:roundIcon="@mipmap/foody_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CalorieTracker"
         tools:targetApi="31">

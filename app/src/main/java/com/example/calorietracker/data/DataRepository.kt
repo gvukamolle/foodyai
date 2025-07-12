@@ -10,6 +10,9 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.time.LocalDate
+import com.example.calorietracker.data.ChatMessageDto
+import com.example.calorietracker.data.toChatMessage
+import com.example.calorietracker.data.toDto
 
 /**
  * Репозиторий для управления данными приложения, такими как профиль пользователя и дневное потребление калорий.
@@ -91,7 +94,8 @@ class DataRepository(context: Context) {
 
     // ---------- Chat history methods ----------
     fun saveChatHistory(messages: List<ChatMessage>, date: String = DailyResetUtils.getCurrentDisplayDate()) {
-        val json = gson.toJson(messages)
+        val dtos = messages.map { it.toDto() }
+        val json = gson.toJson(dtos)
         sharedPreferences.edit {
             putString("chat_history_$date", json)
         }
@@ -100,8 +104,9 @@ class DataRepository(context: Context) {
     fun getChatHistory(date: String = DailyResetUtils.getCurrentDisplayDate()): List<ChatMessage> {
         val json = sharedPreferences.getString("chat_history_$date", null)
         return if (json != null) {
-            val type = object : TypeToken<List<ChatMessage>>() {}.type
-            gson.fromJson(json, type)
+            val type = object : TypeToken<List<ChatMessageDto>>() {}.type
+            val dtos: List<ChatMessageDto> = gson.fromJson(json, type)
+            dtos.map { it.toChatMessage() }
         } else emptyList()
     }
 

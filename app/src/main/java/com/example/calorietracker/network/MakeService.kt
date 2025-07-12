@@ -103,6 +103,7 @@ data class AiChatRequest(
     val message: String,
     val userProfile: UserProfileData,
     val userId: String,
+    val isFirstMessageOfDay: Boolean = false,
     val messageType: String = "chat"
 )
 
