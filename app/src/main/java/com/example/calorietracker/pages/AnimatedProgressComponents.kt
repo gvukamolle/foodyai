@@ -4,8 +4,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,12 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
@@ -302,7 +298,6 @@ data class NutrientData(
 fun AnimatedPendingFoodCard(
     food: FoodItem,
     selectedMeal: MealType,
-    onMealChange: (MealType) -> Unit,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -355,10 +350,11 @@ fun AnimatedPendingFoodCard(
                 // Данные о еде с анимацией
                 AnimatedFoodDetails(food = food)
 
-                // Выбор приема пищи
-                AnimatedMealSelector(
-                    selectedMeal = selectedMeal,
-                    onMealChange = onMealChange
+                // Автоматически выбранный прием пищи
+                Text(
+                    text = "Приём пищи: ${selectedMeal.displayName}",
+                    fontSize = 14.sp,
+                    color = Color.Black
                 )
 
                 // Кнопки действий
@@ -416,120 +412,5 @@ private fun AnimatedFoodDetails(food: FoodItem) {
                 color = Color.Black
             )
         }
-    }
-}
-
-
-// Анимированный селектор приема пищи
-@Composable
-private fun AnimatedMealSelector(
-    selectedMeal: MealType,
-    onMealChange: (MealType) -> Unit
-) {
-    var showMeals by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        delay(300)
-        showMeals = true
-    }
-
-    AnimatedVisibility(
-        visible = showMeals,
-        enter = fadeIn() + expandVertically()
-    ) {
-        Column {
-            Text(
-                "Приём пищи:",
-                color = Color.Black,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val meals = listOf(
-                MealType.BREAKFAST,
-                MealType.LUNCH,
-                MealType.DINNER,
-                MealType.SNACK
-            )
-
-            val rows = meals.chunked(2)
-
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                rows.forEach { rowMeals ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        rowMeals.forEach { meal ->
-                            AnimatedMealButton(
-                                meal = meal,
-                                isSelected = meal == selectedMeal,
-                                onClick = { onMealChange(meal) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Анимированная кнопка приема пищи
-@Composable
-private fun AnimatedMealButton(
-    meal: MealType,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val haptic = LocalHapticFeedback.current
-
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) Color.Black else Color(0xFFE5E7EB),
-        animationSpec = tween(200),
-        label = "bg"
-    )
-
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) Color.White else Color.Black,
-        animationSpec = tween(200),
-        label = "content"
-    )
-
-    val scale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(0),
-        label = "scale"
-    )
-
-    Button(
-        onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onClick()
-        },
-        colors = ButtonDefaults.buttonColors(
-            containerColor = backgroundColor,
-            contentColor = contentColor
-        ),
-        modifier = modifier
-            .height(32.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            },
-        contentPadding = PaddingValues(horizontal = 0.dp),
-        shape = RoundedCornerShape(8.dp),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = if (isSelected) 2.dp else 0.dp
-        )
-    ) {
-        Text(
-            meal.displayName,
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center
-        )
     }
 }

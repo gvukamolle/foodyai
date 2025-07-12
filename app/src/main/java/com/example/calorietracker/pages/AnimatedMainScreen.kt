@@ -185,7 +185,6 @@ fun AnimatedMainScreen(
                 AnimatedPendingFoodCard(
                     food = food,
                     selectedMeal = viewModel.selectedMeal,
-                    onMealChange = { viewModel.selectedMeal = it },
                     onConfirm = { viewModel.confirmFood() },
                     onCancel = { viewModel.pendingFood = null }
                 )

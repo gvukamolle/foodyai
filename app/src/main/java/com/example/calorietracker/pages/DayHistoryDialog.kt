@@ -3,10 +3,7 @@ package com.example.calorietracker.pages
 import android.graphics.Bitmap
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -37,7 +35,6 @@ import com.example.calorietracker.data.DailyNutritionSummary
 import com.example.calorietracker.FoodItem
 import com.example.calorietracker.Meal
 import com.example.calorietracker.MealType
-import com.example.calorietracker.extensions.fancyShadow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -46,58 +43,6 @@ import com.example.calorietracker.ui.components.AnimatedRainbowBorder
 import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
 
-
-@Composable
-fun AiInfoButton(
-    hasAiOpinion: Boolean,
-    onClick: () -> Unit
-) {
-
-    // Зеленая кнопка-бокс
-    Surface(
-        onClick = { if (hasAiOpinion) onClick() },
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFFDBF0E4), // Зеленый цвет
-        modifier = Modifier.height(28.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.AutoAwesome,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = Color(0xFF00BA65)
-            )
-            Text(
-                text = "Foody AI",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF00BA65)
-            )
-            if (hasAiOpinion) {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .background(
-                            color = Color(0xFF00BA65).copy(alpha = 0.2f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Информация",
-                        modifier = Modifier.size(14.dp),
-                        tint = Color(0xFF00BA65)
-                    )
-                }
-            }
-        }
-    }
-}
 
 // Основной диалог истории дня с группировкой
 @OptIn(ExperimentalFoundationApi::class)
@@ -130,11 +75,9 @@ fun DayHistoryDialog(
             .toSortedMap(compareBy { mealType ->
                 when (mealType) {
                     MealType.BREAKFAST -> 1
-                    MealType.LATE_BREAKFAST -> 2
-                    MealType.LUNCH -> 3
-                    MealType.SNACK -> 4
-                    MealType.DINNER -> 5
-                    MealType.SUPPER -> 6
+                    MealType.LUNCH -> 2
+                    MealType.DINNER -> 3
+                    MealType.SUPPER -> 4
                 }
             })
     }
@@ -229,125 +172,175 @@ fun DayHistoryDialog(
                     borderWidth = 8.dp,
                     cornerRadius = 24.dp
                 ) {
-                    LazyColumn(
+                    // Основной контейнер с заголовком и контентом
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.White)
-                            .padding(24.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
-                        stickyHeader {
+                        // Заголовок с датой и кнопкой назад - теперь часть общего контейнера
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.White)
+                                .padding(horizontal = 24.dp, vertical = 16.dp)
+                        ) {
+                            Text(
+                                text = date.format(dateFormatter),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                            IconButton(
+                                onClick = { animatedDismiss() },
+                                modifier = Modifier.align(Alignment.CenterStart)
+                            ) {
+                                Icon(
+                                    Icons.Default.ArrowBack,
+                                    contentDescription = "Назад",
+                                    tint = Color.Gray
+                                )
+                            }
+                        }
+
+                        Divider(
+                            color = Color(0xFFF0F0F0),
+                            thickness = 1.dp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Контент с градиентом для размытия краев
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .weight(1f)
+                        ) {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 24.dp),
+                                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                            ) {
+                                // Группированные приемы пищи
+                                groupedMeals.forEach { (mealType, mealsOfType) ->
+                                    item {
+                                        MealTypeHeader(
+                                            mealType = mealType,
+                                            totalCalories = mealsOfType.sumOf { indexed ->
+                                                indexed.value.foods.sumOf { it.calories }
+                                            }
+                                        )
+                                    }
+
+                                    // Продукты в группе
+                                    mealsOfType.forEach { indexedMeal ->
+                                        val mealIndex = indexedMeal.index
+                                        val meal = indexedMeal.value
+                                        val food = meal.foods.firstOrNull()
+                                        if (food != null) {
+                                            item {
+                                                FoodItemCard(
+                                                    food = food,
+                                                    onEdit = { editIndex = mealIndex },
+                                                    onDelete = { deleteIndex = mealIndex },
+                                                    onAiOpinionClick = {
+                                                        aiOpinionText = it
+                                                        showAiOpinionDialog = true
+                                                    }
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                            }
+                                        }
+                                    }
+                                    item { Spacer(modifier = Modifier.height(16.dp)) }
+                                }
+
+                                // Итоговая статистика
+                                item {
+                                    Divider(
+                                        color = Color(0xFFE0E0E0),
+                                        thickness = 1.dp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 8.dp)
+                                    )
+                                }
+
+                                item {
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 8.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFF0F0F0)
+                                        ),
+                                        shape = RoundedCornerShape(16.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp)
+                                        ) {
+                                            Text(
+                                                text = "Итого за день",
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(bottom = 12.dp)
+                                            )
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                MacroChip("Калории", totals.calories.toString(), Color.Black)
+                                                MacroChip("Белки", NutritionFormatter.formatMacro(totals.proteins), Color.Gray)
+                                                MacroChip("Жиры", NutritionFormatter.formatMacro(totals.fats), Color.Gray)
+                                                MacroChip("Углеводы", NutritionFormatter.formatMacro(totals.carbs), Color.Gray)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Градиенты для размытия краев сверху и снизу
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(Color.White)
-                            ) {
-                                Text(
-                                    text = date.format(dateFormatter),
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                                IconButton(
-                                    onClick = { animatedDismiss() },
-                                    modifier = Modifier.align(Alignment.CenterStart)
-                                ) {
-                                    Icon(
-                                        Icons.Default.ArrowBack,
-                                        contentDescription = "Назад",
-                                        tint = Color.Gray
-                                    )
-                                }
-                            }
-                        }
-
-                        // Группированные приемы пищи
-                        groupedMeals.forEach { (mealType, mealsOfType) ->
-                            item {
-                                MealTypeHeader(
-                                    mealType = mealType,
-                                    totalCalories = mealsOfType.sumOf { indexed ->
-                                        indexed.value.foods.sumOf { it.calories }
-                                    }
-                                )
-                            }
-
-                            // Продукты в группе
-                            mealsOfType.forEach { indexedMeal ->
-                                val mealIndex = indexedMeal.index
-                                val meal = indexedMeal.value
-                                val food = meal.foods.firstOrNull()
-                                if (food != null) {
-                                    item {
-                                        FoodItemCard(
-                                            food = food,
-                                            onEdit = { editIndex = mealIndex },
-                                            onDelete = { deleteIndex = mealIndex },
-                                            onAiOpinionClick = {
-                                                aiOpinionText = it
-                                                showAiOpinionDialog = true
-                            }
+                                    .height(24.dp)
+                                    .align(Alignment.TopCenter)
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.White,
+                                                Color.White.copy(alpha = 0f)
+                                            )
                                         )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                            item { Spacer(modifier = Modifier.height(16.dp)) }
-                        }
-
-                        // Итоговая статистика
-                        item {
-                            Divider(
-                                color = Color(0xFFE0E0E0),
-                                thickness = 1.dp,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                            )
-                        }
-
-                        item {
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFFF0F0F0)
-                                ),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp)
-                                ) {
-                                    Text(
-                                        text = "Итого за день",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(bottom = 12.dp)
                                     )
+                            )
 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        MacroChip("Калории", totals.calories.toString(), Color.Black)
-                                        MacroChip("Белки", NutritionFormatter.formatMacro(totals.proteins), Color.Gray)
-                                        MacroChip("Жиры", NutritionFormatter.formatMacro(totals.fats), Color.Gray)
-                                        MacroChip("Углеводы", NutritionFormatter.formatMacro(totals.carbs), Color.Gray)
-                                    }
-                                }
-                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(24.dp)
+                                    .align(Alignment.BottomCenter)
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.White.copy(alpha = 0f),
+                                                Color.White
+                                            )
+                                        )
+                                    )
+                            )
                         }
                     }
                 }
             }
         }
 
-
+        // Диалоги редактирования и удаления
         editIndex?.let { idx ->
             val meal = meals[idx]
             val food = meal.foods.first()
@@ -418,6 +411,7 @@ fun DayHistoryDialog(
                 }
             )
         }
+
         if (showAiOpinionDialog && aiOpinionText != null) {
             AiOpinionDialog(
                 opinion = aiOpinionText!!,
@@ -427,50 +421,7 @@ fun DayHistoryDialog(
     }
 }
 
-// Заголовок группы приемов пищи
-@Composable
-private fun MealTypeHeader(
-    mealType: MealType,
-    totalCalories: Int
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when (mealType) {
-                MealType.BREAKFAST -> Color(0xFFFFF3E0)
-                MealType.LUNCH -> Color(0xFFE8F5E9)
-                MealType.DINNER -> Color(0xFFE3F2FD)
-                MealType.SNACK -> Color(0xFFFCE4EC)
-                MealType.LATE_BREAKFAST -> Color(0xFFF3E5F5)
-                MealType.SUPPER -> Color(0xFFE0F2F1)
-            }
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = mealType.displayName,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "$totalCalories ккал",
-                fontSize = 14.sp,
-                color = Color.Gray
-            )
-        }
-    }
-}
-
-// Карточка продукта с AI мнением (если есть)
+// Карточка продукта с AI мнением (без тени, с обводкой)
 @Composable
 private fun FoodItemCard(
     food: FoodItem,
@@ -479,10 +430,16 @@ private fun FoodItemCard(
     onAiOpinionClick: ((String) -> Unit)? = null
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 3.dp,
+                color = Color(0xFFE0E0E0),
+                shape = RoundedCornerShape(12.dp)
+            ),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp) // Убрали тень
     ) {
         Column(
             modifier = Modifier
@@ -558,22 +515,19 @@ private fun FoodItemCard(
             // Нижняя часть с весом и AI меткой
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Вес: ${food.weight}г",
-                    fontSize = 12.sp,
+                    text = "${food.weight} г",
+                    fontSize = 14.sp,
                     color = Color.Gray
                 )
 
-                // AI индикатор и кнопка информации
-                if (food.source != "manual" || food.aiOpinion != null) {
+                if (food.aiOpinion != null) {
                     AiInfoButton(
-                        hasAiOpinion = food.aiOpinion != null,
-                        onClick = {
-                            food.aiOpinion?.let { onAiOpinionClick?.invoke(it) }
-                        }
+                        hasAiOpinion = true,
+                        onClick = { onAiOpinionClick?.invoke(food.aiOpinion) }
                     )
                 }
             }
@@ -581,12 +535,52 @@ private fun FoodItemCard(
     }
 }
 
-// Чип для макронутриента
+// Остальные компоненты остаются без изменений...
 @Composable
-private fun MacroChip(
+private fun MealTypeHeader(
+    mealType: MealType,
+    totalCalories: Int
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = when (mealType) {
+                MealType.BREAKFAST -> Color(0xFFFFF3E0)
+                MealType.LUNCH -> Color(0xFFE8F5E9)
+                MealType.DINNER -> Color(0xFFE3F2FD)
+                MealType.SUPPER -> Color(0xFFE0F2F1)
+            }
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = mealType.displayName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "$totalCalories ккал",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+        }
+    }
+}
+
+@Composable
+fun MacroChip(
     label: String,
     value: String,
-    textColor: Color
+    color: Color
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -594,19 +588,68 @@ private fun MacroChip(
         Text(
             text = value,
             fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = textColor
+            fontWeight = FontWeight.Bold,
+            color = color
         )
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             color = Color.Gray
         )
     }
 }
 
-// Data class для итогов
-private data class Totals(
+@Composable
+fun AiInfoButton(
+    hasAiOpinion: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = { if (hasAiOpinion) onClick() },
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFDBF0E4),
+        modifier = Modifier.height(28.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.AutoAwesome,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = Color(0xFF00BA65)
+            )
+            Text(
+                text = "Foody AI",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF00BA65)
+            )
+            if (hasAiOpinion) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .background(
+                            color = Color(0xFF00BA65).copy(alpha = 0.2f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Информация",
+                        modifier = Modifier.size(14.dp),
+                        tint = Color(0xFF00BA65)
+                    )
+                }
+            }
+        }
+    }
+}
+
+data class Totals(
     val calories: Int,
     val proteins: Float,
     val fats: Float,

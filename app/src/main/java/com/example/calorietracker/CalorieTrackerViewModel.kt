@@ -42,6 +42,8 @@ import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
 import com.example.calorietracker.utils.AIUsageManager
 import java.util.UUID
+import java.time.LocalTime
+
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -82,8 +84,6 @@ enum class MealType(val displayName: String) {
     BREAKFAST("Завтрак"),
     LUNCH("Обед"),
     DINNER("Ужин"),
-    SNACK("Перекус"),
-    LATE_BREAKFAST("Ланч"),
     SUPPER("Перекус")
 }
 
@@ -734,15 +734,12 @@ class CalorieTrackerViewModel(
             aiOpinion = aiOpinionToSave
         )
 
+        selectedMeal = getAutoMealType()
+
         messages = messages + ChatMessage(
             type = MessageType.USER,
             content = "Добавлен продукт: $name",
             animate = true
-        )
-
-        messages = messages + ChatMessage(
-            type = MessageType.AI,
-            content = "Записал данные о продукте. Выберите прием пищи и подтвердите."
         )
 
         showManualInputDialog = false
@@ -752,6 +749,7 @@ class CalorieTrackerViewModel(
     fun confirmFood() {
         Log.d("CalorieTracker", "confirmFood called, source: $currentFoodSource")
         pendingFood?.let { food ->
+            selectedMeal = getAutoMealType()
             // Создаем новый прием пищи
             val meal = Meal(
                 type = selectedMeal,
@@ -821,6 +819,16 @@ class CalorieTrackerViewModel(
         showPhotoConfirmDialog = false
         pendingPhoto = null
         viewModelScope.launch { analyzePhotoWithAI(bitmap, photoCaption) }
+    }
+
+    private fun getAutoMealType(): MealType {
+        val hour = LocalTime.now().hour
+        return when (hour) {
+            in 4 until 12 -> MealType.BREAKFAST
+            in 12 until 18 -> MealType.LUNCH
+            in 18 until 24 -> MealType.DINNER
+            else -> MealType.SUPPER
+        }
     }
 
     private suspend fun sendFoodToServer(food: FoodItem, mealType: MealType) {
