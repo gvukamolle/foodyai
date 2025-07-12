@@ -152,7 +152,7 @@ class CalorieTrackerViewModel(
     var pendingAIAction by mutableStateOf<(() -> Unit)?>(null)
         internal set
     var currentFoodSource by mutableStateOf<String?>(null)
-    var messages by mutableStateOf(
+    private var _messages by mutableStateOf(
         listOf(
             ChatMessage(
                 type = MessageType.AI,
@@ -163,6 +163,12 @@ class CalorieTrackerViewModel(
             )
         )
     )
+    var messages: List<ChatMessage>
+        get() = _messages
+        set(value) {
+            _messages = value
+            repository.saveChatHistory(value)
+        }
     var inputMessage by mutableStateOf("")
     var pendingFood by mutableStateOf<FoodItem?>(null)
     var prefillFood by mutableStateOf<FoodItem?>(null)
@@ -212,6 +218,12 @@ class CalorieTrackerViewModel(
         dailyCarbs = intake.carbs
         dailyFat = intake.fat
         meals = intake.meals
+        // Загружаем историю чата за сегодня
+        val history = repository.getChatHistory()
+        if (history.isNotEmpty()) {
+            messages = history
+        }
+        repository.cleanupOldChatHistory()
     }
 
     private fun startPeriodicReset() {
@@ -290,6 +302,10 @@ class CalorieTrackerViewModel(
             dailyCarbs = intake.carbs
             dailyFat = intake.fat
             meals = intake.meals
+
+            val history = repository.getChatHistory()
+            messages = if (history.isNotEmpty()) history else messages
+            repository.cleanupOldChatHistory()
         }
     }
 
