@@ -640,28 +640,8 @@ private fun AnimatedChatMessageCard(
                 }
             }
         }
-
-        // Время сообщения - только если не processing
-        if (!message.isProcessing) {
-            Text(
-                text = message.timestamp.format(
-                    DateTimeFormatter.ofPattern("HH:mm")
-                ),
-                fontSize = 11.sp,
-                color = Color.Gray,
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .align(
-                        if (message.type == MessageType.USER) {
-                            Alignment.End
-                        } else {
-                            Alignment.Start
-                        }
-                    )
-            )
         }
     }
-}
 
 // Анимированная нижняя панель
 @OptIn(ExperimentalAnimationApi::class)

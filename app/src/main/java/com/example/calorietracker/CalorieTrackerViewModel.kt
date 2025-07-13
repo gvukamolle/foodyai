@@ -794,7 +794,7 @@ class CalorieTrackerViewModel(
 
             messages = messages + ChatMessage(
                 type = MessageType.AI,
-                content = "✅ Записал ${food.name} в ${selectedMeal.displayName.lowercase()}",
+                content = "✅ Записал/n ${food.name} на ${selectedMeal.displayName.lowercase()}",
                 foodItem = food,
                 isExpandable = food.aiOpinion != null
             )
@@ -894,25 +894,10 @@ class CalorieTrackerViewModel(
         }
     }
 
-    // Генерация советов по питанию
-    private fun generateNutritionalAdvice(food: FoodItem): String {
-        val caloriePercent = (food.calories.toFloat() / userProfile.dailyCalories * 100).toInt()
-        val remainingCalories = userProfile.dailyCalories - dailyCalories
-
-        return when {
-            caloriePercent > 30 -> "Это ${caloriePercent}% от дневной нормы. Планируйте остальные приемы пищи с учетом этого."
-            remainingCalories < 200 -> "У вас осталось всего $remainingCalories ккал на день. Выбирайте легкие продукты."
-            food.protein > food.carbs -> "Отличный источник белка! Это поможет в достижении ваших целей."
-            food.carbs > 50 -> "Много углеводов - отлично для энергии. Не забудьте про физическую активность!"
-            else -> "Хороший выбор! Продолжайте в том же духе."
-        }
-    }
-
     // 3. Обновить метод sendMessage для использования анимированных точек
     fun sendMessage() {
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
-            val isFirstMessage = messages.none { it.type == MessageType.USER }
             messages = messages + ChatMessage(
                 type = MessageType.USER,
                 content = userMessage,
@@ -939,7 +924,6 @@ class CalorieTrackerViewModel(
                                     message = userMessage,
                                     userProfile = profileData,
                                     userId = userId,
-                                    isFirstMessageOfDay = isFirstMessage,
                                     messageType = "chat"
                                 )
                             )
