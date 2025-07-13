@@ -2,13 +2,11 @@ package com.example.calorietracker.pages
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,7 +35,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
-import com.example.calorietracker.ChatMessage
 import com.example.calorietracker.MessageType
 import com.example.calorietracker.ui.animations.*
 import com.example.calorietracker.utils.DailyResetUtils
@@ -54,28 +51,33 @@ import com.example.calorietracker.auth.UserData
 import com.example.calorietracker.ui.components.AIUsageToolbarIndicator
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.ime
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
-import java.time.format.DateTimeFormatter
-import com.example.calorietracker.ui.animations.AIProcessingMessage
 import com.example.calorietracker.ui.animations.SimpleChatTypingIndicator
-import com.example.calorietracker.ui.animations.AnimatedMessageRemoval
 import com.example.calorietracker.ui.animations.AnimatedMessageWithBlur
 import androidx.compose.foundation.lazy.items
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material.icons.filled.AutoAwesome
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -495,7 +497,7 @@ private fun AnimatedChatContent(
     }
 }
 
-// В AnimatedMainScreen.kt, обновите AnimatedChatMessageCard:
+// В AnimatedMainScreen.kt обновите функцию AnimatedChatMessageCard:
 
 @Composable
 private fun AnimatedChatMessageCard(
@@ -522,17 +524,16 @@ private fun AnimatedChatMessageCard(
                     .wrapContentWidth()
                     .animateContentSize(),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (message.type == MessageType.USER) {
-                        Color(0xFFDADADA)
-                    } else {
-                        Color(0xFFF3F4F6)
+                    containerColor = when {
+                        message.type == MessageType.USER -> Color(0xFFDADADA)
+                        else -> Color(0xFFF3F4F6)
                     }
                 ),
                 shape = RoundedCornerShape(
-                    topStart = 12.dp,
-                    topEnd = 12.dp,
-                    bottomStart = if (message.type == MessageType.USER) 12.dp else 4.dp,
-                    bottomEnd = if (message.type == MessageType.USER) 4.dp else 12.dp
+                    topStart = 24.dp,
+                    topEnd = 24.dp,
+                    bottomStart = if (message.type == MessageType.USER) 24.dp else 4.dp,
+                    bottomEnd = if (message.type == MessageType.USER) 4.dp else 24.dp
                 )
             ) {
                 Column(
@@ -552,96 +553,28 @@ private fun AnimatedChatMessageCard(
                             }
                         }
                         else -> {
-                            // Обычный текст
-                            val textStyle = MaterialTheme.typography.bodyMedium
-                            Text(
-                                text = message.content,
-                                style = textStyle.copy(
-                                    lineHeight = textStyle.lineHeight * 1.2f
-                                ),
-                                color = Color.Black
-                            )
+                            // Если есть контент - показываем его
+                            if (message.content.isNotEmpty()) {
+                                // Парсим и отображаем текст с поддержкой жирного шрифта
+                                MarkdownText(
+                                    text = message.content,
+                                    color = Color.Black
+                                )
+                            }
 
-                            if (message.isExpandable && message.foodItem?.aiOpinion != null) {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Start
-                                ) {
-                                    AnimatedAiChip(
-                                        onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) }
-                                    )
-                                }
+                            // Кнопка "Что думает Foody?" для сообщений с пустым контентом
+                            if (message.content.isEmpty() && message.isExpandable && message.foodItem?.aiOpinion != null) {
+                                AnimatedAiChip(
+                                    onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) }
+                                )
                             }
                         }
                     }
                 }
             }
         }
-
-        // Информация о продукте (если есть)
-        message.foodItem?.let { food ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .animateContentSize(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFF5F5F5)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = food.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = Color.Black
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = "Калории: ${food.calories}",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
-                            Text(
-                                text = "Вес: ${food.weight}",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
-                        }
-                        Column(
-                            horizontalAlignment = Alignment.End
-                        ) {
-                            Text(
-                                text = "Б: ${food.protein}г",
-                                fontSize = 12.sp,
-                                color = Color.Gray
-                            )
-                            Text(
-                                text = "Ж: ${food.fat}г",
-                                fontSize = 12.sp,
-                                color = Color.Gray
-                            )
-                            Text(
-                                text = "У: ${food.carbs}г",
-                                fontSize = 12.sp,
-                                color = Color.Gray
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        }
     }
+}
 
 // Анимированная нижняя панель
 @OptIn(ExperimentalAnimationApi::class)
@@ -776,6 +709,52 @@ private fun AnimatedInputField(
     )
 }
 
+// Добавьте эту функцию для парсинга markdown-подобного текста
+@Composable
+fun MarkdownText(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyMedium
+) {
+    val annotatedString = buildAnnotatedString {
+        var currentIndex = 0
+        val boldPattern = "\\*\\*(.*?)\\*\\*".toRegex()
+
+        boldPattern.findAll(text).forEach { matchResult ->
+            val startIndex = matchResult.range.first
+            val endIndex = matchResult.range.last + 1
+            val boldText = matchResult.groupValues[1]
+
+            // Добавляем обычный текст до жирного
+            if (startIndex > currentIndex) {
+                append(text.substring(currentIndex, startIndex))
+            }
+
+            // Добавляем жирный текст
+            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(boldText)
+            }
+
+            currentIndex = endIndex
+        }
+
+        // Добавляем оставшийся текст
+        if (currentIndex < text.length) {
+            append(text.substring(currentIndex))
+        }
+    }
+
+    Text(
+        text = annotatedString,
+        style = style.copy(
+            lineHeight = style.lineHeight * 1.2f
+        ),
+        color = color,
+        modifier = modifier
+    )
+}
+
 // Анимированная кнопка отправки
 @Composable
 private fun AnimatedSendButton(onClick: () -> Unit) {
@@ -815,6 +794,7 @@ private fun AnimatedSendButton(onClick: () -> Unit) {
         )
     }
 }
+
 @Composable
 fun AnimatedAiChip(
     onClick: () -> Unit,
@@ -823,25 +803,25 @@ fun AnimatedAiChip(
     Surface(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = Color(0xFFDBF0E4).copy(alpha = 1f)
+        shape = RoundedCornerShape(24.dp),
+        color = Color(0xFFDBF0E4),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "Что думает Foody?",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF00BA65)
-            )
             Icon(
-                imageVector = Icons.Default.Info,
+                imageVector = Icons.Default.AutoAwesome,
                 contentDescription = null,
                 tint = Color(0xFF00BA65),
                 modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = "Что думает Foody?",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF00BA65)
             )
         }
     }

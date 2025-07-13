@@ -95,6 +95,7 @@ fun CalendarScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
+            .navigationBarsPadding()
     ) {
         CalendarTopBar(
             currentMonth = selectedMonth,
@@ -184,7 +185,6 @@ fun CalendarScreen(
             }
         }
     }
-
 
         if (showDayHistory && selectedDay != null) {
             DayHistoryDialog(

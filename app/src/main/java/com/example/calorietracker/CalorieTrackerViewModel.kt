@@ -43,7 +43,7 @@ import kotlin.math.roundToInt
 import com.example.calorietracker.utils.AIUsageManager
 import java.util.UUID
 import java.time.LocalTime
-
+import kotlinx.coroutines.delay
 
 // Обновленная структура сообщения с датой
 data class ChatMessage(
@@ -156,7 +156,7 @@ class CalorieTrackerViewModel(
         listOf(
             ChatMessage(
                 type = MessageType.AI,
-                content = "Привет!\nГотов помочь с анализом питания и дать советы по здоровому образу жизни!",
+                content = "Привет!\nГотов помочь с питанием!",
                 timestamp = LocalDateTime.now(),
                 isWelcome = true,
                 animate = false
@@ -761,7 +761,8 @@ class CalorieTrackerViewModel(
         showManualInputDialog = false
     }
 
-    // Обновленный метод confirmFood без удаления несуществующего сообщения
+// В CalorieTrackerViewModel.kt обновите метод confirmFood():
+
     fun confirmFood() {
         Log.d("CalorieTracker", "confirmFood called, source: $currentFoodSource")
         pendingFood?.let { food ->
@@ -792,12 +793,27 @@ class CalorieTrackerViewModel(
                         )
             }
 
+            // Добавляем сообщение о записи еды
             messages = messages + ChatMessage(
                 type = MessageType.AI,
-                content = "✅ Записал/n ${food.name} на ${selectedMeal.displayName.lowercase()}",
-                foodItem = food,
-                isExpandable = food.aiOpinion != null
+                content = "Записал! Сегодня на ${selectedMeal.displayName.lowercase()} у нас **${food.name}**",
+                foodItem = null,
+                isExpandable = false
             )
+
+            // Если есть мнение AI, добавляем отдельное сообщение с кнопкой с небольшой задержкой
+            if (food.aiOpinion != null) {
+                viewModelScope.launch {
+                    delay(500) // Небольшая задержка для эффекта
+                    messages = messages + ChatMessage(
+                        type = MessageType.AI,
+                        content = "",  // Пустой контент, так как будет только кнопка
+                        foodItem = food,
+                        isExpandable = true,
+                        animate = true
+                    )
+                }
+            }
 
             // Сохраняем в репозиторий
             val updatedIntake = DailyIntake(

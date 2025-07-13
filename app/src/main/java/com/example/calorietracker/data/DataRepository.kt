@@ -90,14 +90,14 @@ class DataRepository(context: Context) {
     }
 
     // ---------- Chat history methods ----------
-    fun saveChatHistory(messages: List<ChatMessage>, date: String = DailyResetUtils.getCurrentDisplayDate()) {
+    fun saveChatHistory(messages: List<ChatMessage>, date: String = DailyResetUtils.getFoodDate()) {
         val json = gson.toJson(messages)
         sharedPreferences.edit {
             putString("chat_history_$date", json)
         }
     }
 
-    fun getChatHistory(date: String = DailyResetUtils.getCurrentDisplayDate()): List<ChatMessage> {
+    fun getChatHistory(date: String = DailyResetUtils.getFoodDate()): List<ChatMessage> {
         val json = sharedPreferences.getString("chat_history_$date", null)
         return if (json != null) {
             val type = object : TypeToken<List<ChatMessage>>() {}.type
@@ -105,7 +105,7 @@ class DataRepository(context: Context) {
         } else emptyList()
     }
 
-    fun cleanupOldChatHistory(keepDate: String = DailyResetUtils.getCurrentDisplayDate()) {
+    fun cleanupOldChatHistory(keepDate: String = DailyResetUtils.getFoodDate()) {
         sharedPreferences.all.keys
             .filter { it.startsWith("chat_history_") && it.removePrefix("chat_history_") != keepDate }
             .forEach { key ->
