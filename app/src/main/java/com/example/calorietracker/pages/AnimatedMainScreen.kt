@@ -518,31 +518,35 @@ private fun AnimatedChatMessageCard(
         ) {
             val configuration = LocalConfiguration.current
             val maxMessageWidth = (configuration.screenWidthDp * 2 / 3).dp
-            Card(
-                modifier = Modifier
-                    .widthIn(max = maxMessageWidth)
-                    .wrapContentWidth()
-                    .animateContentSize(),
-                colors = CardDefaults.cardColors(
-                    containerColor = when {
-                        message.type == MessageType.USER -> Color(0xFFDADADA)
-                        else -> Color(0xFFF3F4F6)
-                    }
-                ),
-                shape = RoundedCornerShape(
-                    topStart = 24.dp,
-                    topEnd = 24.dp,
-                    bottomStart = if (message.type == MessageType.USER) 24.dp else 4.dp,
-                    bottomEnd = if (message.type == MessageType.USER) 4.dp else 24.dp
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp)
+
+            val showCard = !(message.isProcessing ||
+                    (message.content.isEmpty() && message.isExpandable && message.foodItem?.aiOpinion != null))
+
+            if (showCard) {
+                Card(
+                    modifier = Modifier
+                        .widthIn(max = maxMessageWidth)
+                        .wrapContentWidth()
+                        .animateContentSize(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = when {
+                            message.type == MessageType.USER -> Color(0xFFDADADA)
+                            else -> Color(0xFFF3F4F6)
+                        }
+                    ),
+                    shape = RoundedCornerShape(
+                        topStart = 24.dp,
+                        topEnd = 24.dp,
+                        bottomStart = if (message.type == MessageType.USER) 24.dp else 4.dp,
+                        bottomEnd = if (message.type == MessageType.USER) 4.dp else 24.dp
+                    )
                 ) {
                     // Проверяем, нужно ли показывать анимированные точки
-                    when {
-                        message.isProcessing -> {
-                            // Показываем только точки без текста
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        // Проверяем, нужно ли показывать анимированные точки
+                        if (message.isProcessing) {
                             Box(
                                 modifier = Modifier.padding(
                                     horizontal = 8.dp,
@@ -551,25 +555,30 @@ private fun AnimatedChatMessageCard(
                             ) {
                                 SimpleChatTypingIndicator()
                             }
-                        }
-                        else -> {
-                            // Если есть контент - показываем его
+                        } else {
                             if (message.content.isNotEmpty()) {
-                                // Парсим и отображаем текст с поддержкой жирного шрифта
                                 MarkdownText(
                                     text = message.content,
                                     color = Color.Black
                                 )
                             }
 
-                            // Кнопка "Что думает Foody?" для сообщений с пустым контентом
-                            if (message.content.isEmpty() && message.isExpandable && message.foodItem?.aiOpinion != null) {
-                                AnimatedAiChip(
-                                    onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) }
-                                )
-                            }
                         }
                     }
+                }
+            } else {
+                // Отображаем индикатор загрузки или кнопку без карточки
+                if (message.isProcessing) {
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        SimpleChatTypingIndicator()
+                    }
+                } else if (message.content.isEmpty() && message.isExpandable && message.foodItem?.aiOpinion != null) {
+                    AnimatedAiChip(
+                        onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) }
+                    )
                 }
             }
         }
