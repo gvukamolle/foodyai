@@ -527,10 +527,10 @@ private fun AnimatedChatMessageCard(
                         }
                     ),
                     shape = RoundedCornerShape(
-                        topStart = 24.dp,
-                        topEnd = 24.dp,
-                        bottomStart = if (message.type == MessageType.USER) 24.dp else 4.dp,
-                        bottomEnd = if (message.type == MessageType.USER) 4.dp else 24.dp
+                        topStart = 20.dp,
+                        topEnd = 20.dp,
+                        bottomStart = if (message.type == MessageType.USER) 20.dp else 6.dp,
+                        bottomEnd = if (message.type == MessageType.USER) 6.dp else 20.dp
                     )
                 ) {
                     // Проверяем, нужно ли показывать анимированные точки
@@ -541,8 +541,8 @@ private fun AnimatedChatMessageCard(
                         if (message.isProcessing) {
                             Box(
                                 modifier = Modifier.padding(
-                                    horizontal = 8.dp,
-                                    vertical = 4.dp
+                                    horizontal = 12.dp,
+                                    vertical = 6.dp
                                 )
                             ) {
                                 SimpleChatTypingIndicator()

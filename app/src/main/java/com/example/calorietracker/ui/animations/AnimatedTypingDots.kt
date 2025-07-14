@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun AnimatedTypingDots(
     modifier: Modifier = Modifier,
-    dotSize: Dp = 12.dp,
-    dotSpacing: Dp = 6.dp,
+    dotSize: Dp = 18.dp,
+    dotSpacing: Dp = 8.dp,
     primaryColor: Color = Color(0xFF2196F3),
     secondaryColor: Color = Color(0xFF9C27B0),
     animationDuration: Int = 800
