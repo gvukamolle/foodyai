@@ -39,7 +39,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import com.example.calorietracker.ui.components.AnimatedRainbowBorder
 import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
 
@@ -165,12 +164,17 @@ fun DayHistoryDialog(
                 ),
                 exit = fadeOut(tween(150)) + scaleOut(targetScale = 0.9f)
             ) {
-                AnimatedRainbowBorder(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
-                    borderWidth = 8.dp,
-                    cornerRadius = 24.dp
+                        .padding(24.dp)
+                        .border(
+                            width = 3.dp,
+                            color = Color(0xFFE0E0E0),
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color.White)
                 ) {
                     // Основной контейнер с заголовком и контентом
                     Column(

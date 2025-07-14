@@ -914,6 +914,7 @@ class CalorieTrackerViewModel(
     fun sendMessage() {
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
+            val isFirstOfDay = messages.none { it.type == MessageType.USER }
             messages = messages + ChatMessage(
                 type = MessageType.USER,
                 content = userMessage,
@@ -940,6 +941,7 @@ class CalorieTrackerViewModel(
                                     message = userMessage,
                                     userProfile = profileData,
                                     userId = userId,
+                                    isFirstMessageOfDay = isFirstOfDay,
                                     messageType = "chat"
                                 )
                             )

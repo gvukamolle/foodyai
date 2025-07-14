@@ -422,15 +422,9 @@ fun RoundedDivider(
 // Анимированный разделитель контента
 @Composable
 private fun AnimatedContentDivider() {
-    var visible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        delay(300)
-        visible = true
-    }
-
+    // Плавное появление без ожидания
     AnimatedVisibility(
-        visible = visible,
+        visible = true,
         enter = fadeIn() + expandHorizontally()
     ) {
         RoundedDivider(
@@ -442,8 +436,6 @@ private fun AnimatedContentDivider() {
         )
     }
 }
-
-// В AnimatedMainScreen.kt обновите AnimatedChatContent:
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
