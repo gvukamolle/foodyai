@@ -327,7 +327,7 @@ private fun AnimatedHeader(
                 )
             }
 
-            // Центральная часть - Кнопка Foody Stat
+            // Центральная часть - Кнопка Stats
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center
@@ -343,7 +343,7 @@ private fun AnimatedHeader(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            "Foody",
+                            "Stats",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.Black

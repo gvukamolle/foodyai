@@ -71,7 +71,7 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
         val nutrients = listOf(
             NutrientData(
                 label = "Калории",
-                current = viewModel.dailyIntake.calories,
+                current = viewModel.dailyIntake.calories.toFloat(),
                 target = viewModel.userProfile.dailyCalories,
                 unit = "ккал",
                 color = viewModel.getProgressColor(
@@ -81,31 +81,31 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
             ),
             NutrientData(
                 label = "Белки",
-                current = ceil(viewModel.dailyIntake.protein.toDouble()).toInt(),
+                current = viewModel.dailyIntake.protein,
                 target = viewModel.userProfile.dailyProteins,
                 unit = "г",
                 color = viewModel.getProgressColor(
-                    ceil(viewModel.dailyIntake.protein.toDouble()).toInt(),
+                    viewModel.dailyIntake.protein.toInt(),
                     viewModel.userProfile.dailyProteins
                 )
             ),
             NutrientData(
                 label = "Жиры",
-                current = ceil(viewModel.dailyIntake.fat.toDouble()).toInt(),
+                current = viewModel.dailyIntake.fat,
                 target = viewModel.userProfile.dailyFats,
                 unit = "г",
                 color = viewModel.getProgressColor(
-                    ceil(viewModel.dailyIntake.fat.toDouble()).toInt(),
+                    viewModel.dailyIntake.fat.toInt(),
                     viewModel.userProfile.dailyFats
                 )
             ),
             NutrientData(
                 label = "Углеводы",
-                current = ceil(viewModel.dailyIntake.carbs.toDouble()).toInt(),
+                current = viewModel.dailyIntake.carbs,
                 target = viewModel.userProfile.dailyCarbs,
                 unit = "г",
                 color = viewModel.getProgressColor(
-                    ceil(viewModel.dailyIntake.carbs.toDouble()).toInt(),
+                    viewModel.dailyIntake.carbs.toInt(),
                     viewModel.userProfile.dailyCarbs
                 )
             )
@@ -121,7 +121,7 @@ private fun ExpandedProgressView(viewModel: CalorieTrackerViewModel) {
 @Composable
 private fun CompactNutrientBar(nutrient: NutrientData) {
     val progress = if (nutrient.target > 0) {
-        nutrient.current.toFloat() / nutrient.target.toFloat()
+        nutrient.current / nutrient.target.toFloat()
     } else 0f
 
     val animatedProgress by animateFloatAsState(
@@ -146,7 +146,7 @@ private fun CompactNutrientBar(nutrient: NutrientData) {
                 color = Color.Black
             )
             Text(
-                text = "${nutrient.current}/${nutrient.target}",
+                text = "${NutritionFormatter.formatMacroInt(nutrient.current)} / ${nutrient.target}",
                 fontSize = 12.sp,
                 color = Color.Gray
             )
@@ -174,7 +174,7 @@ private fun CompactNutrientBar(nutrient: NutrientData) {
 // Улучшенный компонент для отображения нутриента БЕЗ ИКОНОК
 @Composable
 private fun AnimatedNutrientBar(nutrient: NutrientData) {
-    val progress = if (nutrient.target > 0) nutrient.current.toFloat() / nutrient.target.toFloat() else 0f
+    val progress = if (nutrient.target > 0) nutrient.current / nutrient.target.toFloat() else 0f
 
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -216,7 +216,7 @@ private fun AnimatedNutrientBar(nutrient: NutrientData) {
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "${nutrient.current}",
+                        text = NutritionFormatter.formatMacro(nutrient.current),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = animatedColor
@@ -287,7 +287,7 @@ private fun AnimatedNutrientBar(nutrient: NutrientData) {
 // Модель данных для нутриента БЕЗ ИКОНКИ
 data class NutrientData(
     val label: String,
-    val current: Int,
+    val current: Float,
     val target: Int,
     val unit: String,
     val color: Color

@@ -403,9 +403,9 @@ fun BodySettingsScreen(
                             onDismissRequest = { goalExpanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Похудение") },
+                                text = { Text("Худеем") },
                                 onClick = {
-                                    goal = "weight-loss"
+                                    goal = "lose"
                                     goalExpanded = false
                                 }
                             )

@@ -41,7 +41,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
-
+import com.example.calorietracker.extensions.fancyShadow
 
 // Основной диалог истории дня с группировкой
 @OptIn(ExperimentalFoundationApi::class)
@@ -168,10 +168,11 @@ fun DayHistoryDialog(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(24.dp)
-                        .border(
-                            width = 3.dp,
-                            color = Color(0xFFE0E0E0),
-                            shape = RoundedCornerShape(24.dp)
+                        .fancyShadow(
+                            color = Color.Black,
+                            borderRadius = 24.dp,
+                            shadowRadius = 12.dp,
+                            alpha = 0.25f
                         )
                         .clip(RoundedCornerShape(24.dp))
                         .background(Color.White)

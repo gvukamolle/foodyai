@@ -22,6 +22,15 @@ object NutritionFormatter {
     }
 
     /**
+     * Форматирует значение БЖУ без знаков после запятой
+     * округляя вверх до целого числа
+     */
+    fun formatMacroInt(value: Float): String {
+        return kotlin.math.ceil(value.toDouble()).toInt().toString()
+    }
+
+
+    /**
      * Форматирует значение БЖУ с единицей измерения
      */
     fun formatMacroWithUnit(value: Float): String {
@@ -46,6 +55,6 @@ object NutritionFormatter {
      * Extension функции для удобства
      */
     fun Float.formatAsMacro(): String = formatMacro(this)
-    fun Float.formatAsMacroWithUnit(): String = formatMacroWithUnit(this)
+    fun Float.formatAsMacroInt(): String = formatMacroInt(this)
     fun Int.formatAsCalories(): String = formatCalories(this)
 }

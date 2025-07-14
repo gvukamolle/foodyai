@@ -142,13 +142,15 @@ fun CalorieTrackerApp(
 
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
-            val localSetupComplete = viewModel.userProfile.isSetupComplete
             viewModel.syncWithUserData(user)
-            if (!user.isSetupComplete && viewModel.userProfile.isSetupComplete) {
-                authManager.updateUserSetupComplete(true)
+
+            if (viewModel.userProfile.isSetupComplete) {
+                if (!user.isSetupComplete) {
+                    authManager.updateUserSetupComplete(true)
+                }
                 currentScreen = Screen.Main
             } else {
-                currentScreen = if (user.isSetupComplete) Screen.Main else Screen.Setup
+                currentScreen = Screen.Setup
             }
         }
     }
