@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -36,7 +35,7 @@ fun AIUsageToolbarIndicator(
     userData?.let { user ->
         when (user.subscriptionPlan) {
             SubscriptionPlan.FREE -> {
-                FreeUserPill(onClick = onClick, modifier = modifier)
+                FreeUserPill(userData = user, onClick = onClick, modifier = modifier)
             }
             SubscriptionPlan.PRO -> {
                 ProUserPill(onClick = onClick, modifier = modifier)
@@ -47,9 +46,13 @@ fun AIUsageToolbarIndicator(
 
 @Composable
 private fun FreeUserPill(
+    userData: UserData,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val remainingUsage = AIUsageManager.getRemainingUsage(userData)
+    val planLimit = AIUsageManager.getPlanLimit(userData.subscriptionPlan)
+
     val infiniteTransition = rememberInfiniteTransition()
     val animatedAlpha by infiniteTransition.animateFloat(
         initialValue = 0.6f,
@@ -60,10 +63,14 @@ private fun FreeUserPill(
         )
     )
 
+    val isLow = remainingUsage <= 2
+    val backgroundColor = if (isLow) Color(0xFFFFEBEE) else Color(0xFFFFF3E0)
+    val contentColor = if (isLow) Color(0xFFD32F2F) else Color(0xFFE65100)
+
     Surface(
         onClick = onClick,
         modifier = modifier,
-        color = Color(0xFFFFF3E0),
+        color = backgroundColor,
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
@@ -72,122 +79,17 @@ private fun FreeUserPill(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
-                Icons.Default.Stars,
+                if (remainingUsage == 0) Icons.Default.Block else Icons.Default.Stars,
                 contentDescription = null,
-                tint = Color(0xFFFF9800).copy(alpha = animatedAlpha),
+                tint = contentColor.copy(alpha = if (isLow) animatedAlpha else 1f),
                 modifier = Modifier.size(14.dp)
             )
             Text(
-                text = "AI Free",
+                text = "AI: $remainingUsage/$planLimit",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFFE65100)
+                color = contentColor
             )
-        }
-    }
-}
-
-@Composable
-private fun PlusUserPill(
-    userData: UserData,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val remaining = AIUsageManager.getRemainingUsage(userData)
-    val total = AIUsageManager.getPlanLimit(userData.subscriptionPlan)
-    val progress = 1f - (remaining.toFloat() / total)
-
-    // Определяем цвет в зависимости от оставшихся использований
-    val (backgroundColor, contentColor, progressColor) = when {
-        remaining == 0 -> Triple(
-            Color(0xFFFFEBEE),
-            Color(0xFFD32F2F),
-            Color(0xFFF44336)
-        )
-        remaining <= 2 -> Triple(
-            Color(0xFFFFF3E0),
-            Color(0xFFE65100),
-            Color(0xFFFF9800)
-        )
-        else -> Triple(
-            Color(0xFFE8F5E9),
-            Color(0xFF2E7D32),
-            Color(0xFF4CAF50)
-        )
-    }
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        )
-    )
-
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        color = backgroundColor,
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Box {
-            // Прогресс-бар фоном
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                progressColor.copy(alpha = 0.3f),
-                                progressColor.copy(alpha = 0.1f)
-                            ),
-                            startX = 0f,
-                            endX = Float.POSITIVE_INFINITY * animatedProgress
-                        )
-                    )
-            )
-
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // Мини круговой индикатор
-                Box(
-                    modifier = Modifier.size(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier.fillMaxSize(),
-                        color = progressColor,
-                        strokeWidth = 2.dp,
-                        trackColor = progressColor.copy(alpha = 0.2f)
-                    )
-                }
-
-                Text(
-                    text = "$remaining/$total",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = contentColor
-                )
-
-                // Предупреждение если мало
-                AnimatedVisibility(
-                    visible = remaining <= 2,
-                    enter = scaleIn() + fadeIn(),
-                    exit = scaleOut() + fadeOut()
-                ) {
-                    Icon(
-                        if (remaining == 0) Icons.Default.Warning else Icons.Default.Info,
-                        contentDescription = null,
-                        tint = contentColor,
-                        modifier = Modifier.size(12.dp)
-                    )
-                }
-            }
         }
     }
 }
@@ -281,11 +183,12 @@ fun AIUsageCompactIndicator(
     userData?.let { user ->
         when (user.subscriptionPlan) {
             SubscriptionPlan.FREE -> {
+                val remaining = AIUsageManager.getRemainingUsage(user)
                 CompactPill(
-                    text = "AI",
-                    icon = Icons.Default.Lock,
-                    backgroundColor = Color(0xFFFFF3E0),
-                    contentColor = Color(0xFFFF9800),
+                    text = if (remaining > 0) "$remaining" else "0",
+                    icon = if (remaining == 0) Icons.Default.Lock else Icons.Default.Star,
+                    backgroundColor = if (remaining <= 2) Color(0xFFFFEBEE) else Color(0xFFFFF3E0),
+                    contentColor = if (remaining <= 2) Color(0xFFD32F2F) else Color(0xFFFF9800),
                     onClick = onClick,
                     modifier = modifier
                 )

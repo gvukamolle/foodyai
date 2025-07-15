@@ -2,13 +2,14 @@ package com.example.calorietracker.utils
 
 import com.example.calorietracker.auth.SubscriptionPlan
 import com.example.calorietracker.auth.UserData
+import com.example.calorietracker.utils.AIUsageManager
 import java.time.LocalDateTime
 import java.time.ZoneId
 
 object AIUsageManager {
 
     private val planLimits = mapOf(
-        SubscriptionPlan.FREE to 0,
+        SubscriptionPlan.FREE to 5,  // Изменено с 0 на 5 использований в месяц
         SubscriptionPlan.PRO to Int.MAX_VALUE,
     )
 
@@ -61,7 +62,7 @@ object AIUsageManager {
     fun getLimitExceededMessage(plan: SubscriptionPlan): String {
         return when (plan) {
             SubscriptionPlan.FREE ->
-                "AI-анализ недоступен в бесплатном плане. Перейдите на PRO для использования этой функции."
+                "Вы исчерпали лимит AI-анализа на этот месяц. Перейдите на PRO для безлимитного доступа!"
             else ->
                 "Произошла ошибка. Пожалуйста, попробуйте позже."
         }

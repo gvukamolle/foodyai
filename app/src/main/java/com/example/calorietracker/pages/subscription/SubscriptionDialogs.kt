@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import com.example.calorietracker.extensions.fancyShadow
 
 @Composable
 fun AILimitDialog(
@@ -54,10 +55,10 @@ fun AILimitDialog(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .fancyShadow(
-                    color = shadowColor,
                     borderRadius = 24.dp,
-                    blur = if (isPro) 24.dp else 16.dp,
-                    offsetY = if (isPro) 12.dp else 8.dp
+                    shadowRadius = if (isPro) 10.dp else 8.dp,
+                    alpha = if (isPro) 0.3f else 0.25f,
+                    color = shadowColor
                 )
                 .clip(RoundedCornerShape(24.dp)),
             colors = CardDefaults.cardColors(
@@ -135,13 +136,13 @@ fun AILimitDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .fancyShadow(
+                                    borderRadius = 16.dp,
+                                    shadowRadius = 6.dp,
+                                    alpha = 0.2f,
                                     color = when (plan) {
                                         SubscriptionPlan.PRO -> Color(0xFF2196F3)
                                         else -> Color(0xFF9E9E9E)
-                                    },
-                                    borderRadius = 16.dp,
-                                    blur = 12.dp,
-                                    offsetY = 4.dp
+                                    }
                                 ),
                             colors = CardDefaults.cardColors(
                                 containerColor = when (plan) {
@@ -343,10 +344,10 @@ fun AIFeatureLockedDialog(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .fancyShadow(
-                    color = Color(0xFF9E9E9E), // Серая тень для заблокированного контента
                     borderRadius = 24.dp,
-                    blur = 16.dp,
-                    offsetY = 8.dp
+                    shadowRadius = 8.dp,
+                    alpha = 0.25f,
+                    color = Color(0xFF9E9E9E) // Серая тень для заблокированного контента
                 ),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
@@ -402,10 +403,10 @@ fun AIFeatureLockedDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .fancyShadow(
-                                color = Color(0xFF2196F3),
                                 borderRadius = 16.dp,
-                                blur = 12.dp,
-                                offsetY = 4.dp
+                                shadowRadius = 6.dp,
+                                alpha = 0.2f,
+                                color = Color(0xFF2196F3)
                             ),
                         colors = CardDefaults.cardColors(
                             containerColor = Color(0xFFE3F2FD)

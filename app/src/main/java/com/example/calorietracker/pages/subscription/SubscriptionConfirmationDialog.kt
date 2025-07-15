@@ -28,6 +28,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.calorietracker.auth.SubscriptionPlan
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import com.example.calorietracker.extensions.fancyShadow
 
 @Composable
 fun SubscriptionConfirmationDialog(
@@ -49,10 +50,10 @@ fun SubscriptionConfirmationDialog(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .fancyShadow(
-                    color = shadowColor,
                     borderRadius = 24.dp,
-                    blur = if (isPro) 24.dp else 16.dp,
-                    offsetY = if (isPro) 12.dp else 8.dp
+                    shadowRadius = if (isPro) 10.dp else 8.dp,
+                    alpha = if (isPro) 0.3f else 0.25f,
+                    color = shadowColor
                 ),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
@@ -104,10 +105,10 @@ fun SubscriptionConfirmationDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .fancyShadow(
-                                color = shadowColor,
                                 borderRadius = 16.dp,
-                                blur = 12.dp,
-                                offsetY = 4.dp
+                                shadowRadius = 6.dp,
+                                alpha = 0.2f,
+                                color = shadowColor
                             ),
                         colors = CardDefaults.cardColors(
                             containerColor = backgroundColor

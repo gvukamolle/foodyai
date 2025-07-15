@@ -11,18 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.example.calorietracker.auth.SubscriptionPlan
+import com.example.calorietracker.extensions.fancyShadow
 
 // Расширенная модель с фичами
 data class PlanFeature(
@@ -41,48 +37,6 @@ data class PlanDetails(
     val savings: String? = null,
     val gradientColors: List<Color>
 )
-
-// Fancy shadow modifier
-fun Modifier.fancyShadow(
-    color: Color,
-    borderRadius: Dp = 20.dp,
-    spread: Dp = 0.dp,
-    blur: Dp = 20.dp,
-    offsetY: Dp = 8.dp,
-    offsetX: Dp = 0.dp
-) = this.drawBehind {
-    val shadowColor = color.copy(alpha = 0.2f)
-    val shadowColor2 = color.copy(alpha = 0.1f)
-    val shadowColor3 = color.copy(alpha = 0.05f)
-
-    // Рисуем несколько слоев теней для более мягкого эффекта
-    drawRoundRect(
-        color = shadowColor3,
-        topLeft = androidx.compose.ui.geometry.Offset(offsetX.toPx(), offsetY.toPx() + 12.dp.toPx()),
-        size = size.copy(
-            width = size.width + spread.toPx() * 2,
-            height = size.height + spread.toPx() * 2
-        ),
-        cornerRadius = CornerRadius(borderRadius.toPx(), borderRadius.toPx())
-    )
-
-    drawRoundRect(
-        color = shadowColor2,
-        topLeft = androidx.compose.ui.geometry.Offset(offsetX.toPx(), offsetY.toPx() + 6.dp.toPx()),
-        size = size.copy(
-            width = size.width + spread.toPx(),
-            height = size.height + spread.toPx()
-        ),
-        cornerRadius = CornerRadius(borderRadius.toPx(), borderRadius.toPx())
-    )
-
-    drawRoundRect(
-        color = shadowColor,
-        topLeft = androidx.compose.ui.geometry.Offset(offsetX.toPx(), offsetY.toPx()),
-        size = size,
-        cornerRadius = CornerRadius(borderRadius.toPx(), borderRadius.toPx())
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,8 +82,8 @@ fun SubscriptionPlansScreen(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFF8F9FA),
-                            Color(0xFFFFFFFF)
+                            Color(0xFFFFFFFF),
+                            Color(0xFFF8F9FA)
                         )
                     )
                 )
@@ -180,9 +134,10 @@ fun SubscriptionPlansScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .fancyShadow(
-                            color = Color(0xFF2196F3),
-                            blur = 16.dp,
-                            offsetY = 4.dp
+                            borderRadius = 16.dp,
+                            shadowRadius = 8.dp,
+                            alpha = 0.25f,
+                            color = Color(0xFF2196F3)
                         ),
                     colors = CardDefaults.cardColors(
                         containerColor = Color(0xFFF0F8FF)
@@ -260,9 +215,10 @@ fun PlanCard(
         modifier = Modifier
             .fillMaxWidth()
             .fancyShadow(
-                color = shadowColor,
-                blur = if (isPro) 24.dp else 16.dp,
-                offsetY = if (isPro) 12.dp else 8.dp
+                borderRadius = 20.dp,
+                shadowRadius = if (isPro) 10.dp else 6.dp,
+                alpha = if (isPro) 0.3f else 0.2f,
+                color = shadowColor
             )
             .clickable { onSelect() },
         shape = RoundedCornerShape(20.dp),
