@@ -78,6 +78,9 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -554,6 +557,20 @@ private fun AnimatedChatMessageCard(
                                 SimpleChatTypingIndicator()
                             }
                         } else {
+                            if (message.imagePath != null) {
+                                AsyncImage(
+                                    model = File(message.imagePath),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(160.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                                if (message.content.isNotEmpty()) {
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                            }
                             if (message.content.isNotEmpty()) {
                                 MarkdownText(
                                     text = message.content,

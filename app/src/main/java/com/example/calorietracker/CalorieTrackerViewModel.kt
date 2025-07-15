@@ -50,6 +50,7 @@ data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val type: MessageType,
     val content: String,
+    val imagePath: String? = null,
     val timestamp: LocalDateTime = LocalDateTime.now(),
     val foodItem: FoodItem? = null, // Добавляем информацию о продукте
     val isExpandable: Boolean = false, // Флаг для раскрывающихся сообщений
@@ -188,6 +189,9 @@ class CalorieTrackerViewModel(
     var aiOpinionText by mutableStateOf<String?>(null)
     var photoCaption by mutableStateOf("")
     var pendingDescription by mutableStateOf("")
+    var lastDescriptionMessage by mutableStateOf<String?>(null)
+    var lastPhotoPath by mutableStateOf<String?>(null)
+    var lastPhotoCaption by mutableStateOf("")
     var showAILoadingScreen by mutableStateOf(false)
         private set
 
@@ -460,11 +464,16 @@ class CalorieTrackerViewModel(
         showAILoadingScreen = true
         inputMethod = "photo" // Добавить это поле в ViewModel
 
-        messages = messages + ChatMessage(
-            type = MessageType.USER,
-            content = "Фото загружено",
-            animate = true
-        )
+        // Сохраняем фото для отображения в чате
+        val chatFile = File.createTempFile("photo_chat", ".jpg", context.cacheDir)
+        FileOutputStream(chatFile).use { outputStream ->
+            val scaledBitmap = scaleBitmap(bitmap, 800)
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+        }
+        lastPhotoPath = chatFile.absolutePath
+        lastPhotoCaption = caption
+        // Используем тот же файл для отправки
+        val tempFile = chatFile
 
         // Проверяем интернет
         checkInternetConnection()
@@ -495,14 +504,7 @@ class CalorieTrackerViewModel(
         // val tempMessage = ChatMessage(...) - УДАЛЕНО
 
         try {
-            // 1. Подготавливаем изображение
-            val tempFile = File.createTempFile("photo", ".jpg", context.cacheDir)
-            FileOutputStream(tempFile).use { outputStream ->
-                val scaledBitmap = scaleBitmap(bitmap, 800)
-                scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
-            }
-
-            // 2. Подготавливаем данные для отправки
+            // 1. Подготавливаем данные для отправки
             val gson = Gson()
             val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
@@ -512,7 +514,7 @@ class CalorieTrackerViewModel(
             val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
             val captionRequestBody = caption.toRequestBody("text/plain".toMediaTypeOrNull())
 
-            // 3. Отправляем запрос
+            // 2. Отправляем запрос
             val response = safeApiCall {
                 NetworkModule.makeService.analyzeFoodPhoto(
                     webhookId = MakeService.WEBHOOK_ID,
@@ -522,9 +524,6 @@ class CalorieTrackerViewModel(
                     caption = captionRequestBody
                 )
             }
-
-            // Удаляем временный файл
-            tempFile.delete()
 
             // Скрываем экран загрузки после получения ответа
             showAILoadingScreen = false
@@ -567,11 +566,6 @@ class CalorieTrackerViewModel(
                     }
 
                     "да", "yes" -> {
-                        // Еда найдена - заполняем данные
-                        messages = messages + ChatMessage(
-                            type = MessageType.AI,
-                            content = "✅ Распознан продукт: ${foodData.name}"
-                        )
 
                         // Создаем FoodItem из полученных данных С МНЕНИЕМ AI
                         prefillFood = FoodItem(
@@ -613,6 +607,7 @@ class CalorieTrackerViewModel(
 
         val textToAnalyze = pendingDescription
         pendingDescription = ""  // Очищаем после отправки
+        lastDescriptionMessage = textToAnalyze
 
         viewModelScope.launch {
             isAnalyzing = true
@@ -672,12 +667,6 @@ class CalorieTrackerViewModel(
                 }
 
                 val foodData = Gson().fromJson(answer, FoodDataFromAnswer::class.java)
-
-                // Добавляем сообщение о результате
-                messages = messages + ChatMessage(
-                    type = MessageType.AI,
-                    content = "✅ Распознан продукт: ${foodData.name}"
-                )
 
                 prefillFood = FoodItem(
                     name = foodData.name,
@@ -767,11 +756,33 @@ class CalorieTrackerViewModel(
 
         selectedMeal = getAutoMealType()
 
-        messages = messages + ChatMessage(
-            type = MessageType.USER,
-            content = "Добавлен продукт: $name",
-            animate = true
-        )
+        when (inputMethod) {
+            "text" -> {
+                messages = messages + ChatMessage(
+                    type = MessageType.USER,
+                    content = lastDescriptionMessage ?: "Добавлен продукт: $name",
+                    animate = true
+                )
+                lastDescriptionMessage = null
+            }
+            "photo" -> {
+                messages = messages + ChatMessage(
+                    type = MessageType.USER,
+                    content = lastPhotoCaption,
+                    imagePath = lastPhotoPath,
+                    animate = true
+                )
+                lastPhotoPath = null
+                lastPhotoCaption = ""
+            }
+            else -> {
+                messages = messages + ChatMessage(
+                    type = MessageType.USER,
+                    content = "Добавлен продукт: $name",
+                    animate = true
+                )
+            }
+        }
 
         showManualInputDialog = false
     }
@@ -851,6 +862,10 @@ class CalorieTrackerViewModel(
             pendingFood = null
             prefillFood = null
             currentFoodSource = null
+            inputMethod = null
+            lastDescriptionMessage = null
+            lastPhotoPath = null
+            lastPhotoCaption = ""
             saveUserData()
         }
     }
