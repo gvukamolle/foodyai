@@ -6,7 +6,7 @@ enum class SubscriptionPlan(
     val features: List<String>
 ) {
     FREE(
-        "Бесплатный",
+        "FREE",
         listOf(
             "Подсчет калорий и БЖУ",
             "База из 100,000+ продуктов",

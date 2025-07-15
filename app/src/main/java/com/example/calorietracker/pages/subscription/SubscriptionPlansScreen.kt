@@ -11,11 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -38,6 +41,48 @@ data class PlanDetails(
     val savings: String? = null,
     val gradientColors: List<Color>
 )
+
+// Fancy shadow modifier
+fun Modifier.fancyShadow(
+    color: Color,
+    borderRadius: Dp = 20.dp,
+    spread: Dp = 0.dp,
+    blur: Dp = 20.dp,
+    offsetY: Dp = 8.dp,
+    offsetX: Dp = 0.dp
+) = this.drawBehind {
+    val shadowColor = color.copy(alpha = 0.2f)
+    val shadowColor2 = color.copy(alpha = 0.1f)
+    val shadowColor3 = color.copy(alpha = 0.05f)
+
+    // Рисуем несколько слоев теней для более мягкого эффекта
+    drawRoundRect(
+        color = shadowColor3,
+        topLeft = androidx.compose.ui.geometry.Offset(offsetX.toPx(), offsetY.toPx() + 12.dp.toPx()),
+        size = size.copy(
+            width = size.width + spread.toPx() * 2,
+            height = size.height + spread.toPx() * 2
+        ),
+        cornerRadius = CornerRadius(borderRadius.toPx(), borderRadius.toPx())
+    )
+
+    drawRoundRect(
+        color = shadowColor2,
+        topLeft = androidx.compose.ui.geometry.Offset(offsetX.toPx(), offsetY.toPx() + 6.dp.toPx()),
+        size = size.copy(
+            width = size.width + spread.toPx(),
+            height = size.height + spread.toPx()
+        ),
+        cornerRadius = CornerRadius(borderRadius.toPx(), borderRadius.toPx())
+    )
+
+    drawRoundRect(
+        color = shadowColor,
+        topLeft = androidx.compose.ui.geometry.Offset(offsetX.toPx(), offsetY.toPx()),
+        size = size,
+        cornerRadius = CornerRadius(borderRadius.toPx(), borderRadius.toPx())
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +128,7 @@ fun SubscriptionPlansScreen(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFFFFFFF),
+                            Color(0xFFF8F9FA),
                             Color(0xFFFFFFFF)
                         )
                     )
@@ -120,20 +165,25 @@ fun SubscriptionPlansScreen(
                     PlanCard(
                         details = details,
                         isCurrentPlan = currentPlan == details.plan,
-                        isSelected = selectedPlan == details.plan,
                         onSelect = {
                             selectedPlan = details.plan
                             showConfirmDialog = true
                         }
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
 
                 // Дополнительная информация
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fancyShadow(
+                            color = Color(0xFF2196F3),
+                            blur = 16.dp,
+                            offsetY = 4.dp
+                        ),
                     colors = CardDefaults.cardColors(
                         containerColor = Color(0xFFF0F8FF)
                     ),
@@ -152,7 +202,7 @@ fun SubscriptionPlansScreen(
                             tint = Color(0xFF2196F3),
                             modifier = Modifier.size(24.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Все планы включают базовые функции отслеживания калорий",
                             fontSize = 14.sp,
@@ -163,8 +213,9 @@ fun SubscriptionPlansScreen(
             }
         }
     }
+
     if (showConfirmDialog && selectedPlan != null) {
-        SubscriptionConfirmationDialog(  // новый красивый диалог
+        SubscriptionConfirmationDialog(
             plan = selectedPlan!!,
             onConfirm = {
                 onSelectPlan(selectedPlan!!)
@@ -182,43 +233,70 @@ fun SubscriptionPlansScreen(
 fun PlanCard(
     details: PlanDetails,
     isCurrentPlan: Boolean,
-    isSelected: Boolean,
     onSelect: () -> Unit
 ) {
-    val animatedScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.02f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy
+    val isPro = details.plan == SubscriptionPlan.PRO
+
+    // Цвета для разных планов
+    val cardBackgroundColor = if (isPro) {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF2196F3).copy(alpha = 0.05f),
+                Color(0xFFFFFFFF)
+            )
         )
-    )
+    } else {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFFF5F5F5),
+                Color(0xFFF5F5F5)
+            )
+        )
+    }
+
+    val shadowColor = if (isPro) Color(0xFF2196F3) else Color(0xFF9E9E9E)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onSelect() },
-        shape = RoundedCornerShape(20.dp), // Увеличенное закругление как в EnhancedDialogs
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 8.dp else 2.dp
-        ),
-        border = if (isSelected) {
-            BorderStroke(
-                width = 2.dp,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF4CAF50),
-                        Color(0xFF45A049)
-                    )
-                )
+            .fancyShadow(
+                color = shadowColor,
+                blur = if (isPro) 24.dp else 16.dp,
+                offsetY = if (isPro) 12.dp else 8.dp
             )
-        } else {
-            BorderStroke(1.dp, Color(0xFFE5E5E5))
-        }
+            .clickable { onSelect() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent
+        ),
+        elevation = CardDefaults.cardElevation(0.dp) // Убираем стандартную тень
     ) {
-         Column(
-             modifier = Modifier.padding(20.dp) // Увеличенный паддинг
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(brush = cardBackgroundColor)
+        ) {
+            // Декоративный элемент для PRO плана
+            if (isPro) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 20.dp, y = (-10).dp)
+                        .size(80.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFF2196F3).copy(alpha = 0.3f),
+                                    Color.Transparent
+                                )
+                            ),
+                            shape = RoundedCornerShape(50)
+                        )
+                )
+            }
+
+            Column(
+                modifier = Modifier.padding(20.dp)
             ) {
                 // Заголовок плана
                 Row(
@@ -230,12 +308,13 @@ fun PlanCard(
                         Text(
                             text = details.plan.displayName,
                             fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = if (isPro) Color(0xFF1976D2) else Color(0xFF424242)
                         )
 
                         if (isCurrentPlan) {
                             Surface(
-                                color = Color(0xFF4CAF50),
+                                color = if (isPro) Color(0xFF2196F3) else Color(0xFF757575),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.padding(top = 4.dp)
                             ) {
@@ -256,26 +335,19 @@ fun PlanCard(
                                 text = details.price,
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (details.isPopular) details.gradientColors[0] else Color.Black
+                                color = Color(0xFF1976D2)
                             )
                             Text(
                                 text = details.period,
                                 fontSize = 14.sp,
                                 color = Color(0xFF666666)
                             )
-                            details.savings?.let {
-                                Text(
-                                    text = it,
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF4CAF50),
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
                         } else {
                             Text(
                                 text = "Бесплатно",
                                 fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF757575)
                             )
                         }
                     }
@@ -285,7 +357,10 @@ fun PlanCard(
 
                 // Фичи
                 details.features.forEach { feature ->
-                    FeatureRow(feature = feature)
+                    FeatureRow(
+                        feature = feature,
+                        isPro = isPro
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
@@ -296,10 +371,10 @@ fun PlanCard(
                         onClick = onSelect,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (details.isPopular) {
-                                details.gradientColors[0]
+                            containerColor = if (isPro) {
+                                Color(0xFF2196F3)
                             } else {
-                                Color.Black
+                                Color(0xFF424242)
                             }
                         ),
                         shape = RoundedCornerShape(12.dp)
@@ -319,9 +394,13 @@ fun PlanCard(
             }
         }
     }
+}
 
 @Composable
-fun FeatureRow(feature: PlanFeature) {
+fun FeatureRow(
+    feature: PlanFeature,
+    isPro: Boolean
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
@@ -329,7 +408,11 @@ fun FeatureRow(feature: PlanFeature) {
         Icon(
             imageVector = feature.icon,
             contentDescription = null,
-            tint = if (feature.isHighlighted) Color(0xFFFF9800) else Color(0xFF4CAF50),
+            tint = if (isPro) {
+                if (feature.isHighlighted) Color(0xFFFF9800) else Color(0xFF2196F3)
+            } else {
+                Color(0xFF9E9E9E)
+            },
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -337,12 +420,13 @@ fun FeatureRow(feature: PlanFeature) {
             Text(
                 text = feature.title,
                 fontSize = 16.sp,
-                fontWeight = if (feature.isHighlighted) FontWeight.Bold else FontWeight.Medium
+                fontWeight = if (feature.isHighlighted) FontWeight.Bold else FontWeight.Medium,
+                color = if (isPro) Color(0xFF212121) else Color(0xFF616161)
             )
             Text(
                 text = feature.description,
                 fontSize = 13.sp,
-                color = Color(0xFF666666),
+                color = if (isPro) Color(0xFF666666) else Color(0xFF9E9E9E),
                 lineHeight = 18.sp
             )
         }
@@ -412,7 +496,6 @@ private fun getPlanDetails(): List<PlanDetails> {
                     "Детальные графики и прогнозы"
                 )
             ),
-            // Этот план не помечаем как популярный
             isPopular = false,
             gradientColors = listOf(Color(0xFF2196F3), Color(0xFF03A9F4))
         )
