@@ -38,24 +38,54 @@ fun AnimatedProgressBars(
     viewModel: CalorieTrackerViewModel,
     isVisible: Boolean // Новый параметр
 ) {
-    val haptic = LocalHapticFeedback.current
-
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = expandVertically() + fadeIn(),
-        exit = shrinkVertically() + fadeOut()
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp) // Фиксированная высота для развернутого вида
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.White)
-        ) {
-            ExpandedProgressView(viewModel = viewModel)
+    AnimatedContent(
+        targetState = isVisible,
+        transitionSpec = {
+            if (targetState) {
+                (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically())
+            } else {
+                (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically())
+            }
+        },
+        label = "progress_bars"
+    ) { expanded ->
+        if (expanded) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp) // Фиксированная высота для развернутого вида
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White)
+            ) {
+                ExpandedProgressView(viewModel = viewModel)
+            }
+        } else {
+            CollapsedProgressView(viewModel = viewModel)
+            }
         }
     }
+
+
+// Свернутый вид прогресса - отображает только калории
+@Composable
+private fun CollapsedProgressView(viewModel: CalorieTrackerViewModel) {
+    val nutrient = NutrientData(
+        label = "Калории",
+        current = viewModel.dailyIntake.calories.toFloat(),
+        target = viewModel.userProfile.dailyCalories,
+        unit = "ккал",
+        color = viewModel.getProgressColor(
+            viewModel.dailyIntake.calories,
+            viewModel.userProfile.dailyCalories
+        )
+    )
+    MiniNutrientBar(
+        nutrient = nutrient,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+    )
 }
 
 // Развернутый вид прогресса БЕЗ ИКОНОК ЕДЫ
@@ -165,6 +195,61 @@ private fun CompactNutrientBar(nutrient: NutrientData) {
                     .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(4.dp))
+                    .background(nutrient.color)
+            )
+        }
+    }
+}
+
+// Мини-бар для свернутого вида
+@Composable
+private fun MiniNutrientBar(
+    nutrient: NutrientData,
+    modifier: Modifier = Modifier
+) {    val progress = if (nutrient.target > 0) {
+        nutrient.current / nutrient.target.toFloat()
+    } else 0f
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "progress"
+    )
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = nutrient.label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+            Text(
+                text = "${NutritionFormatter.formatMacroInt(nutrient.current)} / ${nutrient.target}",
+                fontSize = 10.sp,
+                color = Color.Gray
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color(0xFFE5E7EB).copy(alpha = 0.3f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(3.dp))
                     .background(nutrient.color)
             )
         }
