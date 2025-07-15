@@ -14,7 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.calorietracker.ui.theme.GilroyFontFamily
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 @Composable
 fun AiOpinionDialog(
@@ -80,8 +81,13 @@ fun AiOpinionDialog(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            val haptic = LocalHapticFeedback.current
+
             Button(
-                onClick = onDismiss,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDismiss()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

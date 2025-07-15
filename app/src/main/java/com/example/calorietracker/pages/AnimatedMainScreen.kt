@@ -291,7 +291,10 @@ private fun AnimatedHeader(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable { onDateClick() }
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDateClick()
+                    }
                     .padding(vertical = 4.dp, horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -373,7 +376,10 @@ private fun AnimatedHeader(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                IconButton(onClick = onSettingsClick) {
+                IconButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSettingsClick()
+                }) {
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = "Настройки",
@@ -801,8 +807,12 @@ fun AnimatedAiChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
         color = Color(0xFFDBF0E4),

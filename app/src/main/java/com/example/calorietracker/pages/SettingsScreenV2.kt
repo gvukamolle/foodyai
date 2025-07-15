@@ -48,7 +48,8 @@ fun SettingsScreenV2(
     onNavigateToProfile: () -> Unit,
     onNavigateToBodySettings: () -> Unit,
     onNavigateToAppSettings: () -> Unit,
-    onNavigateToSubscription: () -> Unit, // НОВОЕ
+    onNavigateToSubscription: () -> Unit,
+    onNavigateToFeedback: () -> Unit,
     onSignOut: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -190,7 +191,7 @@ fun SettingsScreenV2(
                         SettingsItem(
                             icon = Icons.Default.Feedback,
                             title = "Обратная связь",
-                            onClick = { /* TODO: Feedback */ }
+                            onClick = onNavigateToFeedback
                         ),
                         SettingsItem(
                             icon = Icons.Default.Info,
@@ -351,6 +352,7 @@ private fun SettingsGroup(
     items: List<SettingsItem>,
     onItemClick: (SettingsItem) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
             text = title,
@@ -367,7 +369,10 @@ private fun SettingsGroup(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onItemClick(item) }
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onItemClick(item)
+                        }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

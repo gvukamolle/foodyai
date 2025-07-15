@@ -44,7 +44,7 @@ import androidx.core.view.WindowCompat
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
-    Setup, Main, SettingsV2, Calendar, Profile, BodySettings, AppSettings, Subscription
+    Setup, Main, SettingsV2, Calendar, Profile, BodySettings, AppSettings, Subscription, Feedback
 }
 
 private fun decodeBitmapWithOrientation(file: java.io.File): Bitmap {
@@ -139,6 +139,7 @@ fun CalorieTrackerApp(
     var showBodySettingsScreen by remember { mutableStateOf(false) }
     var showAppSettingsScreen by remember { mutableStateOf(false) }
     var showSubscriptionScreen by remember { mutableStateOf(false) }
+    var showFeedbackScreen by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
@@ -205,7 +206,7 @@ fun CalorieTrackerApp(
         }
     }
 
-    BackHandler(enabled = showSettingsScreen || showCalendarScreen || showProfileScreen || showBodySettingsScreen || showAppSettingsScreen) {
+    BackHandler(enabled = showSettingsScreen || showCalendarScreen || showProfileScreen || showBodySettingsScreen || showAppSettingsScreen || showFeedbackScreen) {
         when {
             showProfileScreen -> {
                 showProfileScreen = false
@@ -213,6 +214,10 @@ fun CalorieTrackerApp(
             }
             showSubscriptionScreen -> {
                 showSubscriptionScreen = false
+                showSettingsScreen = true
+            }
+            showFeedbackScreen -> {
+                showFeedbackScreen = false
                 showSettingsScreen = true
             }
             showBodySettingsScreen -> {
@@ -251,6 +256,7 @@ fun CalorieTrackerApp(
                 showAppSettingsScreen -> Screen.AppSettings
                 showSettingsScreen -> Screen.SettingsV2
                 showSubscriptionScreen -> Screen.Subscription
+                showFeedbackScreen -> Screen.Feedback
                 else -> currentScreen
             }
 
@@ -312,7 +318,10 @@ fun CalorieTrackerApp(
                                 showSubscriptionScreen = true
                                 showSettingsScreen = false
                             },
-                            // ⬆️ ДОБАВИТЬ ЭТУ ФУНКЦИЮ ⬆️
+                            onNavigateToFeedback = {
+                                showFeedbackScreen = true
+                                showSettingsScreen = false
+                            },
                             onSignOut = { authManager.signOut() },
                         )
                     }
@@ -349,6 +358,15 @@ fun CalorieTrackerApp(
                             },
                             onBack = {
                                 showSubscriptionScreen = false
+                                showSettingsScreen = true
+                            }
+                        )
+                    }
+
+                    Screen.Feedback -> {
+                        FeedbackScreen(
+                            onBack = {
+                                showFeedbackScreen = false
                                 showSettingsScreen = true
                             }
                         )

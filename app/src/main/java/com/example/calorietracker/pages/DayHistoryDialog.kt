@@ -42,6 +42,8 @@ import java.time.format.DateTimeFormatter
 import com.example.calorietracker.utils.NutritionFormatter
 import kotlin.math.roundToInt
 import com.example.calorietracker.extensions.fancyShadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 // Основной диалог истории дня с группировкой
 @OptIn(ExperimentalFoundationApi::class)
@@ -609,8 +611,14 @@ fun AiInfoButton(
     hasAiOpinion: Boolean,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Surface(
-        onClick = { if (hasAiOpinion) onClick() },
+        onClick = {
+            if (hasAiOpinion) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
+        },
         shape = RoundedCornerShape(16.dp),
         color = Color(0xFFDBF0E4),
         modifier = Modifier.height(28.dp)

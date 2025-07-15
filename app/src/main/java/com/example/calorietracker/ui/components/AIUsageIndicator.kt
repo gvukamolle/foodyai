@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.auth.SubscriptionPlan
 import com.example.calorietracker.auth.UserData
 import com.example.calorietracker.utils.AIUsageManager
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 /**
  * Универсальный индикатор использования AI для toolbar
@@ -50,6 +52,7 @@ private fun FreeUserPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     val remainingUsage = AIUsageManager.getRemainingUsage(userData)
     val planLimit = AIUsageManager.getPlanLimit(userData.subscriptionPlan)
 
@@ -68,7 +71,10 @@ private fun FreeUserPill(
     val contentColor = if (isLow) Color(0xFFD32F2F) else Color(0xFFE65100)
 
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
         modifier = modifier,
         color = backgroundColor,
         shape = RoundedCornerShape(16.dp)
@@ -99,6 +105,7 @@ private fun ProUserPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     val infiniteTransition = rememberInfiniteTransition()
 
     // Анимация градиента для PRO
@@ -122,7 +129,10 @@ private fun ProUserPill(
     )
 
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
         modifier = modifier,
         color = Color.Transparent,
         shape = RoundedCornerShape(16.dp)
@@ -216,8 +226,12 @@ private fun CompactPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
         modifier = modifier,
         color = backgroundColor,
         shape = RoundedCornerShape(12.dp)
