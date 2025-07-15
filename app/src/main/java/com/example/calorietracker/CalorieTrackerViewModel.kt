@@ -630,6 +630,17 @@ class CalorieTrackerViewModel(
                 return@launch
             }
 
+            val currentUser = authManager.currentUser.value
+            if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
+                showAILoadingScreen = false
+                showAILimitDialog = true
+                pendingAIAction = {
+                    analyzeDescription()
+                }
+                isAnalyzing = false
+                return@launch
+            }
+
             try {
                 val request = FoodAnalysisRequest(
                     weight = 100,
@@ -680,6 +691,10 @@ class CalorieTrackerViewModel(
                 )
 
                 showManualInputDialog = true
+                if (currentUser != null) {
+                    val updatedUserData = AIUsageManager.incrementUsage(currentUser)
+                    authManager.updateUserData(updatedUserData)
+                }
             } catch (e: Exception) {
                 showAILoadingScreen = false  // Скрываем экран загрузки при ошибке
                 Log.e("CalorieTracker", "Ошибка анализа описания", e)
@@ -924,6 +939,16 @@ class CalorieTrackerViewModel(
 
             viewModelScope.launch {
                 if (isOnline) {
+                    val currentUser = authManager.currentUser.value
+                    if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
+                        showAILimitDialog = true
+                        pendingAIAction = {
+                            inputMessage = userMessage
+                            sendMessage()
+                        }
+                        return@launch
+                    }
+
                     // Добавляем сообщение с анимированными точками
                     val tempMessage = ChatMessage(
                         type = MessageType.AI,
@@ -956,6 +981,10 @@ class CalorieTrackerViewModel(
                                 type = MessageType.AI,
                                 content = answer
                             )
+                            if (currentUser != null) {
+                                val updatedUserData = AIUsageManager.incrementUsage(currentUser)
+                                authManager.updateUserData(updatedUserData)
+                            }
                         } else {
                             messages = messages + ChatMessage(
                                 type = MessageType.AI,
