@@ -168,7 +168,6 @@ class CalorieTrackerViewModel(
         get() = _messages
         set(value) {
             _messages = value
-            repository.saveChatHistory(value)
         }
     var inputMessage by mutableStateOf("")
     var pendingFood by mutableStateOf<FoodItem?>(null)
@@ -222,12 +221,6 @@ class CalorieTrackerViewModel(
         dailyCarbs = intake.carbs
         dailyFat = intake.fat
         meals = intake.meals
-        // Загружаем историю чата за сегодня
-        val history = repository.getChatHistory()
-        if (history.isNotEmpty()) {
-            messages = history
-        }
-        repository.cleanupOldChatHistory()
     }
 
     private fun startPeriodicReset() {
@@ -306,10 +299,6 @@ class CalorieTrackerViewModel(
             dailyCarbs = intake.carbs
             dailyFat = intake.fat
             meals = intake.meals
-
-            val history = repository.getChatHistory()
-            messages = if (history.isNotEmpty()) history else messages
-            repository.cleanupOldChatHistory()
         }
     }
 
@@ -1098,6 +1087,52 @@ class CalorieTrackerViewModel(
         viewModelScope.launch {
             delay(300)
             messages = messages.filterNot { it.id == messageId }
+        }
+    }
+    
+    // Методы для экрана аналитики
+    fun getTodayData(): com.example.calorietracker.data.DayData? {
+        val today = LocalDate.now()
+        return if (dailyCalories > 0 || dailyProtein > 0 || dailyCarbs > 0 || dailyFat > 0) {
+            com.example.calorietracker.data.DayData(
+                date = today,
+                calories = dailyCalories.toFloat(),
+                proteins = dailyProtein,
+                fats = dailyFat,
+                carbs = dailyCarbs,
+                mealsCount = meals.size
+            )
+        } else {
+            null
+        }
+    }
+    
+    fun getDayData(date: LocalDate): com.example.calorietracker.data.DayData? {
+        val dateString = date.toString()
+        val intake = repository.getIntakeHistory(dateString)
+        return if (intake != null && intake.calories > 0) {
+            com.example.calorietracker.data.DayData(
+                date = date,
+                calories = intake.calories.toFloat(),
+                proteins = intake.protein,
+                fats = intake.fat,
+                carbs = intake.carbs,
+                mealsCount = intake.meals.size
+            )
+        } else {
+            null
+        }
+    }
+    
+    fun getAllDaysData(): List<com.example.calorietracker.data.DayData> {
+        val allDates = repository.getAvailableDates()
+        return allDates.mapNotNull { dateString ->
+            try {
+                val date = LocalDate.parse(dateString)
+                getDayData(date)
+            } catch (e: Exception) {
+                null
+            }
         }
     }
 }

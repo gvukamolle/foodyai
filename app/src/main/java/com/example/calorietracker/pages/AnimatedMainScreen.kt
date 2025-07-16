@@ -81,6 +81,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import java.io.File
+import androidx.compose.material.icons.filled.Menu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,7 +93,9 @@ fun AnimatedMainScreen(
     onDescribeClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onCalendarClick: () -> Unit,
-    onNavigateToSubscription: () -> Unit, // НОВОЕ
+    onNavigateToSubscription: () -> Unit,
+    onProfileClick: () -> Unit = {}, // Новое
+    onAnalyticsClick: () -> Unit = {}, // Новое
     modifier: Modifier = Modifier
 ) {
     val systemUiController = rememberSystemUiController()
@@ -139,7 +142,8 @@ fun AnimatedMainScreen(
     )
 
     var menuExpanded by remember { mutableStateOf(false) }
-    var isStatusBarVisible by remember { mutableStateOf(false) } // Новое состояние
+    var isStatusBarVisible by remember { mutableStateOf(false) }
+    var isDrawerOpen by remember { mutableStateOf(false) } // Состояние для выдвижного меню
 
     Scaffold(
         modifier = Modifier
@@ -155,8 +159,20 @@ fun AnimatedMainScreen(
                 onGalleryClick = onGalleryClick,
                 onDescribeClick = onDescribeClick,
                 onManualClick = onManualClick
-            )
-        }
+            )  
+            }
+        
+        // Выдвижное меню
+        NavigationDrawer(
+            isOpen = isDrawerOpen,
+            onDismiss = { isDrawerOpen = false },
+            userData = viewModel.currentUser,
+            onProfileClick = onProfileClick,
+            onCalendarClick = onCalendarClick,
+            onAnalyticsClick = onAnalyticsClick,
+            onSubscriptionClick = onNavigateToSubscription,
+            onSettingsClick = onSettingsClick
+        )
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -169,7 +185,7 @@ fun AnimatedMainScreen(
             // Обновленный заголовок с кликом на календарь
             AnimatedHeader(
                 viewModel = viewModel,
-                onSettingsClick = onSettingsClick,
+                onMenuClick = { isDrawerOpen = true },
                 onDateClick = onCalendarClick,
                 onNavigateToSubscription = onNavigateToSubscription,
                 isStatusBarVisible = isStatusBarVisible,
@@ -259,14 +275,13 @@ fun AnimatedMainScreen(
 @Composable
 private fun AnimatedHeader(
     viewModel: CalorieTrackerViewModel,
-    onSettingsClick: () -> Unit,
+    onMenuClick: () -> Unit,
     onDateClick: () -> Unit,
     onNavigateToSubscription: () -> Unit,
     isStatusBarVisible: Boolean,
     onToggleStatusBar: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-
 
     if (viewModel.showAILimitDialog) {
         AILimitDialog(
@@ -282,116 +297,92 @@ private fun AnimatedHeader(
         )
     }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Левая часть - Кнопка меню
+        IconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onMenuClick()
+            }
         ) {
-            // Левая часть - Кликабельная область с датой
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDateClick()
-                    }
-                    .padding(vertical = 4.dp, horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Icon(
+                Icons.Default.Menu,
+                contentDescription = "Меню",
+                tint = Color.Black
+            )
+        }
+        
+        // Центральная часть - Дата с функцией развертывания
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleStatusBar()
+                },
+                shape = RoundedCornerShape(12.dp),
+                color = Color.Transparent
             ) {
-                Column {
-                    // Форматируем дату: "3 июля, четверг"
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    // Форматируем дату: "3 июля"
                     val currentDate = LocalDate.now()
-                    val dayOfWeek = currentDate.dayOfWeek.getDisplayName(DateTextStyle.FULL, Locale("ru"))
-                    val month = currentDate.month.getDisplayName(java.time.format.TextStyle.FULL, Locale("ru"))
+                    val month = when(currentDate.monthValue) {
+                        1 -> "января"
+                        2 -> "февраля"
+                        3 -> "марта"
+                        4 -> "апреля"
+                        5 -> "мая"
+                        6 -> "июня"
+                        7 -> "июля"
+                        8 -> "августа"
+                        9 -> "сентября"
+                        10 -> "октября"
+                        11 -> "ноября"
+                        12 -> "декабря"
+                        else -> ""
+                    }
                     val day = currentDate.dayOfMonth
-
+                    
                     Text(
                         text = "$day $month",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = Color.Black
                     )
-                    Text(
-                        text = dayOfWeek.replaceFirstChar { it.uppercase() },
-                        fontSize = 14.sp,
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Стрелка
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowRight,
-                    contentDescription = "Открыть календарь",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Центральная часть - Кнопка Stats
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                TextButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onToggleStatusBar()
-                    }
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            "Stats",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            if (isStatusBarVisible) Icons.Default.KeyboardArrowUp
-                            else Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.Black
-                        )
-                    }
-                }
-            }
-
-            // Правая часть - AI индикатор и настройки
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AIUsageToolbarIndicator(
-                    userData = viewModel.currentUser,
-                    onClick = onNavigateToSubscription
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                IconButton(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onSettingsClick()
-                }) {
+                    
+                    Spacer(modifier = Modifier.width(6.dp))
+                    
                     Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Настройки",
-                        tint = Color.Gray
+                        if (isStatusBarVisible) Icons.Default.KeyboardArrowUp
+                        else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = Color.Black
                     )
                 }
             }
         }
+        
+        // Правая часть - AI индикатор
+        AIUsageToolbarIndicator(
+            userData = viewModel.currentUser,
+            onClick = onNavigateToSubscription
+        )
     }
+}
 
 // Кастомный Divider с закругленными краями
 @Composable

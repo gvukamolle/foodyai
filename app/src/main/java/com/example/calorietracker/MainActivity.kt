@@ -44,7 +44,7 @@ import androidx.core.view.WindowCompat
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
-    Setup, Main, SettingsV2, Calendar, Profile, BodySettings, AppSettings, Subscription, Feedback
+    Setup, Main, SettingsV2, Calendar, Profile, BodySettings, AppSettings, Subscription, Feedback, Analytics
 }
 
 private fun decodeBitmapWithOrientation(file: java.io.File): Bitmap {
@@ -140,6 +140,7 @@ fun CalorieTrackerApp(
     var showAppSettingsScreen by remember { mutableStateOf(false) }
     var showSubscriptionScreen by remember { mutableStateOf(false) }
     var showFeedbackScreen by remember { mutableStateOf(false) }
+    var showAnalyticsScreen by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
@@ -206,7 +207,7 @@ fun CalorieTrackerApp(
         }
     }
 
-    BackHandler(enabled = showSettingsScreen || showCalendarScreen || showProfileScreen || showBodySettingsScreen || showAppSettingsScreen || showFeedbackScreen) {
+    BackHandler(enabled = showSettingsScreen || showCalendarScreen || showProfileScreen || showBodySettingsScreen || showAppSettingsScreen || showFeedbackScreen || showAnalyticsScreen || showSubscriptionScreen) {
         when {
             showProfileScreen -> {
                 showProfileScreen = false
@@ -227,6 +228,10 @@ fun CalorieTrackerApp(
             showAppSettingsScreen -> {
                 showAppSettingsScreen = false
                 showSettingsScreen = true
+            }
+            showAnalyticsScreen -> {
+                showAnalyticsScreen = false
+                currentScreen = Screen.Main
             }
             showCalendarScreen -> {
                 showCalendarScreen = false
@@ -257,6 +262,7 @@ fun CalorieTrackerApp(
                 showSettingsScreen -> Screen.SettingsV2
                 showSubscriptionScreen -> Screen.Subscription
                 showFeedbackScreen -> Screen.Feedback
+                showAnalyticsScreen -> Screen.Analytics
                 else -> currentScreen
             }
 
@@ -271,6 +277,16 @@ fun CalorieTrackerApp(
                             viewModel = viewModel,
                             onBack = {
                                 showCalendarScreen = false
+                                currentScreen = Screen.Main
+                            }
+                        )
+                    }
+                    
+                    Screen.Analytics -> {
+                        AnalyticsScreen(
+                            viewModel = viewModel,
+                            onBack = {
+                                showAnalyticsScreen = false
                                 currentScreen = Screen.Main
                             }
                         )
@@ -422,11 +438,18 @@ fun CalorieTrackerApp(
                                 currentScreen = Screen.Calendar
                                 showCalendarScreen = true
                             },
-                                    onNavigateToSubscription = { // НОВОЕ
+                            onNavigateToSubscription = {
                                 showSubscriptionScreen = true
                             },
+                            onProfileClick = {
+                                showProfileScreen = true
+                            },
+                            onAnalyticsClick = {
+                                currentScreen = Screen.Analytics
+                                showAnalyticsScreen = true
+                            },
                             modifier = Modifier.fillMaxSize()
-                                )
+                        )
                     }
 
                     null -> {

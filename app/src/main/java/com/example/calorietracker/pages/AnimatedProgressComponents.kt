@@ -70,7 +70,7 @@ fun AnimatedProgressBars(
 // Свернутый вид прогресса - отображает только калории
 @Composable
 private fun CollapsedProgressView(viewModel: CalorieTrackerViewModel) {
-    val nutrient = NutrientData(
+    val calorieData = NutrientData(
         label = "Калории",
         current = viewModel.dailyIntake.calories.toFloat(),
         target = viewModel.userProfile.dailyCalories,
@@ -80,12 +80,45 @@ private fun CollapsedProgressView(viewModel: CalorieTrackerViewModel) {
             viewModel.userProfile.dailyCalories
         )
     )
-    MiniNutrientBar(
-        nutrient = nutrient,
+    LabelLessNutrientBar(
+        nutrient = calorieData,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = 32.dp, vertical = 4.dp)
     )
+}
+
+// Прогресс-бар без подписей, повторяет размеры полноразмерного бара
+@Composable
+private fun LabelLessNutrientBar(
+    nutrient: NutrientData,
+    modifier: Modifier = Modifier
+) {
+    val progress = if (nutrient.target > 0) {
+        nutrient.current / nutrient.target.toFloat()
+    } else 0f
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "progress"
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFE5E7EB).copy(alpha = 0.3f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(4.dp))
+                .background(nutrient.color)
+        )
+    }
 }
 
 // Развернутый вид прогресса БЕЗ ИКОНОК ЕДЫ
