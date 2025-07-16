@@ -38,15 +38,12 @@ import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.MessageType
 import com.example.calorietracker.ui.animations.*
 import com.example.calorietracker.utils.DailyResetUtils
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.example.calorietracker.ui.utils.systemBarsPadding
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.Locale
-import java.time.format.TextStyle as DateTextStyle
 import com.example.calorietracker.pages.subscription.AILimitDialog
 import com.example.calorietracker.auth.UserData
 import com.example.calorietracker.ui.components.AIUsageToolbarIndicator
@@ -70,19 +67,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import java.io.File
 import androidx.compose.material.icons.filled.Menu
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,8 +89,13 @@ fun AnimatedMainScreen(
     onAnalyticsClick: () -> Unit = {}, // Новое
     modifier: Modifier = Modifier
 ) {
+    val systemUiController = rememberSystemUiController()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+
+    LaunchedEffect(Unit) {
+        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
+    }
 
     // Периодическая проверка сброса данных
     LaunchedEffect(Unit) {
@@ -145,7 +140,7 @@ fun AnimatedMainScreen(
         modifier = Modifier
             .fillMaxSize(),
         containerColor = Color.White,
-        contentWindowInsets = WindowInsets(0), // Не учитываем системные бары, так как они прозрачные
+        contentWindowInsets = WindowInsets.systemBars,
         bottomBar = {
             AnimatedBottomBar(
                 viewModel = viewModel,
@@ -168,7 +163,6 @@ fun AnimatedMainScreen(
             ) {
                 // Обновленный заголовок с кликом на календарь
                 AnimatedHeader(
-                    modifier = Modifier.statusBarsPadding(),
                     viewModel = viewModel,
                     onMenuClick = { isDrawerOpen = true },
                     onDateClick = onCalendarClick,
@@ -276,8 +270,7 @@ private fun AnimatedHeader(
     onDateClick: () -> Unit,
     onNavigateToSubscription: () -> Unit,
     isStatusBarVisible: Boolean,
-    onToggleStatusBar: () -> Unit,
-    modifier: Modifier = Modifier
+    onToggleStatusBar: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -296,7 +289,7 @@ private fun AnimatedHeader(
     }
 
     Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 12.dp),

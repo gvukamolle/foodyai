@@ -33,6 +33,7 @@ import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.data.DailyIntake
 import com.example.calorietracker.data.DailyNutritionSummary
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -53,6 +54,7 @@ fun CalendarScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val systemUiController = rememberSystemUiController()
 
     val calendarData by viewModel.calendarData.collectAsState()
     val coroutineScope = rememberCoroutineScope()
@@ -83,39 +85,42 @@ fun CalendarScreen(
 
     val repository = remember { DataRepository(context) }
 
+    DisposableEffect(systemUiController) {
+        systemUiController.setSystemBarsColor(
+            color = Color.White,
+            darkIcons = true
+        )
+        onDispose { }
+    }
 
-
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White,
-        contentWindowInsets = WindowInsets(0), // Отключаем автоматические отступы
-        topBar = {
-            CalendarTopBar(
-                currentMonth = selectedMonth,
-                onBack = {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .navigationBarsPadding()
+    ) {
+        CalendarTopBar(
+            currentMonth = selectedMonth,
+            onBack = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onBack()
+            },
+            onPreviousMonth = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                selectedMonth = selectedMonth.minusMonths(1)
+                selectedDay = null
+            },
+            onNextMonth = {
+                if (selectedMonth < YearMonth.now()) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onBack()
-                },
-                onPreviousMonth = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    selectedMonth = selectedMonth.minusMonths(1)
+                    selectedMonth = selectedMonth.plusMonths(1)
                     selectedDay = null
-                },
-                onNextMonth = {
-                    if (selectedMonth < YearMonth.now()) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        selectedMonth = selectedMonth.plusMonths(1)
-                        selectedDay = null
-                    }
                 }
-            )
-        }
-    ) { paddingValues ->
+            }
+        )
 
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+            modifier = Modifier.weight(1f)
         ) {
             Box(
                 modifier = Modifier
@@ -157,7 +162,7 @@ fun CalendarScreen(
                             offsetX += offsetChange.x
                             offsetY += offsetChange.y
 
-                            val maxOffset = 200f * (scale - 1f)
+                            val maxOffset = 200f * abs(scale - 1f)
                             offsetX = offsetX.coerceIn(-maxOffset, maxOffset)
                             offsetY = offsetY.coerceIn(-maxOffset, maxOffset)
                         }
@@ -200,10 +205,219 @@ fun CalendarScreen(
             }
         )
     }
+}
+
+@Composable
+fun DayCell(
+    date: LocalDate,
+    isSelected: Boolean,
+    isToday: Boolean,
+    isFuture: Boolean,
+    isOtherMonth: Boolean = false,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = when {
+        isSelected -> MaterialTheme.colorScheme.primary
+        isToday && !isOtherMonth -> Color.Gray.copy(alpha = 0.2f)
+        else -> Color.Transparent
+    }
+
+    val textColor = when {
+        isOtherMonth -> Color.Gray.copy(alpha = 0.3f) // Тускло-серый для дат из других месяцев
+        isSelected -> Color.White
+        isToday -> Color.Black
+        isFuture -> Color.DarkGray.copy(alpha = 0.5f)
+        else -> Color.DarkGray
+    }
+
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isSelected && !isOtherMonth) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "cellScale"
+    )
+
+    // Анимация для выбранного дня
+    val numberOffset by animateDpAsState(
+        targetValue = if (isSelected && !isOtherMonth) (-8).dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "numberOffset"
+    )
+
+    val dotAlpha by animateFloatAsState(
+        targetValue = if (isSelected && !isOtherMonth) 1f else 0f,
+        animationSpec = tween(300),
+        label = "dotAlpha"
+    )
+
+    Box(
+        modifier = modifier
+            .padding(horizontal = 4.dp, vertical = 4.dp) // Уменьшили padding
+            .fillMaxHeight()
+            .graphicsLayer {
+                scaleX = animatedScale
+                scaleY = animatedScale
+            }
+            .clip(RoundedCornerShape(24.dp)) // Уменьшили радиус
+            .background(backgroundColor)
+            .clickable(enabled = !isFuture && !isOtherMonth) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxHeight()
+        ) {
+            // Число с анимацией смещения
+            Text(
+                text = date.dayOfMonth.toString(),
+                fontSize = 18.sp, // Уменьшили размер
+                fontWeight = if ((isSelected || isToday) && !isOtherMonth) FontWeight.Bold else FontWeight.Medium,
+                color = textColor,
+                modifier = Modifier.offset(y = numberOffset)
+            )
+
+            // Точка, появляющаяся при выборе
+            if (isSelected && !isOtherMonth) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .graphicsLayer { alpha = dotAlpha }
+                        .background(
+                            color = Color.White,
+                            shape = RoundedCornerShape(50)
+                        )
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CalendarGrid(
+    selectedMonth: YearMonth,
+    selectedDay: LocalDate?,
+    onDayClick: (LocalDate) -> Unit
+) {
+    val daysOfWeek = listOf("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")
+    val firstDayOfMonth = selectedMonth.atDay(1)
+    val lastDayOfMonth = selectedMonth.atEndOfMonth()
+    val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value
+    val daysInMonth = selectedMonth.lengthOfMonth()
+    val today = LocalDate.now()
+
+    // Вычисляем даты для заполнения из предыдущего месяца
+    val previousMonth = selectedMonth.minusMonths(1)
+    val daysInPreviousMonth = previousMonth.lengthOfMonth()
+    val daysFromPreviousMonth = firstDayOfWeek - 1
+
+    // Фиксируем количество строк в календаре
+    val CALENDAR_ROWS = 6
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            daysOfWeek.forEach { day ->
+                Text(
+                    text = day,
+                    fontSize = 12.sp, // Уменьшили размер
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp)) // Уменьшили отступ
+
+        // Всегда отображаем 6 строк
+        for (week in 0 until CALENDAR_ROWS) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                for (dayOfWeek in 0..6) {
+                    val cellIndex = week * 7 + dayOfWeek
+
+                    when {
+                        // Дни из предыдущего месяца
+                        cellIndex < daysFromPreviousMonth -> {
+                            val dayNumber =
+                                daysInPreviousMonth - (daysFromPreviousMonth - cellIndex - 1)
+                            val date = previousMonth.atDay(dayNumber)
+
+                            DayCell(
+                                date = date,
+                                isSelected = false,
+                                isToday = false,
+                                isFuture = false,
+                                isOtherMonth = true,
+                                onClick = { /* Некликабельно */ },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        // Дни текущего месяца
+                        cellIndex - daysFromPreviousMonth < daysInMonth -> {
+                            val dayNumber = cellIndex - daysFromPreviousMonth + 1
+                            val date = selectedMonth.atDay(dayNumber)
+
+                            DayCell(
+                                date = date,
+                                isSelected = selectedDay == date,
+                                isToday = date == today,
+                                isFuture = date > today,
+                                isOtherMonth = false,
+                                onClick = { onDayClick(date) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        // Дни из следующего месяца
+                        else -> {
+                            val nextMonth = selectedMonth.plusMonths(1)
+                            val dayNumber = cellIndex - daysFromPreviousMonth - daysInMonth + 1
+                            val date = nextMonth.atDay(dayNumber)
+
+                            DayCell(
+                                date = date,
+                                isSelected = false,
+                                isToday = false,
+                                isFuture = false,
+                                isOtherMonth = true,
+                                onClick = { /* Некликабельно */ },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (week < CALENDAR_ROWS - 1) {
+                Spacer(modifier = Modifier.height(8.dp)) // Уменьшили отступ
+            }
+        }
+    }
+}
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun CalendarTopBar(
+    fun CalendarTopBar(
         currentMonth: YearMonth,
         onBack: () -> Unit,
         onPreviousMonth: () -> Unit,
@@ -213,266 +427,54 @@ fun CalendarScreen(
             .replaceFirstChar { it.uppercase() }
         val year = currentMonth.year
 
-        Surface(
-            modifier = Modifier.statusBarsPadding(),
-            color = Color.White
-        ) {
-            CenterAlignedTopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        IconButton(onClick = onPreviousMonth) {
-                            Icon(
-                                Icons.Default.KeyboardArrowLeft,
-                                contentDescription = "Предыдущий месяц"
-                            )
-                        }
-
-                        Text(
-                            text = "$month $year",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-
-                        IconButton(
-                            onClick = onNextMonth,
-                            enabled = currentMonth < YearMonth.now()
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowRight,
-                                contentDescription = "Следующий месяц",
-                                tint = if (currentMonth < YearMonth.now())
-                                    MaterialTheme.colorScheme.onSurface
-                                else
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Назад"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
-                ),
-                windowInsets = WindowInsets(0) // Отключаем встроенные отступы
-            )
-        }
-    }
-
-    @Composable
-    private fun CalendarGrid(
-        selectedMonth: YearMonth,
-        selectedDay: LocalDate?,
-        onDayClick: (LocalDate) -> Unit
-    ) {
-        val daysOfWeek = listOf("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")
-        val firstDayOfMonth = selectedMonth.atDay(1)
-        val lastDayOfMonth = selectedMonth.atEndOfMonth()
-        val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value
-        val daysInMonth = selectedMonth.lengthOfMonth()
-        val today = LocalDate.now()
-
-        // Вычисляем даты для заполнения из предыдущего месяца
-        val previousMonth = selectedMonth.minusMonths(1)
-        val daysInPreviousMonth = previousMonth.lengthOfMonth()
-        val daysFromPreviousMonth = firstDayOfWeek - 1
-
-        // Фиксируем количество строк в календаре
-        val CALENDAR_ROWS = 6
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                daysOfWeek.forEach { day ->
-                    Text(
-                        text = day,
-                        fontSize = 12.sp, // Уменьшили размер
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp)) // Уменьшили отступ
-
-            // Всегда отображаем 6 строк
-            for (week in 0 until CALENDAR_ROWS) {
+        CenterAlignedTopAppBar(
+            title = {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    for (dayOfWeek in 0..6) {
-                        val cellIndex = week * 7 + dayOfWeek
+                    IconButton(onClick = onPreviousMonth) {
+                        Icon(
+                            Icons.Default.KeyboardArrowLeft,
+                            contentDescription = "Предыдущий месяц"
+                        )
 
-                        when {
-                            // Дни из предыдущего месяца
-                            cellIndex < daysFromPreviousMonth -> {
-                                val dayNumber =
-                                    daysInPreviousMonth - (daysFromPreviousMonth - cellIndex - 1)
-                                val date = previousMonth.atDay(dayNumber)
+                    }
 
-                                DayCell(
-                                    date = date,
-                                    isSelected = false,
-                                    isToday = false,
-                                    isFuture = false,
-                                    isOtherMonth = true,
-                                    onClick = { /* Некликабельно */ },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            // Дни текущего месяца
-                            cellIndex - daysFromPreviousMonth < daysInMonth -> {
-                                val dayNumber = cellIndex - daysFromPreviousMonth + 1
-                                val date = selectedMonth.atDay(dayNumber)
+                    Text(
+                        text = "$month $year",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
 
-                                DayCell(
-                                    date = date,
-                                    isSelected = selectedDay == date,
-                                    isToday = date == today,
-                                    isFuture = date > today,
-                                    isOtherMonth = false,
-                                    onClick = { onDayClick(date) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            // Дни из следующего месяца
-                            else -> {
-                                val nextMonth = selectedMonth.plusMonths(1)
-                                val dayNumber = cellIndex - daysFromPreviousMonth - daysInMonth + 1
-                                val date = nextMonth.atDay(dayNumber)
-
-                                DayCell(
-                                    date = date,
-                                    isSelected = false,
-                                    isToday = false,
-                                    isFuture = false,
-                                    isOtherMonth = true,
-                                    onClick = { /* Некликабельно */ },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
+                    IconButton(
+                        onClick = onNextMonth,
+                        enabled = currentMonth < YearMonth.now()
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = "Следующий месяц",
+                            tint = if (currentMonth < YearMonth.now())
+                                MaterialTheme.colorScheme.onSurface
+                            else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
                     }
                 }
-
-                if (week < CALENDAR_ROWS - 1) {
-                    Spacer(modifier = Modifier.height(8.dp)) // Уменьшили отступ
-                }
-            }
-        }
-    }
-
-    @Composable
-    private fun DayCell(
-        date: LocalDate,
-        isSelected: Boolean,
-        isToday: Boolean,
-        isFuture: Boolean,
-        isOtherMonth: Boolean = false,
-        onClick: () -> Unit,
-        modifier: Modifier = Modifier
-    ) {
-        val backgroundColor = when {
-            isSelected -> MaterialTheme.colorScheme.primary
-            isToday && !isOtherMonth -> Color.Gray.copy(alpha = 0.2f)
-            else -> Color.Transparent
-        }
-
-        val textColor = when {
-            isOtherMonth -> Color.Gray.copy(alpha = 0.3f) // Тускло-серый для дат из других месяцев
-            isSelected -> Color.White
-            isToday -> Color.Black
-            isFuture -> Color.DarkGray.copy(alpha = 0.5f)
-            else -> Color.DarkGray
-        }
-
-        val animatedScale by animateFloatAsState(
-            targetValue = if (isSelected && !isOtherMonth) 0.95f else 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
-            label = "cellScale"
-        )
-
-        // Анимация для выбранного дня
-        val numberOffset by animateDpAsState(
-            targetValue = if (isSelected && !isOtherMonth) (-8).dp else 0.dp,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
-            label = "numberOffset"
-        )
-
-        val dotAlpha by animateFloatAsState(
-            targetValue = if (isSelected && !isOtherMonth) 1f else 0f,
-            animationSpec = tween(300),
-            label = "dotAlpha"
-        )
-
-        Box(
-            modifier = modifier
-                .padding(horizontal = 4.dp, vertical = 4.dp) // Уменьшили padding
-                .fillMaxHeight()
-                .graphicsLayer {
-                    scaleX = animatedScale
-                    scaleY = animatedScale
-                }
-                .clip(RoundedCornerShape(24.dp)) // Уменьшили радиус
-                .background(backgroundColor)
-                .clickable(enabled = !isFuture && !isOtherMonth) { onClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxHeight()
-            ) {
-                // Число с анимацией смещения
-                Text(
-                    text = date.dayOfMonth.toString(),
-                    fontSize = 18.sp, // Уменьшили размер
-                    fontWeight = if ((isSelected || isToday) && !isOtherMonth) FontWeight.Bold else FontWeight.Medium,
-                    color = textColor,
-                    modifier = Modifier.offset(y = numberOffset)
-                )
-
-                // Точка, появляющаяся при выборе
-                if (isSelected && !isOtherMonth) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(4.dp)
-                            .graphicsLayer { alpha = dotAlpha }
-                            .background(
-                                color = Color.White,
-                                shape = RoundedCornerShape(50)
-                            )
+            },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Назад"
                     )
                 }
-            }
-        }
+            },
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                containerColor = Color.White
+            )
+        )
     }
-}
+
 
