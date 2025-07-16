@@ -35,6 +35,7 @@ import androidx.core.view.drawToBitmap
 import com.example.calorietracker.auth.UserData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.calorietracker.auth.SubscriptionPlan
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -211,7 +212,7 @@ fun NavigationDrawer(
                                 DrawerMenuItem(
                                     icon = Icons.Default.AutoAwesome,
                                     title = "Подписка",
-                                    subtitle = if (userData?.hasPremium == true) "Premium активна" else "Обновить план",
+                                    subtitle = if (userData?.subscriptionPlan == SubscriptionPlan.PRO) "PRO активен" else "Обновить план",
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         onSubscriptionClick()
@@ -264,7 +265,7 @@ private fun DrawerHeader(userData: UserData?) {
         
         // Имя пользователя
         Text(
-            text = userData?.name ?: "Пользователь",
+            text = userData?.displayName ?: "Пользователь",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black

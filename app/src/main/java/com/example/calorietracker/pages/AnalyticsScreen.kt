@@ -134,9 +134,9 @@ private fun TodayProgressCard(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
-                
-                val percentage = if (userProfile.targetCalories > 0) {
-                    ((todayData?.calories ?: 0f) / userProfile.targetCalories * 100).toInt()
+
+                val percentage = if (userProfile.dailyCalories > 0) {
+                    ((todayData?.calories ?: 0f) / userProfile.dailyCalories * 100).toInt()
                 } else 0
                 
                 Box(
@@ -179,16 +179,16 @@ private fun TodayProgressCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "из ${userProfile.targetCalories} ккал",
+                    "из ${userProfile.dailyCalories} ккал",
                     fontSize = 16.sp,
                     color = Color.Gray
                 )
             }
             
             LinearProgressIndicator(
-                progress = { 
-                    ((todayData?.calories ?: 0f) / userProfile.targetCalories)
-                        .coerceIn(0f, 1.5f) 
+                progress = {
+                    ((todayData?.calories ?: 0f) / userProfile.dailyCalories)
+                        .coerceIn(0f, 1.5f)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -379,8 +379,8 @@ private fun AchievementsCard(viewModel: CalorieTrackerViewModel) {
             // Пример достижений - можно расширить
             val totalDays = viewModel.getAllDaysData().size
             val daysWithinTarget = viewModel.getAllDaysData().count { dayData ->
-                val diff = (dayData.calories - viewModel.userProfile.targetCalories).absoluteValue
-                diff <= viewModel.userProfile.targetCalories * 0.1f // В пределах 10%
+                val diff = (dayData.calories - viewModel.userProfile.dailyCalories).absoluteValue
+                diff <= viewModel.userProfile.dailyCalories * 0.1f // В пределах 10%
             }
             
             AchievementItem(

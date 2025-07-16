@@ -149,7 +149,7 @@ fun AnimatedMainScreen(
         modifier = Modifier
             .fillMaxSize(),
         containerColor = Color.White,
-        contentWindowInsets = WindowInsets.systemBars, // <-- Добавьте это
+        contentWindowInsets = WindowInsets.systemBars,
         bottomBar = {
             AnimatedBottomBar(
                 viewModel = viewModel,
@@ -159,20 +159,8 @@ fun AnimatedMainScreen(
                 onGalleryClick = onGalleryClick,
                 onDescribeClick = onDescribeClick,
                 onManualClick = onManualClick
-            )  
-            }
-        
-        // Выдвижное меню
-        NavigationDrawer(
-            isOpen = isDrawerOpen,
-            onDismiss = { isDrawerOpen = false },
-            userData = viewModel.currentUser,
-            onProfileClick = onProfileClick,
-            onCalendarClick = onCalendarClick,
-            onAnalyticsClick = onAnalyticsClick,
-            onSubscriptionClick = onNavigateToSubscription,
-            onSettingsClick = onSettingsClick
-        )
+            )
+        }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -182,42 +170,42 @@ fun AnimatedMainScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-            // Обновленный заголовок с кликом на календарь
-            AnimatedHeader(
-                viewModel = viewModel,
-                onMenuClick = { isDrawerOpen = true },
-                onDateClick = onCalendarClick,
-                onNavigateToSubscription = onNavigateToSubscription,
-                isStatusBarVisible = isStatusBarVisible,
-                onToggleStatusBar = { isStatusBarVisible = !isStatusBarVisible }
+                // Обновленный заголовок с кликом на календарь
+                AnimatedHeader(
+                    viewModel = viewModel,
+                    onMenuClick = { isDrawerOpen = true },
+                    onDateClick = onCalendarClick,
+                    onNavigateToSubscription = onNavigateToSubscription,
+                    isStatusBarVisible = isStatusBarVisible,
+                    onToggleStatusBar = { isStatusBarVisible = !isStatusBarVisible }
                 )
 
-            // Прогресс-бары
-            AnimatedProgressBars(
-                viewModel = viewModel,
-                isVisible = isStatusBarVisible
-            )
+                // Прогресс-бары
+                AnimatedProgressBars(
+                    viewModel = viewModel,
+                    isVisible = isStatusBarVisible
+                )
 
-            // Разделитель с анимацией
-            AnimatedContentDivider()
+                // Разделитель с анимацией
+                AnimatedContentDivider()
 
-            // Карточка подтверждения еды
-            viewModel.pendingFood?.let { food ->
-                AnimatedPendingFoodCard(
-                    food = food,
-                    selectedMeal = viewModel.selectedMeal,
-                    onConfirm = { viewModel.confirmFood() },
-                    onCancel = { viewModel.pendingFood = null }
+                // Карточка подтверждения еды
+                viewModel.pendingFood?.let { food ->
+                    AnimatedPendingFoodCard(
+                        food = food,
+                        selectedMeal = viewModel.selectedMeal,
+                        onConfirm = { viewModel.confirmFood() },
+                        onCancel = { viewModel.pendingFood = null }
+                    )
+                }
+
+                // Анимированный чат
+                AnimatedChatContent(
+                    viewModel = viewModel,
+                    listState = listState,
+                    modifier = Modifier.weight(1f)
                 )
             }
-
-            // Анимированный чат
-            AnimatedChatContent(
-                viewModel = viewModel,
-                listState = listState,
-                modifier = Modifier.weight(1f)
-            )
-        }
 
 
             AnimatedVisibility(
@@ -269,7 +257,19 @@ fun AnimatedMainScreen(
             }
         }
     }
-    }
+
+// Выдвижное меню поверх контента
+NavigationDrawer(
+isOpen = isDrawerOpen,
+onDismiss = { isDrawerOpen = false },
+userData = viewModel.currentUser,
+onProfileClick = onProfileClick,
+onCalendarClick = onCalendarClick,
+onAnalyticsClick = onAnalyticsClick,
+onSubscriptionClick = onNavigateToSubscription,
+onSettingsClick = onSettingsClick
+)
+}
 
 
 @Composable
