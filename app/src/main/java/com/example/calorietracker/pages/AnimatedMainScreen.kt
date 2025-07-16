@@ -39,6 +39,7 @@ import com.example.calorietracker.MessageType
 import com.example.calorietracker.ui.animations.*
 import com.example.calorietracker.utils.DailyResetUtils
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.example.calorietracker.ui.utils.systemBarsPadding
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -98,13 +99,8 @@ fun AnimatedMainScreen(
     onAnalyticsClick: () -> Unit = {}, // Новое
     modifier: Modifier = Modifier
 ) {
-    val systemUiController = rememberSystemUiController()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-
-    LaunchedEffect(Unit) {
-        systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
-    }
 
     // Периодическая проверка сброса данных
     LaunchedEffect(Unit) {
@@ -149,7 +145,7 @@ fun AnimatedMainScreen(
         modifier = Modifier
             .fillMaxSize(),
         containerColor = Color.White,
-        contentWindowInsets = WindowInsets.systemBars,
+        contentWindowInsets = WindowInsets(0), // Не учитываем системные бары, так как они прозрачные
         bottomBar = {
             AnimatedBottomBar(
                 viewModel = viewModel,
@@ -172,6 +168,7 @@ fun AnimatedMainScreen(
             ) {
                 // Обновленный заголовок с кликом на календарь
                 AnimatedHeader(
+                    modifier = Modifier.statusBarsPadding(),
                     viewModel = viewModel,
                     onMenuClick = { isDrawerOpen = true },
                     onDateClick = onCalendarClick,
@@ -279,7 +276,8 @@ private fun AnimatedHeader(
     onDateClick: () -> Unit,
     onNavigateToSubscription: () -> Unit,
     isStatusBarVisible: Boolean,
-    onToggleStatusBar: () -> Unit
+    onToggleStatusBar: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -298,7 +296,7 @@ private fun AnimatedHeader(
     }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 12.dp),

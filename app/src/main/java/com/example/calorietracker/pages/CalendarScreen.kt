@@ -33,7 +33,7 @@ import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.data.DailyIntake
 import com.example.calorietracker.data.DailyNutritionSummary
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -53,7 +53,7 @@ fun CalendarScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val systemUiController = rememberSystemUiController()
+
     val calendarData by viewModel.calendarData.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
@@ -83,42 +83,39 @@ fun CalendarScreen(
 
     val repository = remember { DataRepository(context) }
 
-    DisposableEffect(systemUiController) {
-        systemUiController.setSystemBarsColor(
-            color = Color.White,
-            darkIcons = true
-        )
-        onDispose { }
-    }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .navigationBarsPadding()
-    ) {
-        CalendarTopBar(
-            currentMonth = selectedMonth,
-            onBack = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onBack()
-            },
-            onPreviousMonth = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                selectedMonth = selectedMonth.minusMonths(1)
-                selectedDay = null
-            },
-            onNextMonth = {
-                if (selectedMonth < YearMonth.now()) {
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.White,
+        contentWindowInsets = WindowInsets(0), // Отключаем автоматические отступы
+        topBar = {
+            CalendarTopBar(
+                currentMonth = selectedMonth,
+                onBack = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    selectedMonth = selectedMonth.plusMonths(1)
+                    onBack()
+                },
+                onPreviousMonth = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    selectedMonth = selectedMonth.minusMonths(1)
                     selectedDay = null
+                },
+                onNextMonth = {
+                    if (selectedMonth < YearMonth.now()) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        selectedMonth = selectedMonth.plusMonths(1)
+                        selectedDay = null
+                    }
                 }
-            }
-        )
+            )
+        }
+    ) { paddingValues ->
 
         Box(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
             Box(
                 modifier = Modifier
@@ -186,23 +183,22 @@ fun CalendarScreen(
         }
     }
 
-        if (showDayHistory && selectedDay != null) {
-            DayHistoryDialog(
-                date = selectedDay!!,
-                dailyIntake = dayHistoryData ?: DailyIntake(),
-                nutritionSummary = calendarData[selectedDay],
-                onDismiss = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    showDayHistory = false
-                },
-                onMealUpdate = { idx, meal ->
-                    viewModel.updateMealInHistory(selectedDay!!.toString(), idx, meal)
-                },
-                onMealDelete = { idx ->
-                    viewModel.deleteMealFromHistory(selectedDay!!.toString(), idx)
-                }
-            )
-        }
+    if (showDayHistory && selectedDay != null) {
+        DayHistoryDialog(
+            date = selectedDay!!,
+            dailyIntake = dayHistoryData ?: DailyIntake(),
+            nutritionSummary = calendarData[selectedDay],
+            onDismiss = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                showDayHistory = false
+            },
+            onMealUpdate = { idx, meal ->
+                viewModel.updateMealInHistory(selectedDay!!.toString(), idx, meal)
+            },
+            onMealDelete = { idx ->
+                viewModel.deleteMealFromHistory(selectedDay!!.toString(), idx)
+            }
+        )
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -217,53 +213,59 @@ fun CalendarScreen(
             .replaceFirstChar { it.uppercase() }
         val year = currentMonth.year
 
-        CenterAlignedTopAppBar(
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    IconButton(onClick = onPreviousMonth) {
-                        Icon(
-                            Icons.Default.KeyboardArrowLeft,
-                            contentDescription = "Предыдущий месяц"
-                        )
-                    }
-
-                    Text(
-                        text = "$month $year",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-
-                    IconButton(
-                        onClick = onNextMonth,
-                        enabled = currentMonth < YearMonth.now()
+        Surface(
+            modifier = Modifier.statusBarsPadding(),
+            color = Color.White
+        ) {
+            CenterAlignedTopAppBar(
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
+                        IconButton(onClick = onPreviousMonth) {
+                            Icon(
+                                Icons.Default.KeyboardArrowLeft,
+                                contentDescription = "Предыдущий месяц"
+                            )
+                        }
+
+                        Text(
+                            text = "$month $year",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+
+                        IconButton(
+                            onClick = onNextMonth,
+                            enabled = currentMonth < YearMonth.now()
+                        ) {
+                            Icon(
+                                Icons.Default.KeyboardArrowRight,
+                                contentDescription = "Следующий месяц",
+                                tint = if (currentMonth < YearMonth.now())
+                                    MaterialTheme.colorScheme.onSurface
+                                else
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                        }
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
                         Icon(
-                            Icons.Default.KeyboardArrowRight,
-                            contentDescription = "Следующий месяц",
-                            tint = if (currentMonth < YearMonth.now())
-                                MaterialTheme.colorScheme.onSurface
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Назад"
                         )
                     }
-                }
-            },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.Default.ArrowBack,
-                        contentDescription = "Назад"
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                containerColor = Color.White
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White
+                ),
+                windowInsets = WindowInsets(0) // Отключаем встроенные отступы
             )
-        )
+        }
     }
 
     @Composable
@@ -472,3 +474,5 @@ fun CalendarScreen(
             }
         }
     }
+}
+

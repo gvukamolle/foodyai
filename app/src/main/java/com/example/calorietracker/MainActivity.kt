@@ -40,6 +40,12 @@ import com.example.calorietracker.pages.subscription.SubscriptionPlansScreen
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import androidx.core.view.WindowCompat
+import android.os.Build
+import android.view.WindowManager
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.WindowInsetsControllerCompat
+import com.example.calorietracker.ui.utils.TransparentSystemBars
 
 
 // Убираем Screen.Auth, теперь это решается состоянием
@@ -91,6 +97,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         checkGooglePlayServices()
         CleanupWorker.schedule(this)
+        
+        // Настраиваем полностью прозрачные системные бары
+        setupTransparentSystemBars()
+        
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
@@ -101,8 +111,45 @@ class MainActivity : ComponentActivity() {
             }
 
             CalorieTrackerTheme {
-                CalorieTrackerApp(authManager, viewModel, this@MainActivity)
+                // Применяем прозрачные системные бары ко всему приложению
+                TransparentSystemBars(darkIcons = false) {
+                    CalorieTrackerApp(authManager, viewModel, this@MainActivity)
+                }
             }
+        }
+    }
+    
+    private fun setupTransparentSystemBars() {
+        // Устанавливаем полностью прозрачные системные бары
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+
+            window.setDecorFitsSystemWindows(false)
+            window.statusBarColor = Color.Transparent.toArgb()
+            window.navigationBarColor = Color.Transparent.toArgb()
+            
+            // Отключаем автоматический контраст
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Android 8+
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = window.decorView.systemUiVisibility or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            
+            window.statusBarColor = Color.Transparent.toArgb()
+            window.navigationBarColor = Color.Transparent.toArgb()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            // Android 5+
+            window.statusBarColor = Color.Transparent.toArgb()
+            window.navigationBarColor = Color.Transparent.toArgb()
+        }
+        
+        // Для Android 10+ убираем полупрозрачность
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
         }
     }
 
