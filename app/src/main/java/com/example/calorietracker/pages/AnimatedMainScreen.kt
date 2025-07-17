@@ -639,7 +639,7 @@ private fun AnimatedBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .heightIn(min = 56.dp)
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -813,81 +813,6 @@ private fun AnimatedSendButton(onClick: () -> Unit) {
                 .background(Color.Black, CircleShape)
                 .padding(8.dp)
         )
-    }
-}
-
-// Компактный индикатор калорий
-@Composable
-private fun CompactCaloriesIndicator(
-    current: Int,
-    target: Int,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    val progress = if (target > 0) current.toFloat() / target else 0f
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-        label = "calories_indicator"
-    )
-
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF8F8F8)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Левая часть - текущие калории
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = current.toString(),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = color
-                )
-                Text(
-                    text = "/ $target ккал",
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 2.dp)
-                )
-            }
-
-            // Правая часть - процент
-            Text(
-                text = "${(animatedProgress * 100).toInt()}%",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (progress > 1f) Color(0xFFE53935) else color
-            )
-        }
-
-        // Тонкий прогресс-бар снизу
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(4.dp)
-                .background(Color(0xFFE5E7EB).copy(alpha = 0.3f))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
-                    .fillMaxHeight()
-                    .background(color)
-            )
-        }
     }
 }
 

@@ -53,6 +53,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import java.time.LocalDate
 
 // Цвета для макронутриентов
 object MacroColors {
@@ -76,7 +78,7 @@ fun EnhancedStatisticsCard(
     val view = LocalView.current
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
-    
+
     var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isVisible by remember { mutableStateOf(false) }
 
@@ -101,63 +103,71 @@ fun EnhancedStatisticsCard(
         properties = PopupProperties(focusable = true)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { 
-                            animatedDismiss()
-                        }
-                    )
-                }
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Размытый фон
+            // Кликабельный фон для закрытия
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        animatedDismiss()
+                    }
+            )
+
+            // Размытый фон с затемнением
             AnimatedVisibility(
                 visible = isVisible && backgroundBitmap != null,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(100))
             ) {
                 backgroundBitmap?.let { bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .blur(
-                                radiusX = animateDpAsState(
-                                    if (isVisible) 20.dp else 0.dp, 
-                                    tween(200), 
-                                    "blur"
-                                ).value,
-                                radiusY = animateDpAsState(
-                                    if (isVisible) 20.dp else 0.dp, 
-                                    tween(200), 
-                                    "blur"
-                                ).value
-                            ),
-                        contentScale = ContentScale.Crop
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.White.copy(alpha = 0.7f))
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(
+                                    radiusX = animateDpAsState(
+                                        targetValue = if (isVisible) 20.dp else 0.dp,
+                                        animationSpec = tween(200),
+                                        label = "blur_x"
+                                    ).value,
+                                    radiusY = animateDpAsState(
+                                        targetValue = if (isVisible) 20.dp else 0.dp,
+                                        animationSpec = tween(200),
+                                        label = "blur_y"
+                                    ).value
+                                ),
+                            contentScale = ContentScale.Crop
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.White.copy(alpha = 0.7f))
+                        )
+                    }
                 }
             }
 
             // Карточка статистики с позиционированием под кнопкой
             AnimatedVisibility(
                 visible = isVisible,
-                enter = fadeIn(animationSpec = tween(150)) + scaleIn(
-                    initialScale = 0.9f,
-                    transformOrigin = TransformOrigin(0.5f, 0f),
-                    animationSpec = tween(150)
-                ),
-                exit = fadeOut(animationSpec = tween(100)) + scaleOut(
-                    targetScale = 0.9f,
-                    transformOrigin = TransformOrigin(0.5f, 0f),
-                    animationSpec = tween(100)
-                ),
+                enter = fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing)) +
+                        scaleIn(
+                            initialScale = 0.9f,
+                            transformOrigin = TransformOrigin(0.5f, 0f),
+                            animationSpec = tween(200, easing = FastOutSlowInEasing)
+                        ),
+                exit = fadeOut(animationSpec = tween(150)) +
+                        scaleOut(
+                            targetScale = 0.9f,
+                            transformOrigin = TransformOrigin(0.5f, 0f),
+                            animationSpec = tween(150)
+                        ),
                 modifier = Modifier.then(
                     if (buttonPosition != null) {
                         Modifier.offset {
@@ -171,136 +181,75 @@ fun EnhancedStatisticsCard(
                     }
                 )
             ) {
-                Card(
-                    modifier = Modifier
-                        .width(360.dp)
-                        .pointerInput(Unit) {
-                            detectTapGestures { /* Блокируем клики внутри карточки */ }
-                        }
-                        .fancyShadow(
-                            borderRadius = 24.dp, 
-                            shadowRadius = 12.dp, 
-                            alpha = 0.35f, 
-                            color = Color.Black
-                        ),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Column(
+                // ВАЖНО: Box с padding для тени
+                Box(modifier = Modifier.padding(16.dp)) {
+                    Card(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp), // Уменьшен отступ для компактности
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Заголовок с кнопкой закрытия
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Статистика дня",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
+                            .width(360.dp)
+                            .pointerInput(Unit) {
+                                detectTapGestures { /* Блокируем клики внутри карточки */ }
+                            }
+                            .fancyShadow(
+                                borderRadius = 24.dp,
+                                shadowRadius = 12.dp,
+                                alpha = 0.35f,
                                 color = Color.Black
-                            )
-                            
-                            IconButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    animatedDismiss()
-                                },
-                                modifier = Modifier.size(32.dp)
+                            ),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(24.dp)) {
+                            // Заголовок с кнопкой закрытия
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Закрыть",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                Column {
+                                    Text(
+                                        text = "Статистика за сегодня",
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF212121)
+                                    )
+                                    Text(
+                                        text = "Подробная информация",
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF757575)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        animatedDismiss()
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Закрыть",
+                                        tint = Color(0xFF757575)
+                                    )
+                                }
                             }
-                        }
-                        
-                        // Дата с навигацией
-                        Spacer(Modifier.height(8.dp))
-                        DateNavigator(
-                            currentDate = viewModel.currentDate,
-                            onDateChange = { newDate ->
-                                viewModel.loadDataForDate(newDate)
-                            }
-                        )
 
-                        Spacer(Modifier.height(20.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
 
-                        // Улучшенный блок основной статистики
-                        EnhancedCaloriesSection(
-                            current = viewModel.dailyIntake.calories,
-                            target = viewModel.userProfile.dailyCalories,
-                            color = viewModel.getProgressColor(
-                                viewModel.dailyIntake.calories,
-                                viewModel.userProfile.dailyCalories
+                            // Основной контент статистики
+                            StatisticsContent(viewModel = viewModel)
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Переключатель дней
+                            DaySwitcher(
+                                onPreviousDay = { /* TODO */ },
+                                onNextDay = { /* TODO */ }
                             )
-                        )
 
-                        Spacer(Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        // Кольца макронутриентов
-                        MacroRings(
-                            proteins = MacroData(
-                                current = viewModel.dailyIntake.protein,
-                                target = viewModel.userProfile.dailyProteins.toFloat()
-                            ),
-                            fats = MacroData(
-                                current = viewModel.dailyIntake.fat,
-                                target = viewModel.userProfile.dailyFats.toFloat()
-                            ),
-                            carbs = MacroData(
-                                current = viewModel.dailyIntake.carbs,
-                                target = viewModel.userProfile.dailyCarbs.toFloat()
-                            )
-                        )
-
-                        Spacer(Modifier.height(20.dp))
-
-                        // Легенда макронутриентов
-                        MacroLegend(
-                            proteins = viewModel.dailyIntake.protein,
-                            proteinsTarget = viewModel.userProfile.dailyProteins,
-                            fats = viewModel.dailyIntake.fat,
-                            fatsTarget = viewModel.userProfile.dailyFats,
-                            carbs = viewModel.dailyIntake.carbs,
-                            carbsTarget = viewModel.userProfile.dailyCarbs
-                        )
-
-                        Spacer(Modifier.height(20.dp))
-
-                        // Кнопка "Анализ дня"
-                        Button(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                // TODO: Реализовать функцию анализа дня
-                                animatedDismiss()
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Black
-                            )
-                        ) {
-                            Icon(
-                                Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "Анализ дня",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                            // AI подсказка
+                            AIInsightCard()
                         }
                     }
                 }
@@ -309,16 +258,36 @@ fun EnhancedStatisticsCard(
     }
 }
 
-// Улучшенная секция калорий
 @Composable
-private fun EnhancedCaloriesSection(
+private fun StatisticsContent(viewModel: CalorieTrackerViewModel) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Секция калорий
+        CaloriesSection(
+            current = viewModel.dailyCalories,
+            target = viewModel.userProfile.dailyCalories,
+            color = MacroColors.Calories
+        )
+
+        // Макронутриенты
+        MacronutrientsSection(
+            proteins = MacroData(viewModel.dailyProtein, viewModel.userProfile.dailyProteins.toFloat()),
+            fats = MacroData(viewModel.dailyFat, viewModel.userProfile.dailyFats.toFloat()),
+            carbs = MacroData(viewModel.dailyCarbs, viewModel.userProfile.dailyCarbs.toFloat())
+        )
+    }
+}
+
+@Composable
+private fun CaloriesSection(
     current: Int,
     target: Int,
     color: Color
 ) {
     val progress = if (target > 0) current.toFloat() / target else 0f
     val animatedProgress by animateFloatAsState(
-        targetValue = progress,
+        targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
         label = "calories_progress"
     )
@@ -328,360 +297,275 @@ private fun EnhancedCaloriesSection(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFFF8F9FA)
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Компактное отображение калорий
+            Text(
+                text = "Калории",
+                fontSize = 14.sp,
+                color = Color(0xFF757575)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.Center
+                verticalAlignment = Alignment.Bottom
             ) {
                 Text(
-                    text = current.toString(),
-                    fontSize = 52.sp,
+                    text = "$current",
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = color
                 )
-                Spacer(Modifier.width(8.dp))
-                Column(
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Text(
-                        text = "ккал",
-                        fontSize = 18.sp,
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = "из $target",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                }
+                Text(
+                    text = " / $target",
+                    fontSize = 18.sp,
+                    color = Color(0xFF757575),
+                    modifier = Modifier.padding(bottom = 2.dp)
+                )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Улучшенный прогресс-бар
+            // Прогресс-бар
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFE5E7EB))
+                    .background(Color(0xFFE0E0E0))
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                        .fillMaxWidth(animatedProgress)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(4.dp))
                         .background(color)
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Процент и статус
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${(animatedProgress * 100).toInt()}%",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (progress > 1f) Color(0xFFFF736E) else color
-                )
-                
-                val statusText = when {
-                    progress < 0.5f -> "Продолжайте!"
-                    progress < 0.8f -> "Отлично идете!"
-                    progress < 1f -> "Почти у цели!"
-                    progress == 1f -> "Цель достигнута!"
-                    else -> "Превышение нормы"
-                }
-                
-                Text(
-                    text = statusText,
-                    fontSize = 14.sp,
-                    color = if (progress > 1f) Color(0xFFFF736E) else Color.Gray
-                )
-            }
+            Text(
+                text = if (current < target)
+                    "Осталось ${target - current} ккал"
+                else
+                    "Превышено на ${current - target} ккал",
+                fontSize = 13.sp,
+                color = if (current <= target) Color(0xFF757575) else Color(0xFFE91E63)
+            )
         }
     }
 }
 
-// Кольца макронутриентов в стиле Apple Watch
 @Composable
-private fun MacroRings(
+private fun MacronutrientsSection(
     proteins: MacroData,
     fats: MacroData,
     carbs: MacroData
 ) {
-    val proteinProgress by animateFloatAsState(
-        targetValue = (proteins.current / proteins.target).coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 1000, delayMillis = 100),
-        label = "protein_ring"
-    )
-    
-    val fatProgress by animateFloatAsState(
-        targetValue = (fats.current / fats.target).coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 1000, delayMillis = 200),
-        label = "fat_ring"
-    )
-    
-    val carbProgress by animateFloatAsState(
-        targetValue = (carbs.current / carbs.target).coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 1000, delayMillis = 300),
-        label = "carb_ring"
-    )
-
-    Box(
-        modifier = Modifier.size(200.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            // Внешнее кольцо - Углеводы
-            drawRing(
-                color = MacroColors.Carbs,
-                progress = carbProgress,
-                strokeWidth = 18.dp,
-                radius = 85.dp
-            )
-            
-            // Среднее кольцо - Жиры
-            drawRing(
-                color = MacroColors.Fats,
-                progress = fatProgress,
-                strokeWidth = 18.dp,
-                radius = 60.dp
-            )
-            
-            // Внутреннее кольцо - Белки
-            drawRing(
-                color = MacroColors.Proteins,
-                progress = proteinProgress,
-                strokeWidth = 18.dp,
-                radius = 35.dp
-            )
-        }
-        
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Общий процент выполнения
-            val totalProgress = (proteinProgress + fatProgress + carbProgress) / 3
-            Text(
-                text = "${(totalProgress * 100).toInt()}%",
-                fontSize = 13.sp,
-                color = Color.Gray
-            )
-        }
-    }
-}
-
-// Функция отрисовки кольца
-private fun DrawScope.drawRing(
-    color: Color,
-    progress: Float,
-    strokeWidth: androidx.compose.ui.unit.Dp,
-    radius: androidx.compose.ui.unit.Dp
-) {
-    val strokePx = strokeWidth.toPx()
-    val radiusPx = radius.toPx()
-    val center = Offset(size.width / 2, size.height / 2)
-    
-    // Фоновое кольцо
-    drawCircle(
-        color = color.copy(alpha = 0.2f),
-        radius = radiusPx,
-        center = center,
-        style = Stroke(strokePx)
-    )
-    
-    // Прогресс
-    drawArc(
-        color = color,
-        startAngle = -90f,
-        sweepAngle = 360f * progress,
-        useCenter = false,
-        topLeft = Offset(center.x - radiusPx, center.y - radiusPx),
-        size = Size(radiusPx * 2, radiusPx * 2),
-        style = Stroke(strokePx, cap = StrokeCap.Round)
-    )
-}
-
-// Легенда макронутриентов
-@Composable
-private fun MacroLegend(
-    proteins: Float,
-    proteinsTarget: Int,
-    fats: Float,
-    fatsTarget: Int,
-    carbs: Float,
-    carbsTarget: Int
-) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        MacroLegendItem(
+        MacroCard(
+            title = "Белки",
+            current = proteins.current,
+            target = proteins.target,
             color = MacroColors.Proteins,
-            label = "Белки",
-            current = proteins,
-            target = proteinsTarget
+            modifier = Modifier.weight(1f)
         )
-        
-        MacroLegendItem(
+
+        MacroCard(
+            title = "Жиры",
+            current = fats.current,
+            target = fats.target,
             color = MacroColors.Fats,
-            label = "Жиры",
-            current = fats,
-            target = fatsTarget
+            modifier = Modifier.weight(1f)
         )
-        
-        MacroLegendItem(
+
+        MacroCard(
+            title = "Углеводы",
+            current = carbs.current,
+            target = carbs.target,
             color = MacroColors.Carbs,
-            label = "Углеводы",
-            current = carbs,
-            target = carbsTarget
+            modifier = Modifier.weight(1f)
         )
     }
 }
 
 @Composable
-private fun MacroLegendItem(
-    color: Color,
-    label: String,
+private fun MacroCard(
+    title: String,
     current: Float,
-    target: Int
+    target: Float,
+    color: Color,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+    val progress = if (target > 0) current / target else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "${title}_progress"
+    )
+
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF8F9FA)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        // Цветной индикатор
-        Box(
+        Column(
             modifier = Modifier
-                .size(12.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(color)
-        )
-        
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = Color.Gray
-        )
-        
-        Text(
-            text = "${NutritionFormatter.formatMacroInt(current)}/$target г",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.Black,
-            textAlign = TextAlign.Center
-        )
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                color = Color(0xFF757575)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Круговой прогресс
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val strokeWidth = 6.dp.toPx()
+                    val startAngle = -90f
+                    val sweepAngle = 360f * animatedProgress
+
+                    // Фоновый круг
+                    drawArc(
+                        color = Color(0xFFE0E0E0),
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        style = Stroke(strokeWidth, cap = StrokeCap.Round)
+                    )
+
+                    // Прогресс
+                    drawArc(
+                        color = color,
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = false,
+                        style = Stroke(strokeWidth, cap = StrokeCap.Round)
+                    )
+                }
+
+                Text(
+                    text = "${current.toInt()}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "из ${target.toInt()}г",
+                fontSize = 11.sp,
+                color = Color(0xFF757575)
+            )
+        }
     }
 }
 
-// Навигатор дат
 @Composable
-private fun DateNavigator(
-    currentDate: java.time.LocalDate,
-    onDateChange: (java.time.LocalDate) -> Unit
+private fun DaySwitcher(
+    onPreviousDay: () -> Unit,
+    onNextDay: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-    val isToday = currentDate == java.time.LocalDate.now()
-    
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Кнопка назад
         IconButton(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onDateChange(currentDate.minusDays(1))
+                onPreviousDay()
             },
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
                 Icons.Default.KeyboardArrowLeft,
                 contentDescription = "Предыдущий день",
-                tint = Color.Black
+                tint = Color(0xFF757575)
             )
         }
-        
-        Spacer(Modifier.width(16.dp))
-        
-        // Текущая дата
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            val dayOfWeek = when(currentDate.dayOfWeek.value) {
-                1 -> "Понедельник"
-                2 -> "Вторник"
-                3 -> "Среда"
-                4 -> "Четверг"
-                5 -> "Пятница"
-                6 -> "Суббота"
-                7 -> "Воскресенье"
-                else -> ""
-            }
-            
-            Text(
-                text = if (isToday) "Сегодня" else dayOfWeek,
-                fontSize = 14.sp,
-                color = Color.Gray
-            )
-            
-            val month = when(currentDate.monthValue) {
-                1 -> "января"
-                2 -> "февраля"
-                3 -> "марта"
-                4 -> "апреля"
-                5 -> "мая"
-                6 -> "июня"
-                7 -> "июля"
-                8 -> "августа"
-                9 -> "сентября"
-                10 -> "октября"
-                11 -> "ноября"
-                12 -> "декабря"
-                else -> ""
-            }
-            
-            Text(
-                text = "${currentDate.dayOfMonth} $month",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.Black
-            )
-        }
-        
-        Spacer(Modifier.width(16.dp))
-        
-        // Кнопка вперед (неактивна, если сегодня)
+
+        Text(
+            text = "Сегодня",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF212121),
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
         IconButton(
             onClick = {
-                if (!isToday) {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onDateChange(currentDate.plusDays(1))
-                }
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onNextDay()
             },
-            enabled = !isToday,
+            enabled = false, // Нельзя перейти в будущее
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
                 Icons.Default.KeyboardArrowRight,
                 contentDescription = "Следующий день",
-                tint = if (isToday) Color.Gray.copy(alpha = 0.5f) else Color.Black
+                tint = Color(0xFFBDBDBD)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AIInsightCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFFFF8E1) // Светло-желтый фон
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = Color(0xFFFF9800),
+                modifier = Modifier.size(20.dp)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = "Отличный баланс макронутриентов!",
+                fontSize = 13.sp,
+                color = Color(0xFF795548),
+                modifier = Modifier.weight(1f)
             )
         }
     }
