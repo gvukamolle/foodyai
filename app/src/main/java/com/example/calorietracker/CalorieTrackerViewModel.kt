@@ -151,6 +151,7 @@ class CalorieTrackerViewModel(
     var displayDate by mutableStateOf(DailyResetUtils.getFormattedDisplayDate())
     var showAILimitDialog by mutableStateOf(false)
     var showSubscriptionOffer by mutableStateOf(false)
+    var currentDate by mutableStateOf(java.time.LocalDate.now())
     var pendingAIAction by mutableStateOf<(() -> Unit)?>(null)
         internal set
     var currentFoodSource by mutableStateOf<String?>(null)
@@ -308,6 +309,18 @@ class CalorieTrackerViewModel(
     private fun refreshTodayIntake() {
         viewModelScope.launch {
             val intake = repository.getDailyIntake()
+            dailyCalories = intake.calories
+            dailyProtein = intake.protein
+            dailyCarbs = intake.carbs
+            dailyFat = intake.fat
+            meals = intake.meals
+        }
+    }
+
+    fun loadDataForDate(date: java.time.LocalDate) {
+        currentDate = date
+        viewModelScope.launch {
+            val intake = repository.getDailyIntake(date.toString())
             dailyCalories = intake.calories
             dailyProtein = intake.protein
             dailyCarbs = intake.carbs

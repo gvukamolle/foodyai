@@ -153,7 +153,7 @@ fun EnhancedStatisticsCard(
                             borderRadius = 24.dp, 
                             shadowRadius = 12.dp, 
                             alpha = 0.35f, 
-                            color = MacroColors.Calories
+                            color = Color.Black
                         ),
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -199,31 +199,9 @@ fun EnhancedStatisticsCard(
                         DateNavigator(
                             currentDate = viewModel.currentDate,
                             onDateChange = { newDate ->
-                                // Здесь можно добавить логику загрузки данных для другого дня
-                                // viewModel.loadDataForDate(newDate)
+                                viewModel.loadDataForDate(newDate)
                             }
                         )
-                        
-                        // Кнопка "Сегодня" если не на сегодняшней дате
-                        AnimatedVisibility(
-                            visible = viewModel.currentDate != java.time.LocalDate.now(),
-                            enter = fadeIn() + scaleIn(),
-                            exit = fadeOut() + scaleOut()
-                        ) {
-                            TextButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    // viewModel.loadDataForDate(java.time.LocalDate.now())
-                                },
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Перейти к сегодня",
-                                    color = MacroColors.Calories,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
 
                         Spacer(Modifier.height(24.dp))
 
@@ -345,7 +323,7 @@ private fun CaloriesProgressBar(
             text = "${(animatedProgress * 100).toInt()}%",
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (progress > 1f) Color(0xFFE53935) else color
+            color = if (progress > 1f) Color(0xFFFF736E) else color
         )
     }
 }
@@ -384,7 +362,7 @@ private fun MacroRings(
             drawRing(
                 color = MacroColors.Carbs,
                 progress = carbProgress,
-                strokeWidth = 24.dp,
+                strokeWidth = 20.dp,
                 radius = 95.dp
             )
             
@@ -392,7 +370,7 @@ private fun MacroRings(
             drawRing(
                 color = MacroColors.Fats,
                 progress = fatProgress,
-                strokeWidth = 24.dp,
+                strokeWidth = 20.dp,
                 radius = 65.dp
             )
             
@@ -400,22 +378,14 @@ private fun MacroRings(
             drawRing(
                 color = MacroColors.Proteins,
                 progress = proteinProgress,
-                strokeWidth = 24.dp,
+                strokeWidth = 20.dp,
                 radius = 35.dp
             )
         }
         
-        // Центральная метка БЖУ
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "БЖУ",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-            
             // Общий процент выполнения
             val totalProgress = (proteinProgress + fatProgress + carbProgress) / 3
             Text(
