@@ -148,27 +148,28 @@ fun EnhancedStatisticsCard(
             // Карточка статистики с позиционированием под кнопкой
             AnimatedVisibility(
                 visible = isVisible,
-                enter = slideInVertically(
-                    initialOffsetY = { -it / 4 },
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                ) + fadeIn(tween(300)),
-                exit = slideOutVertically(
-                    targetOffsetY = { -it / 4 },
-                    animationSpec = tween(200)
-                ) + fadeOut(tween(200)),
-                modifier = Modifier
-                    .then(
-                        if (buttonPosition != null) {
-                            Modifier.offset {
-                                IntOffset(
-                                    x = buttonPosition.x.toInt() - (360.dp.toPx() / 2).toInt() + (buttonPosition.width / 2),
-                                    y = (buttonPosition.y + buttonPosition.height + 8.dp.toPx()).toInt()
-                                )
-                            }
-                        } else {
-                            Modifier.align(Alignment.TopCenter).padding(top = 80.dp)
+                enter = fadeIn(animationSpec = tween(150)) + scaleIn(
+                    initialScale = 0.9f,
+                    transformOrigin = TransformOrigin(0.5f, 0f),
+                    animationSpec = tween(150)
+                ),
+                exit = fadeOut(animationSpec = tween(100)) + scaleOut(
+                    targetScale = 0.9f,
+                    transformOrigin = TransformOrigin(0.5f, 0f),
+                    animationSpec = tween(100)
+                ),
+                modifier = Modifier.then(
+                    if (buttonPosition != null) {
+                        Modifier.offset {
+                            IntOffset(
+                                x = buttonPosition.x.toInt() - (360.dp.toPx() / 2).toInt() + (buttonPosition.width / 2),
+                                y = (buttonPosition.y + buttonPosition.height + 8.dp.toPx()).toInt()
+                            )
                         }
-                    )
+                    } else {
+                        Modifier.align(Alignment.TopCenter).padding(top = 64.dp)
+                    }
+                )
             ) {
                 Card(
                     modifier = Modifier
