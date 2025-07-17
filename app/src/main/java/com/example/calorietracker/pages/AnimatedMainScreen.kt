@@ -47,8 +47,7 @@ import java.util.Locale
 import com.example.calorietracker.pages.subscription.AILimitDialog
 import com.example.calorietracker.auth.UserData
 import com.example.calorietracker.ui.components.AIUsageToolbarIndicator
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
@@ -85,8 +84,9 @@ fun AnimatedMainScreen(
     onSettingsClick: () -> Unit,
     onCalendarClick: () -> Unit,
     onNavigateToSubscription: () -> Unit,
-    onProfileClick: () -> Unit = {}, // Новое
-    onAnalyticsClick: () -> Unit = {}, // Новое
+    onProfileClick: () -> Unit = {},
+    onAnalyticsClick: () -> Unit = {},
+    onFeedbackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val systemUiController = rememberSystemUiController()
@@ -133,7 +133,6 @@ fun AnimatedMainScreen(
     )
 
     var menuExpanded by remember { mutableStateOf(false) }
-    var isStatusBarVisible by remember { mutableStateOf(false) }
     var isDrawerOpen by remember { mutableStateOf(false) } // Состояние для выдвижного меню
     var showStatisticsCard by remember { mutableStateOf(false) } // Состояние для карточки статистики
 
@@ -162,41 +161,27 @@ fun AnimatedMainScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Обновленный заголовок с кликом на календарь
+                // Заголовок с кнопкой статистики
                 AnimatedHeader(
                     viewModel = viewModel,
                     onMenuClick = { isDrawerOpen = true },
-                    onDateClick = onCalendarClick,
-                    onNavigateToSubscription = onNavigateToSubscription,
-                    isStatusBarVisible = isStatusBarVisible,
-                    onToggleStatusBar = { 
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    if (!isStatusBarVisible) {
-                        // При открытии показываем карточку
+                    onShowStatistics = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         showStatisticsCard = true
-                    } else {
-                        // При закрытии просто скрываем индикатор
-                        isStatusBarVisible = false
-                    }
-                }
+                    },
+                    onNavigateToSubscription = onNavigateToSubscription
                 )
 
-                // Компактный индикатор калорий вместо прогресс-баров
-                AnimatedVisibility(
-                    visible = isStatusBarVisible,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    CompactCaloriesIndicator(
-                        current = viewModel.dailyIntake.calories,
-                        target = viewModel.userProfile.dailyCalories,
-                        color = viewModel.getProgressColor(
-                            viewModel.dailyIntake.calories,
-                            viewModel.userProfile.dailyCalories
-                        ),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
+                ThinCaloriesBar(
+                    current = viewModel.dailyIntake.calories,
+                    target = viewModel.userProfile.dailyCalories,
+                    color = viewModel.getProgressColor(
+                        viewModel.dailyIntake.calories,
+                        viewModel.userProfile.dailyCalories
+                    ),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
 
                 // Разделитель с анимацией
                 AnimatedContentDivider()
@@ -274,24 +259,24 @@ fun AnimatedMainScreen(
     if (showStatisticsCard) {
         EnhancedStatisticsCard(
             viewModel = viewModel,
-            onDismiss = { 
+            onDismiss = {
                 showStatisticsCard = false
-                isStatusBarVisible = true // Показываем компактный индикатор после закрытия
             }
         )
     }
 
-// Выдвижное меню поверх контента
-NavigationDrawer(
-isOpen = isDrawerOpen,
-onDismiss = { isDrawerOpen = false },
-userData = viewModel.currentUser,
-onProfileClick = onProfileClick,
-onCalendarClick = onCalendarClick,
-onAnalyticsClick = onAnalyticsClick,
-onSubscriptionClick = onNavigateToSubscription,
-onSettingsClick = onSettingsClick
-)
+    // Выдвижное меню поверх контента
+    NavigationDrawer(
+        isOpen = isDrawerOpen,
+        onDismiss = { isDrawerOpen = false },
+        userData = viewModel.currentUser,
+        onProfileClick = onProfileClick,
+        onCalendarClick = onCalendarClick,
+        onAnalyticsClick = onAnalyticsClick,
+        onSubscriptionClick = onNavigateToSubscription,
+        onSettingsClick = onSettingsClick,
+        onFeedbackClick = onFeedbackClick
+    )
 }
 
 
@@ -299,10 +284,8 @@ onSettingsClick = onSettingsClick
 private fun AnimatedHeader(
     viewModel: CalorieTrackerViewModel,
     onMenuClick: () -> Unit,
-    onDateClick: () -> Unit,
-    onNavigateToSubscription: () -> Unit,
-    isStatusBarVisible: Boolean,
-    onToggleStatusBar: () -> Unit
+    onShowStatistics: () -> Unit,
+    onNavigateToSubscription: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -340,18 +323,18 @@ private fun AnimatedHeader(
                 tint = Color.Black
             )
         }
-        
-        // Центральная часть - Дата с двумя функциями
+
+        // Центральная часть - Дата со стрелкой
         Row(
             modifier = Modifier.align(Alignment.Center),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            // Кликабельная область для календаря
+            // Кликабельная область для экрана статистики
             Surface(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onDateClick()
+                    onShowStatistics()
                 },
                 shape = RoundedCornerShape(12.dp),
                 color = Color.Transparent
@@ -385,26 +368,15 @@ private fun AnimatedHeader(
                         fontWeight = FontWeight.SemiBold,
                         color = Color.Black
                     )
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    Icon(
+                        Icons.Default.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = Color.Black
+                    )
                 }
-            }
-            
-            Spacer(modifier = Modifier.width(4.dp))
-            
-            // Отдельная кнопка для статусбара
-            IconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleStatusBar()
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    if (isStatusBarVisible) Icons.Default.KeyboardArrowUp
-                    else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = Color.Black
-                )
             }
         }
         
@@ -918,6 +890,39 @@ private fun CompactCaloriesIndicator(
         }
     }
 }
+
+// Тонкая полоска прогресса калорий
+@Composable
+private fun ThinCaloriesBar(
+    current: Int,
+    target: Int,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    val progress = if (target > 0) current.toFloat() / target else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "thin_calories_bar"
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(Color(0xFFE5E7EB).copy(alpha = 0.3f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(3.dp))
+                .background(color)
+        )
+    }
+}
+
 
 @Composable
 fun AnimatedAiChip(

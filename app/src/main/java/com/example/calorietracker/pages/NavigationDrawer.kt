@@ -48,7 +48,8 @@ fun NavigationDrawer(
     onCalendarClick: () -> Unit,
     onAnalyticsClick: () -> Unit,
     onSubscriptionClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onFeedbackClick: () -> Unit
 ) {
     if (!isOpen) return
     
@@ -149,25 +150,23 @@ fun NavigationDrawer(
                     animationSpec = tween(200)
                 ) + fadeOut(tween(200))
             ) {
-                val drawerWidth = 280.dp
-                
                 Row(modifier = Modifier.fillMaxSize()) {
                     Card(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .width(drawerWidth)
-                            .padding(
-                                start = 16.dp,
-                                top = 24.dp,
-                                bottom = 24.dp
-                            )
+                            .fillMaxWidth(0.85f) // Занимает 85% ширины экрана
                             .fancyShadow(
-                                borderRadius = 24.dp,
+                                borderRadius = 0.dp,
                                 shadowRadius = 12.dp,
                                 alpha = 0.35f,
                                 color = Color.Black
                             ),
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(
+                            topEnd = 0.dp,
+                            bottomEnd = 0.dp,
+                            topStart = 0.dp,
+                            bottomStart = 0.dp
+                        ),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
@@ -188,6 +187,7 @@ fun NavigationDrawer(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .weight(1f)
                                     .padding(vertical = 8.dp)
                             ) {
                                 DrawerMenuItem(
@@ -232,6 +232,17 @@ fun NavigationDrawer(
                                 )
                                 
                                 DrawerMenuItem(
+                                    icon = Icons.Default.RateReview,
+                                    title = "Обратная связь",
+                                    subtitle = "Напишите нам",
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onFeedbackClick()
+                                        animatedDismiss()
+                                    }
+                                )
+                                
+                                DrawerMenuItem(
                                     icon = Icons.Default.Settings,
                                     title = "Настройки приложения",
                                     onClick = {
@@ -239,6 +250,25 @@ fun NavigationDrawer(
                                         onSettingsClick()
                                         animatedDismiss()
                                     }
+                                )
+                            }
+                            
+                            // Версия приложения внизу
+                            Divider(
+                                color = Color(0xFFE5E5E5),
+                                thickness = 1.dp
+                            )
+                            
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "Версия 1.0",
+                                    fontSize = 13.sp,
+                                    color = Color.Gray
                                 )
                             }
                         }

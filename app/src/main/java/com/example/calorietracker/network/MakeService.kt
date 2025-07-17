@@ -293,7 +293,8 @@ interface MakeService {
         @Part photo: MultipartBody.Part,
         @Part("userProfile") userProfile: RequestBody,
         @Part("userId") userId: RequestBody,
-        @Part("caption") caption: RequestBody
+        @Part("caption") caption: RequestBody,
+        @Part("messageType") messageType: RequestBody
     ): FoodAnalysisResponse
 
 

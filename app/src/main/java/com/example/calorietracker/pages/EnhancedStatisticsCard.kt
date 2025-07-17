@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,6 +48,11 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.Image
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 
 // Цвета для макронутриентов
 object MacroColors {
@@ -56,11 +62,15 @@ object MacroColors {
     val Calories = Color(0xFFE91E63) // Розовый
 }
 
+// Модель данных для кнопки вызова
+data class ButtonPosition(val x: Float, val y: Float, val width: Int, val height: Int)
+
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun EnhancedStatisticsCard(
     viewModel: CalorieTrackerViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    buttonPosition: ButtonPosition? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val view = LocalView.current
@@ -93,11 +103,13 @@ fun EnhancedStatisticsCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { animatedDismiss() },
-            contentAlignment = Alignment.Center
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { 
+                            animatedDismiss()
+                        }
+                    )
+                }
         ) {
             // Размытый фон
             AnimatedVisibility(
@@ -133,22 +145,37 @@ fun EnhancedStatisticsCard(
                 }
             }
 
-            // Карточка статистики
+            // Карточка статистики с позиционированием под кнопкой
             AnimatedVisibility(
                 visible = isVisible,
-                enter = fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing)) +
-                        scaleIn(
-                            initialScale = 0.9f, 
-                            transformOrigin = TransformOrigin.Center, 
-                            animationSpec = tween(200, easing = FastOutSlowInEasing)
-                        ),
-                exit = fadeOut(tween(150)) + 
-                      scaleOut(targetScale = 0.9f, transformOrigin = TransformOrigin.Center)
+                enter = slideInVertically(
+                    initialOffsetY = { -it / 4 },
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeIn(tween(300)),
+                exit = slideOutVertically(
+                    targetOffsetY = { -it / 4 },
+                    animationSpec = tween(200)
+                ) + fadeOut(tween(200)),
+                modifier = Modifier
+                    .then(
+                        if (buttonPosition != null) {
+                            Modifier.offset {
+                                IntOffset(
+                                    x = buttonPosition.x.toInt() - (360.dp.toPx() / 2).toInt() + (buttonPosition.width / 2),
+                                    y = (buttonPosition.y + buttonPosition.height + 8.dp.toPx()).toInt()
+                                )
+                            }
+                        } else {
+                            Modifier.align(Alignment.TopCenter).padding(top = 80.dp)
+                        }
+                    )
             ) {
                 Card(
                     modifier = Modifier
-                        .padding(24.dp)
-                        .widthIn(max = 360.dp)
+                        .width(360.dp)
+                        .pointerInput(Unit) {
+                            detectTapGestures { /* Блокируем клики внутри карточки */ }
+                        }
                         .fancyShadow(
                             borderRadius = 24.dp, 
                             shadowRadius = 12.dp, 
@@ -162,7 +189,7 @@ fun EnhancedStatisticsCard(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
+                            .padding(20.dp), // Уменьшен отступ для компактности
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         // Заголовок с кнопкой закрытия
@@ -203,10 +230,10 @@ fun EnhancedStatisticsCard(
                             }
                         )
 
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(20.dp))
 
-                        // Основной прогресс калорий
-                        CaloriesProgressBar(
+                        // Улучшенный блок основной статистики
+                        EnhancedCaloriesSection(
                             current = viewModel.dailyIntake.calories,
                             target = viewModel.userProfile.dailyCalories,
                             color = viewModel.getProgressColor(
@@ -215,7 +242,7 @@ fun EnhancedStatisticsCard(
                             )
                         )
 
-                        Spacer(Modifier.height(32.dp))
+                        Spacer(Modifier.height(24.dp))
 
                         // Кольца макронутриентов
                         MacroRings(
@@ -233,7 +260,7 @@ fun EnhancedStatisticsCard(
                             )
                         )
 
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(20.dp))
 
                         // Легенда макронутриентов
                         MacroLegend(
@@ -244,6 +271,36 @@ fun EnhancedStatisticsCard(
                             carbs = viewModel.dailyIntake.carbs,
                             carbsTarget = viewModel.userProfile.dailyCarbs
                         )
+
+                        Spacer(Modifier.height(20.dp))
+
+                        // Кнопка "Анализ дня"
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                // TODO: Реализовать функцию анализа дня
+                                animatedDismiss()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Black
+                            )
+                        ) {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Анализ дня",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }
@@ -251,9 +308,9 @@ fun EnhancedStatisticsCard(
     }
 }
 
-// Основной прогресс-бар калорий
+// Улучшенная секция калорий
 @Composable
-private fun CaloriesProgressBar(
+private fun EnhancedCaloriesSection(
     current: Int,
     target: Int,
     color: Color
@@ -265,66 +322,97 @@ private fun CaloriesProgressBar(
         label = "calories_progress"
     )
 
-    Column(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Большое число калорий
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = current.toString(),
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Text(
-                text = "ккал",
-                fontSize = 20.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Цель
-        Text(
-            text = "из $target ккал",
-            fontSize = 16.sp,
-            color = Color.Gray
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF8F9FA)
         )
-
-        Spacer(Modifier.height(16.dp))
-
-        // Прогресс-бар
-        Box(
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(12.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFFE5E7EB).copy(alpha = 0.3f))
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Компактное отображение калорий
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = current.toString(),
+                    fontSize = 52.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                Spacer(Modifier.width(8.dp))
+                Column(
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Text(
+                        text = "ккал",
+                        fontSize = 18.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "из $target",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Улучшенный прогресс-бар
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(color)
-            )
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFFE5E7EB))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(color)
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Процент и статус
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${(animatedProgress * 100).toInt()}%",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (progress > 1f) Color(0xFFFF736E) else color
+                )
+                
+                val statusText = when {
+                    progress < 0.5f -> "Продолжайте!"
+                    progress < 0.8f -> "Отлично идете!"
+                    progress < 1f -> "Почти у цели!"
+                    progress == 1f -> "Цель достигнута!"
+                    else -> "Превышение нормы"
+                }
+                
+                Text(
+                    text = statusText,
+                    fontSize = 14.sp,
+                    color = if (progress > 1f) Color(0xFFFF736E) else Color.Gray
+                )
+            }
         }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Процент
-        Text(
-            text = "${(animatedProgress * 100).toInt()}%",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = if (progress > 1f) Color(0xFFFF736E) else color
-        )
     }
 }
 
@@ -354,7 +442,7 @@ private fun MacroRings(
     )
 
     Box(
-        modifier = Modifier.size(220.dp),
+        modifier = Modifier.size(200.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -362,23 +450,23 @@ private fun MacroRings(
             drawRing(
                 color = MacroColors.Carbs,
                 progress = carbProgress,
-                strokeWidth = 20.dp,
-                radius = 95.dp
+                strokeWidth = 18.dp,
+                radius = 85.dp
             )
             
             // Среднее кольцо - Жиры
             drawRing(
                 color = MacroColors.Fats,
                 progress = fatProgress,
-                strokeWidth = 20.dp,
-                radius = 65.dp
+                strokeWidth = 18.dp,
+                radius = 60.dp
             )
             
             // Внутреннее кольцо - Белки
             drawRing(
                 color = MacroColors.Proteins,
                 progress = proteinProgress,
-                strokeWidth = 20.dp,
+                strokeWidth = 18.dp,
                 radius = 35.dp
             )
         }
@@ -390,7 +478,7 @@ private fun MacroRings(
             val totalProgress = (proteinProgress + fatProgress + carbProgress) / 3
             Text(
                 text = "${(totalProgress * 100).toInt()}%",
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 color = Color.Gray
             )
         }

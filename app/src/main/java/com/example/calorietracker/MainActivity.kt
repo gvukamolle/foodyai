@@ -402,10 +402,12 @@ fun CalorieTrackerApp(
                     Screen.AppSettings -> {
                         AppSettingsScreen(
                             viewModel = viewModel,
+                            authManager = authManager,
                             onBack = {
                                 showAppSettingsScreen = false
                                 showSettingsScreen = true
-                            }
+                            },
+                            onSignOut = { authManager.signOut() }
                         )
                     }
 
@@ -448,6 +450,9 @@ fun CalorieTrackerApp(
                             onAnalyticsClick = {
                                 currentScreen = Screen.Analytics
                                 showAnalyticsScreen = true
+                            },
+                            onFeedbackClick = {
+                                showFeedbackScreen = true
                             },
                             modifier = Modifier.fillMaxSize()
                         )

@@ -516,6 +516,7 @@ class CalorieTrackerViewModel(
             val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
             val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
             val captionRequestBody = caption.toRequestBody("text/plain".toMediaTypeOrNull())
+            val messageTypeRequestBody = "photo".toRequestBody("text/plain".toMediaTypeOrNull())
 
             // 2. Отправляем запрос
             val response = safeApiCall {
@@ -524,7 +525,8 @@ class CalorieTrackerViewModel(
                     photo = photoPart,
                     userProfile = profileRequestBody,
                     userId = userIdRequestBody,
-                    caption = captionRequestBody
+                    caption = captionRequestBody,
+                    messageType = messageTypeRequestBody
                 )
             }
 

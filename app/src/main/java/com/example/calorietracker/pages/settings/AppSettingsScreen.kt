@@ -21,7 +21,9 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +53,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
@@ -63,7 +66,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun AppSettingsScreen(
     viewModel: CalorieTrackerViewModel,
-    onBack: () -> Unit
+    authManager: com.example.calorietracker.auth.AuthManager,
+    onBack: () -> Unit,
+    onSignOut: () -> Unit
 ) {
     val systemUiController = rememberSystemUiController()
     LaunchedEffect(Unit) {
@@ -84,6 +89,7 @@ fun AppSettingsScreen(
     var vibrationEnabled by remember { mutableStateOf(true) }
     var language by remember { mutableStateOf("Русский") }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -225,7 +231,45 @@ fun AppSettingsScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Секция аккаунта
+            SettingsSectionCard(
+                title = "Аккаунт",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                ClickableSettingItem(
+                    title = "Выйти из аккаунта",
+                    subtitle = "Вернуться на экран входа",
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onSignOut()
+                    }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                ClickableSettingItem(
+                    title = "Удалить аккаунт",
+                    subtitle = "Это действие необратимо",
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showDeleteAccountDialog = true
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Версия приложения
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Версия 1.0",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
         }
     }
 
@@ -261,6 +305,27 @@ fun AppSettingsScreen(
                 showLanguageDialog = false
             },
             onDismiss = { showLanguageDialog = false }
+        )
+    }
+    
+    if (showDeleteAccountDialog) {
+        DeleteAccountDialog(
+            onConfirm = {
+                scope.launch {
+                    val result = authManager.deleteAccount()
+                    if (result.isSuccess) {
+                        Toast.makeText(context, "Аккаунт удален", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(
+                            context, 
+                            "Ошибка удаления: ${result.exceptionOrNull()?.message}", 
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+                showDeleteAccountDialog = false
+            },
+            onDismiss = { showDeleteAccountDialog = false }
         )
     }
 }
@@ -378,8 +443,54 @@ private fun SwitchSettingItem(
                 checkedThumbColor = Color(0xFF000000),
                 checkedTrackColor = Color(0xFF000000).copy(alpha = 0.5f)
             )
-        )
+            )
+
     }
+}
+
+@Composable
+private fun DeleteAccountDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                tint = Color(0xFFE91E63),
+                modifier = Modifier.size(48.dp)
+            )
+        },
+        title = { 
+            Text(
+                "Удалить аккаунт?",
+                textAlign = TextAlign.Center
+            ) 
+        },
+        text = { 
+            Text(
+                "Это действие необратимо. Все ваши данные будут удалены навсегда.",
+                textAlign = TextAlign.Center
+            ) 
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = Color(0xFFE91E63)
+                )
+            ) {
+                Text("Удалить")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }
 
 @Composable
