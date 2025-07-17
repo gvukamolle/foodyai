@@ -37,6 +37,7 @@ import com.example.calorietracker.extensions.fancyShadow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.calorietracker.auth.SubscriptionPlan
+import androidx.compose.ui.graphics.TransformOrigin
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -141,32 +142,33 @@ fun NavigationDrawer(
             // Выдвижная панель в стиле поп-апа
             AnimatedVisibility(
                 visible = isVisible,
-                enter = slideInHorizontally(
-                    initialOffsetX = { -it },
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                ) + fadeIn(tween(300)),
-                exit = slideOutHorizontally(
-                    targetOffsetX = { -it },
-                    animationSpec = tween(200)
-                ) + fadeOut(tween(200))
+                enter = fadeIn(animationSpec = tween(200)) +
+                        scaleIn(
+                            initialScale = 0.9f,
+                            transformOrigin = TransformOrigin(0f, 0f),
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        ),
+                exit = fadeOut(animationSpec = tween(150)) +
+                        scaleOut(
+                            targetScale = 0.9f,
+                            transformOrigin = TransformOrigin(0f, 0f)
+                        )
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Card(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .fillMaxWidth(0.85f) // Занимает 85% ширины экрана
+                            .fillMaxWidth(0.8f) // Занимает 85% ширины экрана
                             .fancyShadow(
-                                borderRadius = 0.dp,
+                                borderRadius = 24.dp,
                                 shadowRadius = 12.dp,
                                 alpha = 0.35f,
                                 color = Color.Black
                             ),
-                        shape = RoundedCornerShape(
-                            topEnd = 0.dp,
-                            bottomEnd = 0.dp,
-                            topStart = 0.dp,
-                            bottomStart = 0.dp
-                        ),
+                        shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
@@ -250,25 +252,6 @@ fun NavigationDrawer(
                                         onSettingsClick()
                                         animatedDismiss()
                                     }
-                                )
-                            }
-                            
-                            // Версия приложения внизу
-                            Divider(
-                                color = Color(0xFFE5E5E5),
-                                thickness = 1.dp
-                            )
-                            
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = "Версия 1.0",
-                                    fontSize = 13.sp,
-                                    color = Color.Gray
                                 )
                             }
                         }
