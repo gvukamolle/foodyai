@@ -33,6 +33,7 @@ import com.example.calorietracker.network.FoodItemData
 import com.example.calorietracker.utils.DailyResetUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -197,7 +198,7 @@ class CalorieTrackerViewModel(
 
     init {
         loadUserData()
-        checkInternetConnection()
+        viewModelScope.launch { checkInternetConnection() }
         // Периодическая проверка обнуления каждые 5 минут
         startPeriodicReset()
 
@@ -264,11 +265,12 @@ class CalorieTrackerViewModel(
     }
 
     // Проверка подключения к интернету
-    fun checkInternetConnection() {
-        viewModelScope.launch {
-            val currentOnline = NetworkUtils.isInternetAvailable(context)
-            isOnline = currentOnline
+    suspend fun checkInternetConnection(): Boolean {
+        val currentOnline = withContext(Dispatchers.IO) {
+            NetworkUtils.isInternetAvailable(context)
         }
+        isOnline = currentOnline
+        return currentOnline
     }
 
     fun updateUserProfile(newProfile: UserProfile) {
@@ -465,8 +467,7 @@ class CalorieTrackerViewModel(
         val tempFile = chatFile
 
         // Проверяем интернет
-        checkInternetConnection()
-        if (!isOnline) {
+        if (!checkInternetConnection()) {
             showAILoadingScreen = false  // Скрываем экран загрузки
             messages = messages + ChatMessage(
                 type = MessageType.AI,
@@ -606,8 +607,7 @@ class CalorieTrackerViewModel(
             showAILoadingScreen = true
             inputMethod = "text" // Указываем метод ввода
 
-            checkInternetConnection()
-            if (!isOnline) {
+            if (!checkInternetConnection()) {
                 showAILoadingScreen = false  // Скрываем экран загрузки
                 handleError("Нет подключения к интернету")
                 isAnalyzing = false

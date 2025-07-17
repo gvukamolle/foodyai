@@ -135,6 +135,7 @@ fun AnimatedMainScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     var isStatusBarVisible by remember { mutableStateOf(false) }
     var isDrawerOpen by remember { mutableStateOf(false) } // Состояние для выдвижного меню
+    var showStatisticsCard by remember { mutableStateOf(false) } // Состояние для карточки статистики
 
     Scaffold(
         modifier = Modifier
@@ -168,14 +169,34 @@ fun AnimatedMainScreen(
                     onDateClick = onCalendarClick,
                     onNavigateToSubscription = onNavigateToSubscription,
                     isStatusBarVisible = isStatusBarVisible,
-                    onToggleStatusBar = { isStatusBarVisible = !isStatusBarVisible }
+                    onToggleStatusBar = { 
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (!isStatusBarVisible) {
+                        // При открытии показываем карточку
+                        showStatisticsCard = true
+                    } else {
+                        // При закрытии просто скрываем индикатор
+                        isStatusBarVisible = false
+                    }
+                }
                 )
 
-                // Прогресс-бары
-                AnimatedProgressBars(
-                    viewModel = viewModel,
-                    isVisible = isStatusBarVisible
-                )
+                // Компактный индикатор калорий вместо прогресс-баров
+                AnimatedVisibility(
+                    visible = isStatusBarVisible,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    CompactCaloriesIndicator(
+                        current = viewModel.dailyIntake.calories,
+                        target = viewModel.userProfile.dailyCalories,
+                        color = viewModel.getProgressColor(
+                            viewModel.dailyIntake.calories,
+                            viewModel.userProfile.dailyCalories
+                        ),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
 
                 // Разделитель с анимацией
                 AnimatedContentDivider()
@@ -249,6 +270,17 @@ fun AnimatedMainScreen(
         }
     }
 
+    // Карточка статистики
+    if (showStatisticsCard) {
+        EnhancedStatisticsCard(
+            viewModel = viewModel,
+            onDismiss = { 
+                showStatisticsCard = false
+                isStatusBarVisible = true // Показываем компактный индикатор после закрытия
+            }
+        )
+    }
+
 // Выдвижное меню поверх контента
 NavigationDrawer(
 isOpen = isDrawerOpen,
@@ -288,20 +320,19 @@ private fun AnimatedHeader(
         )
     }
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         // Левая часть - Кнопка меню
         IconButton(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onMenuClick()
-            }
+            },
+            modifier = Modifier.align(Alignment.CenterStart)
         ) {
             Icon(
                 Icons.Default.Menu,
@@ -310,23 +341,24 @@ private fun AnimatedHeader(
             )
         }
         
-        // Центральная часть - Дата с функцией развертывания
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.Center
+        // Центральная часть - Дата с двумя функциями
+        Row(
+            modifier = Modifier.align(Alignment.Center),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
+            // Кликабельная область для календаря
             Surface(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onToggleStatusBar()
+                    onDateClick()
                 },
                 shape = RoundedCornerShape(12.dp),
                 color = Color.Transparent
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Форматируем дату: "3 июля"
                     val currentDate = LocalDate.now()
@@ -353,25 +385,36 @@ private fun AnimatedHeader(
                         fontWeight = FontWeight.SemiBold,
                         color = Color.Black
                     )
-                    
-                    Spacer(modifier = Modifier.width(6.dp))
-                    
-                    Icon(
-                        if (isStatusBarVisible) Icons.Default.KeyboardArrowUp
-                        else Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.Black
-                    )
                 }
+            }
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            // Отдельная кнопка для статусбара
+            IconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggleStatusBar()
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    if (isStatusBarVisible) Icons.Default.KeyboardArrowUp
+                    else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Black
+                )
             }
         }
         
         // Правая часть - AI индикатор
-        AIUsageToolbarIndicator(
-            userData = viewModel.currentUser,
-            onClick = onNavigateToSubscription
-        )
+        Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+            AIUsageToolbarIndicator(
+                userData = viewModel.currentUser,
+                onClick = onNavigateToSubscription
+            )
+        }
     }
 }
 
@@ -798,6 +841,81 @@ private fun AnimatedSendButton(onClick: () -> Unit) {
                 .background(Color.Black, CircleShape)
                 .padding(8.dp)
         )
+    }
+}
+
+// Компактный индикатор калорий
+@Composable
+private fun CompactCaloriesIndicator(
+    current: Int,
+    target: Int,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    val progress = if (target > 0) current.toFloat() / target else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "calories_indicator"
+    )
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF8F8F8)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Левая часть - текущие калории
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = current.toString(),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                Text(
+                    text = "/ $target ккал",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 2.dp)
+                )
+            }
+
+            // Правая часть - процент
+            Text(
+                text = "${(animatedProgress * 100).toInt()}%",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (progress > 1f) Color(0xFFE53935) else color
+            )
+        }
+
+        // Тонкий прогресс-бар снизу
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .background(Color(0xFFE5E7EB).copy(alpha = 0.3f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .background(color)
+            )
+        }
     }
 }
 

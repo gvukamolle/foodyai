@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -26,13 +27,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.drawToBitmap
 import com.example.calorietracker.auth.UserData
+import com.example.calorietracker.extensions.fancyShadow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.calorietracker.auth.SubscriptionPlan
@@ -49,6 +50,8 @@ fun NavigationDrawer(
     onSubscriptionClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
+    if (!isOpen) return
+    
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val view = LocalView.current
@@ -65,100 +68,108 @@ fun NavigationDrawer(
                 backgroundBitmap = view.drawToBitmap()
             } catch (e: Exception) { /* ignore */ }
             isVisible = true
-        } else {
-            isVisible = false
         }
     }
     
     fun animatedDismiss() {
         coroutineScope.launch {
             isVisible = false
-            delay(300)
+            delay(200)
             onDismiss()
         }
     }
     
-    if (isOpen) {
-        BackHandler {
-            animatedDismiss()
-        }
-        
-        Popup(
-            onDismissRequest = { animatedDismiss() },
-            properties = PopupProperties(focusable = true)
+    BackHandler {
+        animatedDismiss()
+    }
+    
+    Popup(
+        onDismissRequest = { animatedDismiss() },
+        properties = PopupProperties(focusable = true),
+        alignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize()
+            // Фон с размытием - как в AnimatedDialogContainer
+            AnimatedVisibility(
+                visible = isVisible && backgroundBitmap != null,
+                enter = fadeIn(tween(200)),
+                exit = fadeOut(tween(100))
             ) {
-                // Фон с размытием
-                AnimatedVisibility(
-                    visible = isVisible && backgroundBitmap != null,
-                    enter = fadeIn(tween(200)),
-                    exit = fadeOut(tween(200))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            animatedDismiss()
+                        }
                 ) {
+                    backgroundBitmap?.let { bitmap ->
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(
+                                    radiusX = animateDpAsState(
+                                        if (isVisible) 20.dp else 0.dp,
+                                        tween(200),
+                                        "blur_x"
+                                    ).value,
+                                    radiusY = animateDpAsState(
+                                        if (isVisible) 20.dp else 0.dp,
+                                        tween(200),
+                                        "blur_y"
+                                    ).value
+                                ),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    // Затемнение
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                animatedDismiss()
-                            }
-                    ) {
-                        backgroundBitmap?.let { bitmap ->
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .blur(
-                                        radiusX = animateDpAsState(
-                                            if (isVisible) 20.dp else 0.dp,
-                                            tween(200),
-                                            "blur_x"
-                                        ).value,
-                                        radiusY = animateDpAsState(
-                                            if (isVisible) 20.dp else 0.dp,
-                                            tween(200),
-                                            "blur_y"
-                                        ).value
-                                    ),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                        // Затемнение
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.4f))
-                        )
-                    }
+                            .background(Color.White.copy(alpha = 0.7f))
+                    )
                 }
+            }
+            
+            // Выдвижная панель в стиле поп-апа
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInHorizontally(
+                    initialOffsetX = { -it },
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeIn(tween(300)),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { -it },
+                    animationSpec = tween(200)
+                ) + fadeOut(tween(200))
+            ) {
+                val drawerWidth = 280.dp
                 
-                // Выдвижная панель
-                val drawerWidth = LocalDensity.current.run { 
-                    (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.8f).dp 
-                }
-                
-                AnimatedVisibility(
-                    visible = isVisible,
-                    enter = slideInHorizontally(
-                        initialOffsetX = { -it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
-                    ) + fadeIn(tween(300)),
-                    exit = slideOutHorizontally(
-                        targetOffsetX = { -it },
-                        animationSpec = tween(200)
-                    ) + fadeOut(tween(200))
-                ) {
-                    Surface(
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Card(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .width(drawerWidth),
-                        color = Color.White,
-                        shadowElevation = 16.dp,
-                        shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
+                            .width(drawerWidth)
+                            .padding(
+                                start = 16.dp,
+                                top = 24.dp,
+                                bottom = 24.dp
+                            )
+                            .fancyShadow(
+                                borderRadius = 24.dp,
+                                shadowRadius = 12.dp,
+                                alpha = 0.35f,
+                                color = Color.Black
+                            ),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -232,6 +243,19 @@ fun NavigationDrawer(
                             }
                         }
                     }
+                    
+                    // Оставшаяся область для клика
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .weight(1f)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                animatedDismiss()
+                            }
+                    )
                 }
             }
         }
@@ -249,7 +273,7 @@ private fun DrawerHeader(userData: UserData?) {
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .clip(androidx.compose.foundation.shape.CircleShape)
+                .clip(CircleShape)
                 .background(Color(0xFFE3F2FD)),
             contentAlignment = Alignment.Center
         ) {
