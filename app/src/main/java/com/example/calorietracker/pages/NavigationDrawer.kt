@@ -145,10 +145,6 @@ private fun DrawerMenuItem(
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF212121)
-            ):"Пользователь",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF212121)
             )
 
             // Email или статус
