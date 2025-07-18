@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.utils.BodyParametersValidator
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.example.calorietracker.components.AppTextField
+import com.example.calorietracker.components.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,7 +122,7 @@ fun BodySettingsScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        OutlinedTextField(
+                        AppTextField(
                             value = height,
                             onValueChange = {
                                 height = it
@@ -130,16 +132,11 @@ fun BodySettingsScreen(
                             label = { Text("Рост (см)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF000000),
-                                focusedLabelColor = Color(0xFF000000)
-                            )
+                            isError = heightError != null,
+                            supportingText = if (heightError != null) {{ Text(heightError!!) }} else null
                         )
 
-                        OutlinedTextField(
+                        AppTextField(
                             value = weight,
                             onValueChange = {
                                 weight = it
@@ -149,13 +146,8 @@ fun BodySettingsScreen(
                             label = { Text("Вес (кг)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF000000),
-                                focusedLabelColor = Color(0xFF000000)
-                            )
+                            isError = weightError != null,
+                            supportingText = if (weightError != null) {{ Text(weightError!!) }} else null
                         )
                     }
                 }
@@ -182,55 +174,34 @@ fun BodySettingsScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedTextField(
+                        AppTextField(
                             value = day,
                             onValueChange = {
                                 day = it
                             },
                             label = { Text("День") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF000000),
-                                focusedLabelColor = Color(0xFF000000)
-                            )
+                            modifier = Modifier.weight(1f)
                         )
 
-                        OutlinedTextField(
+                        AppTextField(
                             value = month,
                             onValueChange = {
                                 month = it
                             },
                             label = { Text("Месяц") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF000000),
-                                focusedLabelColor = Color(0xFF000000)
-                            )
+                            modifier = Modifier.weight(1f)
                         )
 
-                        OutlinedTextField(
+                        AppTextField(
                             value = year,
                             onValueChange = {
                                 year = it
                             },
                             label = { Text("Год") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1.5f),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF000000),
-                                focusedLabelColor = Color(0xFF000000)
-                            )
+                            modifier = Modifier.weight(1.5f)
                         )
                     }
                 }
@@ -260,30 +231,19 @@ fun BodySettingsScreen(
                         expanded = genderExpanded,
                         onExpandedChange = { genderExpanded = !genderExpanded }
                     ) {
-                        OutlinedTextField(
+                        AppTextField(
                             value = when (gender) {
                                 "male" -> "Мужской"
                                 "female" -> "Женский"
                                 else -> ""
                             },
-                            onValueChange = {
-                                height = it
-                                val validation = BodyParametersValidator.validateHeight(it)
-                                heightError = validation.errorMessage
-                            },
+                            onValueChange = {},
                             readOnly = true,
                             label = { Text("Пол") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF000000),
-                                focusedLabelColor = Color(0xFF000000)
-                            )
+                                .menuAnchor()
                         )
                         ExposedDropdownMenu(
                             expanded = genderExpanded,
@@ -312,31 +272,20 @@ fun BodySettingsScreen(
                         expanded = conditionExpanded,
                         onExpandedChange = { conditionExpanded = !conditionExpanded }
                     ) {
-                        OutlinedTextField(
+                        AppTextField(
                             value = when (condition) {
                                 "sedentary" -> "Малоподвижный"
                                 "active" -> "Активный"
                                 "very-active" -> "Очень активный"
                                 else -> ""
                             },
-                            onValueChange = {
-                                height = it
-                                val validation = BodyParametersValidator.validateHeight(it)
-                                heightError = validation.errorMessage
-                            },
+                            onValueChange = {},
                             readOnly = true,
                             label = { Text("Активность") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF000000),
-                                focusedLabelColor = Color(0xFF000000)
-                            )
+                                .menuAnchor()
                         )
                         ExposedDropdownMenu(
                             expanded = conditionExpanded,
@@ -372,31 +321,20 @@ fun BodySettingsScreen(
                         expanded = goalExpanded,
                         onExpandedChange = { goalExpanded = !goalExpanded }
                     ) {
-                        OutlinedTextField(
+                        AppTextField(
                             value = when (goal) {
                                 "lose" -> "Худеем"
                                 "maintain" -> "Питаемся лучше"
                                 "gain" -> "Набор массы"
                                 else -> ""
                             },
-                            onValueChange = {
-                                height = it
-                                val validation = BodyParametersValidator.validateHeight(it)
-                                heightError = validation.errorMessage
-                            },
+                            onValueChange = {},
                             readOnly = true,
                             label = { Text("Цель") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                disabledContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF000000),
-                                focusedLabelColor = Color(0xFF000000)
-                            )
+                                .menuAnchor()
                         )
                         ExposedDropdownMenu(
                             expanded = goalExpanded,
@@ -449,12 +387,14 @@ fun BodySettingsScreen(
                     onBack()
                 },
                 enabled = isDataValid,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(AppTheme.buttonHeight),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF000000)
-                )
+                    containerColor = AppTheme.Colors.primaryBlack,
+                    disabledContainerColor = AppTheme.Colors.borderGray
+                ),
+                shape = RoundedCornerShape(AppTheme.cornerRadius)
             ) {
-                Text("Сохранить")
+                Text("Сохранить", fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

@@ -25,6 +25,8 @@ import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.utils.capitalizeFirst
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.launch
+import com.example.calorietracker.components.AppTextField
+import com.example.calorietracker.components.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +97,7 @@ fun ProfileScreen(
                         fontWeight = FontWeight.Bold
                     )
 
-                    OutlinedTextField(
+                    AppTextField(
                         value = displayName,
                         onValueChange = { displayName = it.capitalizeFirst() },
                         label = { Text("Ваше имя") },
@@ -103,30 +105,15 @@ fun ProfileScreen(
                             capitalization = KeyboardCapitalization.Sentences
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            disabledContainerColor = Color.White,
-                            focusedBorderColor = Color(0xFF000000),
-                            focusedLabelColor = Color(0xFF000000)
-                        )
+                        singleLine = true
                     )
 
-                    OutlinedTextField(
+                    AppTextField(
                         value = currentUser?.email ?: "Email не найден",
                         onValueChange = {},
                         label = { Text("Email") },
                         modifier = Modifier.fillMaxWidth(),
                         readOnly = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = Color(0xFFE0E0E0),
-                            disabledLabelColor = Color.Gray,
-                            disabledContainerColor = Color(0xFFF5F5F5),
-                            unfocusedContainerColor = Color(0xFFF5F5F5),
-                            focusedContainerColor = Color(0xFFF5F5F5),
-                        ),
                         enabled = false
                     )
 
@@ -139,10 +126,12 @@ fun ProfileScreen(
                             }
                         },
                         enabled = displayName.isNotBlank() && displayName != currentUser?.displayName && !isLoading,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(AppTheme.buttonHeight),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF000000)
-                        )
+                            containerColor = AppTheme.Colors.primaryBlack,
+                            disabledContainerColor = AppTheme.Colors.borderGray
+                        ),
+                        shape = RoundedCornerShape(AppTheme.cornerRadius)
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
@@ -150,7 +139,7 @@ fun ProfileScreen(
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                         } else {
-                            Text("Сохранить изменения")
+                            Text("Сохранить изменения", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -266,44 +255,29 @@ private fun ChangePasswordDialog(
         title = { Text("Изменить пароль") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
+                AppTextField(
                     value = currentPassword,
                     onValueChange = { currentPassword = it },
                     label = { Text("Текущий пароль") },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        disabledContainerColor = Color.White
-                    )
+                    modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                AppTextField(
                     value = newPassword,
                     onValueChange = { newPassword = it },
                     label = { Text("Новый пароль") },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        disabledContainerColor = Color.White
-                    )
+                    modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                AppTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
                     label = { Text("Повторите пароль") },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        disabledContainerColor = Color.White
-                    )
+                    modifier = Modifier.fillMaxWidth()
                 )
                 error?.let {
                     Text(it, color = Color.Red, fontSize = 14.sp)

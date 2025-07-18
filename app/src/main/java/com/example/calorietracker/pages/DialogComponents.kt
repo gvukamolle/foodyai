@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import com.example.calorietracker.components.AppTheme
 
 // Этот файл содержит общие, переиспользуемые компоненты для построения диалогов.
 
@@ -169,13 +170,13 @@ fun DialogActions(
                 keyboardController?.hide()
                 onCancel()
             },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).height(48.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color.Gray
+                contentColor = AppTheme.Colors.textGray
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(AppTheme.cornerRadius)
         ) {
-            Text("Отмена", fontSize = 16.sp)
+            Text("Отмена", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
         Button(
             onClick = {
@@ -183,17 +184,17 @@ fun DialogActions(
                 keyboardController?.hide()
                 onConfirm()
             },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).height(48.dp),
             enabled = confirmEnabled,
             colors = ButtonDefaults.buttonColors(
                 containerColor = accentColor,
                 contentColor = confirmTextColor,
-                disabledContainerColor = Color.LightGray,
+                disabledContainerColor = AppTheme.Colors.borderGray,
                 disabledContentColor = confirmTextColor.copy(alpha = 0.38f)
                 ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(AppTheme.cornerRadius)
         ) {
-            Text(confirmText, fontSize = 16.sp, color = confirmTextColor)
+            Text(confirmText, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = confirmTextColor)
         }
     }
 }

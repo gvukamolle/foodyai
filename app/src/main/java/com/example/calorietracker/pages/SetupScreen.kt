@@ -9,12 +9,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
+import com.example.calorietracker.components.AppTextField
+import com.example.calorietracker.components.AppTheme
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.example.calorietracker.data.UserProfile
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import java.util.Calendar
@@ -105,8 +108,8 @@ fun SetupScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        OutlinedTextField(value = height, onValueChange = { height = it.filter { ch -> ch.isDigit() } }, label = { Text("Рост (см)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = weight, onValueChange = { weight = it.filter { ch -> ch.isDigit() } }, label = { Text("Вес (кг)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        AppTextField(value = height, onValueChange = { height = it.filter { ch -> ch.isDigit() } }, label = { Text("Рост (см)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        AppTextField(value = weight, onValueChange = { weight = it.filter { ch -> ch.isDigit() } }, label = { Text("Вес (кг)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
 
         Text(
             "Дата рождения",
@@ -115,14 +118,14 @@ fun SetupScreen(
             modifier = Modifier.align(Alignment.Start)
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = year, onValueChange = { if (it.length <= 4) year = it.filter(Char::isDigit) }, label = { Text("Год") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = month, onValueChange = { if (it.length <= 2) month = it.filter(Char::isDigit) }, label = { Text("Месяц") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = day, onValueChange = { if (it.length <= 2) day = it.filter(Char::isDigit) }, label = { Text("День") }, modifier = Modifier.weight(1f))
+            AppTextField(value = year, onValueChange = { if (it.length <= 4) year = it.filter(Char::isDigit) }, label = { Text("Год") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            AppTextField(value = month, onValueChange = { if (it.length <= 2) month = it.filter(Char::isDigit) }, label = { Text("Месяц") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            AppTextField(value = day, onValueChange = { if (it.length <= 2) day = it.filter(Char::isDigit) }, label = { Text("День") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
         }
 
         var genderExpanded by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = genderExpanded, onExpandedChange = { genderExpanded = !genderExpanded }) {
-            OutlinedTextField(value = when (gender) { "male" -> "Мужской"; "female" -> "Женский"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Пол") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+            AppTextField(value = when (gender) { "male" -> "Мужской"; "female" -> "Женский"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Пол") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
             ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
                 DropdownMenuItem(text = { Text("Мужской") }, onClick = { gender = "male"; genderExpanded = false })
                 DropdownMenuItem(text = { Text("Женский") }, onClick = { gender = "female"; genderExpanded = false })
@@ -131,7 +134,7 @@ fun SetupScreen(
 
         var conditionExpanded by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = conditionExpanded, onExpandedChange = { conditionExpanded = !conditionExpanded }) {
-            OutlinedTextField(value = when (condition) { "sedentary" -> "Малоподвижный"; "active" -> "Активный"; "very-active" -> "Очень активный"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Активность") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+            AppTextField(value = when (condition) { "sedentary" -> "Малоподвижный"; "active" -> "Активный"; "very-active" -> "Очень активный"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Активность") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
             ExposedDropdownMenu(expanded = conditionExpanded, onDismissRequest = { conditionExpanded = false }) {
                 DropdownMenuItem(text = { Text("Малоподвижный") }, onClick = { condition = "sedentary"; conditionExpanded = false })
                 DropdownMenuItem(text = { Text("Активный") }, onClick = { condition = "active"; conditionExpanded = false })
@@ -141,7 +144,7 @@ fun SetupScreen(
 
         var goalExpanded by remember { mutableStateOf(false) }
         ExposedDropdownMenuBox(expanded = goalExpanded, onExpandedChange = { goalExpanded = !goalExpanded }) {
-            OutlinedTextField(value = when (goal) { "lose" -> "Худеем"; "maintain" -> "Питаемся лучше"; "gain" -> "Набор массы"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Цель") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+            AppTextField(value = when (goal) { "lose" -> "Худеем"; "maintain" -> "Питаемся лучше"; "gain" -> "Набор массы"; else -> "" }, onValueChange = {}, readOnly = true, label = { Text("Цель") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
             ExposedDropdownMenu(expanded = goalExpanded, onDismissRequest = { goalExpanded = false }) {
                 DropdownMenuItem(text = { Text("Худеем") }, onClick = { goal = "lose"; goalExpanded = false })
                 DropdownMenuItem(text = { Text("Питаемся лучше") }, onClick = { goal = "maintain"; goalExpanded = false })
@@ -172,10 +175,11 @@ fun SetupScreen(
                 onFinish(finalProfile)
             },
             enabled = isButtonEnabled,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            modifier = Modifier.fillMaxWidth().height(AppTheme.buttonHeight),
+            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.Colors.primaryBlack),
+            shape = RoundedCornerShape(AppTheme.cornerRadius)
         ) {
-            Text("Поехали!", modifier = Modifier.padding(vertical = 8.dp))
+            Text("Поехали!", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
     }
 }

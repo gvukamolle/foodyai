@@ -50,6 +50,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import kotlin.math.roundToInt
 import java.util.Locale
+import com.example.calorietracker.components.AppTextField
+import com.example.calorietracker.components.AppTheme
 
 
 // Цветовая схема для диалогов
@@ -263,15 +265,11 @@ fun EnhancedDescribeDialog(
             Spacer(Modifier.height(16.dp))
 
             // Поле для подписи
-            OutlinedTextField(
+            AppTextField(
                 value = text,
                 onValueChange = { text = it },
                 label = { Text("Например: роллы, 350г") },
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = DialogColors.AIAnalysis,
-                    focusedLabelColor = DialogColors.AIAnalysis
-                ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                 singleLine = true
@@ -371,15 +369,11 @@ fun EnhancedPhotoConfirmDialog(
             Spacer(Modifier.height(16.dp))
 
             // Поле для подписи
-            OutlinedTextField(
+            AppTextField(
                 value = caption,
                 onValueChange = onCaptionChange,
                 label = { Text("Добавить подпись (необязательно)") },
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = DialogColors.Photo,
-                    focusedLabelColor = DialogColors.Photo
-                ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                 singleLine = true
@@ -407,15 +401,11 @@ private fun InputFields(
     onDataChange: (ManualInputData) -> Unit
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    OutlinedTextField(
+    AppTextField(
         value = data.name,
         onValueChange = { onDataChange(data.copy(name = it.capitalizeFirst())) },
         label = { Text("Название") },
         modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = DialogColors.ManualInput,
-            focusedLabelColor = DialogColors.ManualInput
-        ),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Text,
             capitalization = KeyboardCapitalization.Sentences,
@@ -432,15 +422,11 @@ private fun InputFields(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            OutlinedTextField(
+            AppTextField(
                 value = data.caloriesPer100g,
                 onValueChange = { onDataChange(data.copy(caloriesPer100g = filterDecimal(it))) },
                 label = { Text("Калории на 100г") },
                 modifier = Modifier.weight(1f),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = DialogColors.ManualInput,
-                    focusedLabelColor = DialogColors.ManualInput
-                ),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Done
@@ -448,15 +434,11 @@ private fun InputFields(
                 keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                 singleLine = true
             )
-            OutlinedTextField(
+            AppTextField(
                 value = data.proteinsPer100g,
                 onValueChange = { onDataChange(data.copy(proteinsPer100g = filterDecimal(it))) },
                 label = { Text("Белки на 100г") },
                 modifier = Modifier.weight(1f),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = DialogColors.ManualInput,
-                    focusedLabelColor = DialogColors.ManualInput
-                ),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Done
@@ -470,15 +452,11 @@ private fun InputFields(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedTextField(
+            AppTextField(
                 value = data.fatsPer100g,
                 onValueChange = { onDataChange(data.copy(fatsPer100g = filterDecimal(it))) },
                 label = { Text("Жиры на 100г") },
                 modifier = Modifier.weight(1f),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = DialogColors.ManualInput,
-                    focusedLabelColor = DialogColors.ManualInput
-                ),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Done
@@ -486,15 +464,11 @@ private fun InputFields(
                 keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                 singleLine = true
             )
-            OutlinedTextField(
+            AppTextField(
                 value = data.carbsPer100g,
                 onValueChange = { onDataChange(data.copy(carbsPer100g = filterDecimal(it))) },
                 label = { Text("Углеводы на 100г") },
                 modifier = Modifier.weight(1f),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = DialogColors.ManualInput,
-                    focusedLabelColor = DialogColors.ManualInput
-                ),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Done
@@ -506,15 +480,11 @@ private fun InputFields(
     }
     Spacer(Modifier.height(8.dp))
 
-    OutlinedTextField(
+    AppTextField(
         value = data.weight,
         onValueChange = { onDataChange(data.copy(weight = filterDecimal(it))) },
         label = { Text("Вес (грамм)") },
         modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = DialogColors.ManualInput,
-            focusedLabelColor = DialogColors.ManualInput
-        ),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Decimal,
             imeAction = ImeAction.Done
