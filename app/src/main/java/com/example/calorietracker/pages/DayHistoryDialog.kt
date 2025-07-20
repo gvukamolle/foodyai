@@ -44,6 +44,7 @@ import kotlin.math.roundToInt
 import com.example.calorietracker.extensions.fancyShadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.calorietracker.components.WarningDialog
 
 // Основной диалог истории дня с группировкой
 @OptIn(ExperimentalFoundationApi::class)
@@ -387,35 +388,17 @@ fun DayHistoryDialog(
         }
 
         deleteIndex?.let { idx ->
-            AlertDialog(
-                onDismissRequest = { deleteIndex = null },
-                icon = {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = Color.Red,
-                        modifier = Modifier.size(48.dp)
-                    )
+            WarningDialog(
+                title = "Удалить запись?",
+                message = "Это действие нельзя отменить.",
+                confirmText = "Удалить",
+                dismissText = "Отмена",
+                onConfirm = {
+                    meals.removeAt(idx)
+                    onMealDelete(idx)
+                    deleteIndex = null
                 },
-                title = { Text("Удалить запись?", textAlign = TextAlign.Center) },
-                text = { Text("Это действие нельзя отменить.", textAlign = TextAlign.Center) },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            meals.removeAt(idx)
-                            onMealDelete(idx)
-                            deleteIndex = null
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
-                    ) {
-                        Text("Удалить")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { deleteIndex = null }) {
-                        Text("Отмена")
-                    }
-                }
+                onDismiss = { deleteIndex = null }
             )
         }
 

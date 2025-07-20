@@ -61,6 +61,7 @@ import com.example.calorietracker.utils.CacheManager
 import com.example.calorietracker.utils.ExportManager
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.launch
+import com.example.calorietracker.components.WarningDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,6 +91,7 @@ fun AppSettingsScreen(
     var language by remember { mutableStateOf("Русский") }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -241,7 +243,7 @@ fun AppSettingsScreen(
                     subtitle = "Вернуться на экран входа",
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onSignOut()
+                        showSignOutDialog = true
                     }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -309,7 +311,12 @@ fun AppSettingsScreen(
     }
     
     if (showDeleteAccountDialog) {
-        DeleteAccountDialog(
+        WarningDialog(
+            title = "Удалить аккаунт?",
+            message = "Это действие необратимо. Все ваши данные будут удалены навсегда.",
+            confirmText = "Удалить",
+            dismissText = "Отмена",
+            confirmButtonColor = Color(0xFFE91E63),
             onConfirm = {
                 scope.launch {
                     val result = authManager.deleteAccount()
@@ -326,6 +333,20 @@ fun AppSettingsScreen(
                 showDeleteAccountDialog = false
             },
             onDismiss = { showDeleteAccountDialog = false }
+        )
+    }
+    
+    if (showSignOutDialog) {
+        WarningDialog(
+            title = "Выйти из аккаунта?",
+            message = "Вы будете перенаправлены на экран входа.",
+            confirmText = "Выйти",
+            dismissText = "Отмена",
+            onConfirm = {
+                showSignOutDialog = false
+                onSignOut()
+            },
+            onDismiss = { showSignOutDialog = false }
         )
     }
 }
@@ -448,50 +469,7 @@ private fun SwitchSettingItem(
     }
 }
 
-@Composable
-private fun DeleteAccountDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                Icons.Default.Warning,
-                contentDescription = null,
-                tint = Color(0xFFE91E63),
-                modifier = Modifier.size(48.dp)
-            )
-        },
-        title = { 
-            Text(
-                "Удалить аккаунт?",
-                textAlign = TextAlign.Center
-            ) 
-        },
-        text = { 
-            Text(
-                "Это действие необратимо. Все ваши данные будут удалены навсегда.",
-                textAlign = TextAlign.Center
-            ) 
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFFE91E63)
-                )
-            ) {
-                Text("Удалить")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Отмена")
-            }
-        }
-    )
-}
+
 
 @Composable
 private fun ClickableSettingItem(
