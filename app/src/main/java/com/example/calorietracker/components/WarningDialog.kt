@@ -70,34 +70,44 @@ fun WarningDialog(
             )
         },
         confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = confirmButtonColor
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = confirmText,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
-                )
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.Gray
+                    )
+                ) {
+                    Text(
+                        text = dismissText,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
+                }
+
+                Button(
+                    onClick = onConfirm,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = confirmButtonColor,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(
+                        text = confirmText,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
+                }
             }
         },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color.Gray
-                )
-            ) {
-                Text(
-                    text = dismissText,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
-                )
-            }
-        }
+        dismissButton = {}
     )
 }
