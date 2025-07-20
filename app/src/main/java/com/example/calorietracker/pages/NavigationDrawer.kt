@@ -66,7 +66,7 @@ private fun DrawerMenuItem(
                     .clip(CircleShape)
                     .background(
                         if (isPremium)
-                            Color(0xFFFFF3E0)  // Светло-оранжевый фон для Premium
+                            Color(0xFFFFF3E0)  // Светло-оранжевый фон для PRO
                         else
                             Color(0xFFF5F5F5)  // Серый фон для обычных пунктов
                     ),
@@ -327,7 +327,7 @@ fun NavigationDrawer(
                                     icon = Icons.Default.Diamond,
                                     title = "Подписка",
                                     subtitle = if (userData?.subscriptionPlan == SubscriptionPlan.PRO)
-                                        "Premium активен" else "Перейти на Premium",
+                                        "PRO активен" else "Перейти на PRO",
                                     isPremium = userData?.subscriptionPlan != SubscriptionPlan.PRO,
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)

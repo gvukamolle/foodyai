@@ -28,6 +28,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.auth.SubscriptionPlan
 
+data class SettingsItem(
+    val icon: ImageVector,
+    val title: String,
+    val subtitle: String? = null,
+    val badge: String? = null,
+    val showArrow: Boolean = true,
+    val onClick: () -> Unit = {}
+)
+
 //============== КОМПОНЕНТЫ ДЛЯ ГЛАВНОГО ЭКРАНА ==============
 
 @Composable

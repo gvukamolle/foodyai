@@ -51,7 +51,17 @@ import androidx.compose.ui.text.font.FontWeight
 import kotlin.math.roundToInt
 import java.util.Locale
 import com.example.calorietracker.components.AppTextField
-import com.example.calorietracker.components.AppTheme
+
+@Composable
+private fun FieldLabel(text: String) {
+    Text(
+        text = text,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Medium,
+        color = Color.Gray,
+        modifier = Modifier.padding(bottom = 8.dp)
+    )
+}
 
 
 // Цветовая схема для диалогов
@@ -208,16 +218,14 @@ fun EnhancedManualInputDialog(
                 modifier = Modifier
                     .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 InputFields(
                     data = data,
                     onDataChange = { data = it }
                 )
 
-                if (data.isValid() && data.weight.toFloatOrNull() != null) {
-                    NutritionSummary(data = data)
-                }
+                NutritionSummary(data = data)
             }
 
             Spacer(Modifier.height(16.dp))
@@ -264,16 +272,19 @@ fun EnhancedDescribeDialog(
 
             Spacer(Modifier.height(16.dp))
 
-            // Поле для подписи
-            AppTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Например: роллы, 350г") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                singleLine = true
-            )
+            // Поле для описания
+            Column {
+                FieldLabel("Описание блюда")
+                AppTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    placeholder = { Text("Например: роллы, 350г", color = Color.Gray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                    singleLine = true
+                )
+            }
 
             /* ── Подсказка ── */
             Spacer(Modifier.height(12.dp))
@@ -351,33 +362,38 @@ fun EnhancedPhotoConfirmDialog(
             Spacer(Modifier.height(16.dp))
 
             // Изображение
+            val aspectRatio = remember(bitmap) {
+                if (bitmap.height != 0) bitmap.width.toFloat() / bitmap.height else 1f
+            }
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(240.dp),
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Image(
                     bitmap.asImageBitmap(),
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(aspectRatio),
+                    contentScale = ContentScale.Fit
                 )
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Поле для подписи
-            AppTextField(
-                value = caption,
-                onValueChange = onCaptionChange,
-                label = { Text("Добавить подпись (необязательно)") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                singleLine = true
-            )
+            Column {
+                FieldLabel("Подпись к фото")
+                AppTextField(
+                    value = caption,
+                    onValueChange = onCaptionChange,
+                    placeholder = { Text("Добавить подпись (необязательно)", color = Color.Gray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                    singleLine = true
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -401,97 +417,116 @@ private fun InputFields(
     onDataChange: (ManualInputData) -> Unit
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    AppTextField(
-        value = data.name,
-        onValueChange = { onDataChange(data.copy(name = it.capitalizeFirst())) },
-        label = { Text("Название") },
-        modifier = Modifier.fillMaxWidth(),
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Text,
-            capitalization = KeyboardCapitalization.Sentences,
-            imeAction = ImeAction.Done
-        ),
-        keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-        singleLine = true
-    )
 
-    Spacer(Modifier.height(16.dp))
+    Column {
+        FieldLabel("Название")
+        AppTextField(
+            value = data.name,
+            onValueChange = { onDataChange(data.copy(name = it.capitalizeFirst())) },
+            placeholder = { Text("Салат Цезарь") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+            singleLine = true
+        )
+    }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Spacer(Modifier.height(8.dp))
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            AppTextField(
-                value = data.caloriesPer100g,
-                onValueChange = { onDataChange(data.copy(caloriesPer100g = filterDecimal(it))) },
-                label = { Text("Калории на 100г") },
-                modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                singleLine = true
-            )
-            AppTextField(
-                value = data.proteinsPer100g,
-                onValueChange = { onDataChange(data.copy(proteinsPer100g = filterDecimal(it))) },
-                label = { Text("Белки на 100г") },
-                modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                singleLine = true
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                FieldLabel("Калории на 100г")
+                AppTextField(
+                    value = data.caloriesPer100g,
+                    onValueChange = { onDataChange(data.copy(caloriesPer100g = filterDecimal(it))) },
+                    placeholder = { Text("0") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                    singleLine = true
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                FieldLabel("Белки на 100г")
+                AppTextField(
+                    value = data.proteinsPer100g,
+                    onValueChange = { onDataChange(data.copy(proteinsPer100g = filterDecimal(it))) },
+                    placeholder = { Text("0") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                    singleLine = true
+                )
+            }
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AppTextField(
-                value = data.fatsPer100g,
-                onValueChange = { onDataChange(data.copy(fatsPer100g = filterDecimal(it))) },
-                label = { Text("Жиры на 100г") },
-                modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                singleLine = true
-            )
-            AppTextField(
-                value = data.carbsPer100g,
-                onValueChange = { onDataChange(data.copy(carbsPer100g = filterDecimal(it))) },
-                label = { Text("Углеводы на 100г") },
-                modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                singleLine = true
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                FieldLabel("Жиры на 100г")
+                AppTextField(
+                    value = data.fatsPer100g,
+                    onValueChange = { onDataChange(data.copy(fatsPer100g = filterDecimal(it))) },
+                    placeholder = { Text("0") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                    singleLine = true
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                FieldLabel("Углеводы на 100г")
+                AppTextField(
+                    value = data.carbsPer100g,
+                    onValueChange = { onDataChange(data.copy(carbsPer100g = filterDecimal(it))) },
+                    placeholder = { Text("0") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                    singleLine = true
+                )
+            }
         }
     }
     Spacer(Modifier.height(8.dp))
 
-    AppTextField(
-        value = data.weight,
-        onValueChange = { onDataChange(data.copy(weight = filterDecimal(it))) },
-        label = { Text("Вес (грамм)") },
-        modifier = Modifier.fillMaxWidth(),
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Decimal,
-            imeAction = ImeAction.Done
-        ),
-        keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-        singleLine = true
-    )
+    Column {
+        FieldLabel("Вес (грамм)")
+        AppTextField(
+            value = data.weight,
+            onValueChange = { onDataChange(data.copy(weight = filterDecimal(it))) },
+            placeholder = { Text("0") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+            singleLine = true
+        )
+    }
 }
 
 @Composable
@@ -614,11 +649,11 @@ private fun NutritionItem(
 // Модель данных для ручного ввода
 data class ManualInputData(
     val name: String = "",
-    val caloriesPer100g: String = "0",
-    val proteinsPer100g: String = "0",
-    val fatsPer100g: String = "0",
-    val carbsPer100g: String = "0",
-    val weight: String = "100"
+    val caloriesPer100g: String = "",
+    val proteinsPer100g: String = "",
+    val fatsPer100g: String = "",
+    val carbsPer100g: String = "",
+    val weight: String = ""
 ) {
     private fun calc(valuePer100g: String): Float {
         val v = valuePer100g.toFloatOrNull() ?: 0f

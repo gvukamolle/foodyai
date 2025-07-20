@@ -916,18 +916,21 @@ fun BeautifulPhotoConfirmDialog(
                 )
 
                 // Изображение
+                val aspectRatio = remember(bitmap) {
+                    if (bitmap.height != 0) bitmap.width.toFloat() / bitmap.height else 1f
+                }
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(240.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Image(
                         bitmap.asImageBitmap(),
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(aspectRatio),
+                        contentScale = ContentScale.Fit
                     )
                 }
 

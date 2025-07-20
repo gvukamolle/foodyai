@@ -44,7 +44,7 @@ import androidx.core.view.WindowCompat
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
-    Setup, Main, SettingsV2, Calendar, Profile, BodySettings, AppSettings, Subscription, Feedback, Analytics
+    Setup, Main, Calendar, Profile, BodySettings, AppSettings, Subscription, Feedback, Analytics
 }
 
 private fun decodeBitmapWithOrientation(file: java.io.File): Bitmap {
@@ -133,7 +133,6 @@ fun CalorieTrackerApp(
     val coroutineScope = rememberCoroutineScope()
     val authState by authManager.authState.collectAsState()
     val currentUser by authManager.currentUser.collectAsState()
-    var showSettingsScreen by remember { mutableStateOf(false) }
     var showCalendarScreen by remember { mutableStateOf(false) }
     var currentScreen by remember { mutableStateOf<Screen?>(null) }
     var showProfileScreen by remember { mutableStateOf(false) }
@@ -208,27 +207,27 @@ fun CalorieTrackerApp(
         }
     }
 
-    BackHandler(enabled = showSettingsScreen || showCalendarScreen || showProfileScreen || showBodySettingsScreen || showAppSettingsScreen || showFeedbackScreen || showAnalyticsScreen || showSubscriptionScreen) {
+    BackHandler(enabled = showCalendarScreen || showProfileScreen || showBodySettingsScreen || showAppSettingsScreen || showFeedbackScreen || showAnalyticsScreen || showSubscriptionScreen) {
         when {
             showProfileScreen -> {
                 showProfileScreen = false
-                showSettingsScreen = true
+                currentScreen = Screen.Main
             }
             showSubscriptionScreen -> {
                 showSubscriptionScreen = false
-                showSettingsScreen = true
+                currentScreen = Screen.Main
             }
             showFeedbackScreen -> {
                 showFeedbackScreen = false
-                showSettingsScreen = true
+                currentScreen = Screen.Main
             }
             showBodySettingsScreen -> {
                 showBodySettingsScreen = false
-                showSettingsScreen = true
+                showProfileScreen = true
             }
             showAppSettingsScreen -> {
                 showAppSettingsScreen = false
-                showSettingsScreen = true
+                currentScreen = Screen.Main
             }
             showAnalyticsScreen -> {
                 showAnalyticsScreen = false
@@ -237,9 +236,6 @@ fun CalorieTrackerApp(
             showCalendarScreen -> {
                 showCalendarScreen = false
                 currentScreen = Screen.Main
-            }
-            showSettingsScreen -> {
-                showSettingsScreen = false
             }
         }
     }
@@ -260,7 +256,6 @@ fun CalorieTrackerApp(
                 showProfileScreen -> Screen.Profile
                 showBodySettingsScreen -> Screen.BodySettings
                 showAppSettingsScreen -> Screen.AppSettings
-                showSettingsScreen -> Screen.SettingsV2
                 showSubscriptionScreen -> Screen.Subscription
                 showFeedbackScreen -> Screen.Feedback
                 showAnalyticsScreen -> Screen.Analytics
@@ -314,41 +309,12 @@ fun CalorieTrackerApp(
                         )
                     }
 
-                    Screen.SettingsV2 -> {
-                        SettingsScreenV2(
-                            authManager = authManager,
-                            viewModel = viewModel,
-                            onBack = { showSettingsScreen = false },
-                            onNavigateToProfile = {
-                                showProfileScreen = true
-                                showSettingsScreen = false
-                            },
-                            onNavigateToBodySettings = {
-                                showBodySettingsScreen = true
-                                showSettingsScreen = false
-                            },
-                            onNavigateToAppSettings = {
-                                showAppSettingsScreen = true
-                                showSettingsScreen = false
-                            },
-                            onNavigateToSubscription = {
-                                showSubscriptionScreen = true
-                                showSettingsScreen = false
-                            },
-                            onNavigateToFeedback = {
-                                showFeedbackScreen = true
-                                showSettingsScreen = false
-                            },
-                            onSignOut = { authManager.signOut() },
-                        )
-                    }
-
                     Screen.Profile -> {
                         ProfileScreen(
                             authManager = authManager,
                             onBack = {
                                 showProfileScreen = false
-                                showSettingsScreen = true
+                                currentScreen = Screen.Main
                             },
                             onNavigateToBodySettings = {
                                 showProfileScreen = false
@@ -364,7 +330,7 @@ fun CalorieTrackerApp(
                                     val result = authManager.updateSubscriptionPlan(newPlan)
                                     if (result.isSuccess) {
                                         showSubscriptionScreen = false
-                                        showSettingsScreen = true
+                                        currentScreen = Screen.Main
                                         Toast.makeText(
                                             context,
                                             "План подписки обновлен на ${newPlan.displayName}",
@@ -375,7 +341,7 @@ fun CalorieTrackerApp(
                             },
                             onBack = {
                                 showSubscriptionScreen = false
-                                showSettingsScreen = true
+                                currentScreen = Screen.Main
                             }
                         )
                     }
@@ -384,7 +350,7 @@ fun CalorieTrackerApp(
                         FeedbackScreen(
                             onBack = {
                                 showFeedbackScreen = false
-                                showSettingsScreen = true
+                                currentScreen = Screen.Main
                             }
                         )
                     }
@@ -405,7 +371,7 @@ fun CalorieTrackerApp(
                             authManager = authManager,
                             onBack = {
                                 showAppSettingsScreen = false
-                                showSettingsScreen = true
+                                currentScreen = Screen.Main
                             },
                             onSignOut = { authManager.signOut() }
                         )
@@ -436,7 +402,7 @@ fun CalorieTrackerApp(
                             onDescribeClick = {
                                 viewModel.showDescriptionDialog = true
                             },
-                            onSettingsClick = { showSettingsScreen = true },
+                            onSettingsClick = { showAppSettingsScreen = true },
                             onCalendarClick = {
                                 currentScreen = Screen.Calendar
                                 showCalendarScreen = true

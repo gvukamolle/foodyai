@@ -122,33 +122,49 @@ fun BodySettingsScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        AppTextField(
-                            value = height,
-                            onValueChange = {
-                                height = it
-                                val validation = BodyParametersValidator.validateHeight(it)
-                                heightError = validation.errorMessage
-                            },
-                            label = { Text("Рост (см)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f),
-                            isError = heightError != null,
-                            supportingText = if (heightError != null) {{ Text(heightError!!) }} else null
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Рост (см)",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            AppTextField(
+                                value = height,
+                                onValueChange = {
+                                    height = it
+                                    val validation = BodyParametersValidator.validateHeight(it)
+                                    heightError = validation.errorMessage
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                                isError = heightError != null,
+                                supportingText = if (heightError != null) { { Text(heightError!!) } } else null
+                            )
+                        }
 
-                        AppTextField(
-                            value = weight,
-                            onValueChange = {
-                                weight = it
-                                val validation = BodyParametersValidator.validateWeight(it)
-                                weightError = validation.errorMessage
-                            },
-                            label = { Text("Вес (кг)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f),
-                            isError = weightError != null,
-                            supportingText = if (weightError != null) {{ Text(weightError!!) }} else null
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Вес (кг)",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            AppTextField(
+                                value = weight,
+                                onValueChange = {
+                                    weight = it
+                                    val validation = BodyParametersValidator.validateWeight(it)
+                                    weightError = validation.errorMessage
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                                isError = weightError != null,
+                                supportingText = if (weightError != null) { { Text(weightError!!) } } else null
+                            )
+                        }
                     }
                 }
             }
@@ -174,35 +190,59 @@ fun BodySettingsScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        AppTextField(
-                            value = day,
-                            onValueChange = {
-                                day = it
-                            },
-                            label = { Text("День") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "День",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            AppTextField(
+                                value = day,
+                                onValueChange = {
+                                    day = it
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
 
-                        AppTextField(
-                            value = month,
-                            onValueChange = {
-                                month = it
-                            },
-                            label = { Text("Месяц") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Месяц",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            AppTextField(
+                                value = month,
+                                onValueChange = {
+                                    month = it
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
 
-                        AppTextField(
-                            value = year,
-                            onValueChange = {
-                                year = it
-                            },
-                            label = { Text("Год") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1.5f)
-                        )
+                        Column(modifier = Modifier.weight(1.5f)) {
+                            Text(
+                                text = "Год",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            AppTextField(
+                                value = year,
+                                onValueChange = {
+                                    year = it
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
@@ -227,140 +267,164 @@ fun BodySettingsScreen(
 
                     // Пол
                     var genderExpanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(
-                        expanded = genderExpanded,
-                        onExpandedChange = { genderExpanded = !genderExpanded }
-                    ) {
-                        AppTextField(
-                            value = when (gender) {
-                                "male" -> "Мужской"
-                                "female" -> "Женский"
-                                else -> ""
-                            },
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Пол") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
+                    Column {
+                        Text(
+                            text = "Пол",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
-                        ExposedDropdownMenu(
+                        ExposedDropdownMenuBox(
                             expanded = genderExpanded,
-                            onDismissRequest = { genderExpanded = false }
+                            onExpandedChange = { genderExpanded = !genderExpanded }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("Мужской") },
-                                onClick = {
-                                    gender = "male"
-                                    genderExpanded = false
-                                }
+                            AppTextField(
+                                value = when (gender) {
+                                    "male" -> "Мужской"
+                                    "female" -> "Женский"
+                                    else -> ""
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
                             )
-                            DropdownMenuItem(
-                                text = { Text("Женский") },
-                                onClick = {
-                                    gender = "female"
-                                    genderExpanded = false
-                                }
-                            )
+                            ExposedDropdownMenu(
+                                expanded = genderExpanded,
+                                onDismissRequest = { genderExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Мужской") },
+                                    onClick = {
+                                        gender = "male"
+                                        genderExpanded = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Женский") },
+                                    onClick = {
+                                        gender = "female"
+                                        genderExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
 
                     // Активность
                     var conditionExpanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(
-                        expanded = conditionExpanded,
-                        onExpandedChange = { conditionExpanded = !conditionExpanded }
-                    ) {
-                        AppTextField(
-                            value = when (condition) {
-                                "sedentary" -> "Малоподвижный"
-                                "active" -> "Активный"
-                                "very-active" -> "Очень активный"
-                                else -> ""
-                            },
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Активность") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
+                    Column {
+                        Text(
+                            text = "Активность",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
-                        ExposedDropdownMenu(
+                        ExposedDropdownMenuBox(
                             expanded = conditionExpanded,
-                            onDismissRequest = { conditionExpanded = false }
+                            onExpandedChange = { conditionExpanded = !conditionExpanded }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("Малоподвижный") },
-                                onClick = {
-                                    condition = "sedentary"
-                                    conditionExpanded = false
-                                }
+                            AppTextField(
+                                value = when (condition) {
+                                    "sedentary" -> "Малоподвижный"
+                                    "active" -> "Активный"
+                                    "very-active" -> "Очень активный"
+                                    else -> ""
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
                             )
-                            DropdownMenuItem(
-                                text = { Text("Активный") },
-                                onClick = {
-                                    condition = "active"
-                                    conditionExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Очень активный") },
-                                onClick = {
-                                    condition = "very-active"
-                                    conditionExpanded = false
-                                }
-                            )
+                            ExposedDropdownMenu(
+                                expanded = conditionExpanded,
+                                onDismissRequest = { conditionExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Малоподвижный") },
+                                    onClick = {
+                                        condition = "sedentary"
+                                        conditionExpanded = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Активный") },
+                                    onClick = {
+                                        condition = "active"
+                                        conditionExpanded = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Очень активный") },
+                                    onClick = {
+                                        condition = "very-active"
+                                        conditionExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
 
                     // Цель
                     var goalExpanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(
-                        expanded = goalExpanded,
-                        onExpandedChange = { goalExpanded = !goalExpanded }
-                    ) {
-                        AppTextField(
-                            value = when (goal) {
-                                "lose" -> "Худеем"
-                                "maintain" -> "Питаемся лучше"
-                                "gain" -> "Набор массы"
-                                else -> ""
-                            },
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Цель") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
+                    Column {
+                        Text(
+                            text = "Цель",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
-                        ExposedDropdownMenu(
+                        ExposedDropdownMenuBox(
                             expanded = goalExpanded,
-                            onDismissRequest = { goalExpanded = false }
+                            onExpandedChange = { goalExpanded = !goalExpanded }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("Худеем") },
-                                onClick = {
-                                    goal = "lose"
-                                    goalExpanded = false
-                                }
+                            AppTextField(
+                                value = when (goal) {
+                                    "lose" -> "Худеем"
+                                    "maintain" -> "Питаемся лучше"
+                                    "gain" -> "Набор массы"
+                                    else -> ""
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
                             )
-                            DropdownMenuItem(
-                                text = { Text("Поддержание веса") },
-                                onClick = {
-                                    goal = "maintain"
-                                    goalExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Набор массы") },
-                                onClick = {
-                                    goal = "gain"
-                                    goalExpanded = false
-                                }
-                            )
+                            ExposedDropdownMenu(
+                                expanded = goalExpanded,
+                                onDismissRequest = { goalExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Худеем") },
+                                    onClick = {
+                                        goal = "lose"
+                                        goalExpanded = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Поддержание веса") },
+                                    onClick = {
+                                        goal = "maintain"
+                                        goalExpanded = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Набор массы") },
+                                    onClick = {
+                                        goal = "gain"
+                                        goalExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }

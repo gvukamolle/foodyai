@@ -80,14 +80,10 @@ fun SubscriptionPlansScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFFFFFFFF),
-                            Color(0xFFF8F9FA)
-                        )
-                    )
+                    color = Color(0xFFFFFFFF)
                 )
-        ) {
+        )
+        {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -258,7 +254,7 @@ fun PlanCard(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
                         Text(
@@ -359,7 +355,7 @@ fun FeatureRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = feature.icon,
@@ -372,7 +368,7 @@ fun FeatureRow(
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = feature.title,
                 fontSize = 16.sp,
@@ -429,7 +425,6 @@ private fun getPlanDetails(): List<PlanDetails> {
                     Icons.Default.AllInclusive,
                     "Безлимитный AI",
                     "Неограниченный анализ фото и описаний",
-                    isHighlighted = true
                 ),
                 PlanFeature(
                     Icons.Default.Analytics,

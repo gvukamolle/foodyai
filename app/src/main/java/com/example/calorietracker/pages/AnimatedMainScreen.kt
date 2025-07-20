@@ -560,9 +560,8 @@ private fun AnimatedChatMessageCard(
                                     contentDescription = null,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(160.dp)
                                         .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop
+                                    contentScale = ContentScale.FillWidth
                                 )
                                 if (message.content.isNotEmpty()) {
                                     Spacer(Modifier.height(8.dp))
