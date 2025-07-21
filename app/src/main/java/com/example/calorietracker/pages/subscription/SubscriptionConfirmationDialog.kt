@@ -61,7 +61,9 @@ fun SubscriptionConfirmationDialog(
             ),
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
-            Box {
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 // Декоративный элемент для PRO
                 if (isPro) {
                     Box(
@@ -82,7 +84,9 @@ fun SubscriptionConfirmationDialog(
                 }
 
                 Column(
-                    modifier = Modifier.padding(28.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(28.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Анимированная иконка
