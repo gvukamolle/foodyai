@@ -251,6 +251,23 @@ data class DayDataForAnalysis(
     val mealsCount: Int
 )
 
+// Модель для анализа дневного рациона
+data class DailyAnalysisRequest(
+    val userId: String,
+    val date: String,
+    val userProfile: UserProfileData,
+    val targetNutrients: TargetNutrients,
+    val meals: List<FoodItemData>,
+    val messageType: String = "daily_analysis" // Маркер для разделения сценариев
+)
+
+data class TargetNutrients(
+    val calories: Int,
+    val proteins: Float,
+    val fats: Float,
+    val carbs: Float
+)
+
 // Make.com Service Interface
 interface MakeService {
     companion object {
@@ -343,5 +360,13 @@ interface MakeService {
     suspend fun analyzeWeeklyData(
         @Path("webhookId") webhookId: String,
         @Body request: WeeklyDataForAnalysis
+    ): FoodAnalysisResponse
+    
+    // Анализ дневного рациона
+    @Headers("Content-Type: application/json")
+    @POST("{webhookId}")
+    suspend fun analyzeDailyIntake(
+        @Path("webhookId") webhookId: String,
+        @Body request: DailyAnalysisRequest
     ): FoodAnalysisResponse
 }

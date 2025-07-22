@@ -9,12 +9,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,14 +57,23 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import com.example.calorietracker.extensions.toNetworkProfile
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
+import com.example.calorietracker.network.DayDataForAnalysis
+import com.example.calorietracker.network.FoodItemData
+import com.example.calorietracker.network.UserProfileData
+import com.example.calorietracker.network.DailyAnalysisRequest
+import com.example.calorietracker.network.TargetNutrients
 
 // Цвета для макронутриентов
 object MacroColors {
     val Proteins = Color(0xFF00BFA5) // Бирюзовый
     val Fats = Color(0xFFFFB74D) // Оранжевый
     val Carbs = Color(0xFF64B5F6) // Голубой
-    val Calories = Color(0xFFE91E63) // Розовый
+    val Calories = Color(0xFFFF4F8A) // Розовый
 }
 
 // Модель данных для кнопки вызова
@@ -240,16 +252,11 @@ fun EnhancedStatisticsCard(
 
                             Spacer(modifier = Modifier.height(24.dp))
 
-                            // Переключатель дней
-                            DaySwitcher(
-                                onPreviousDay = { /* TODO */ },
-                                onNextDay = { /* TODO */ }
+                            // AI анализ дня
+                            AIAnalysisSection(
+                                viewModel = viewModel,
+                                onDismiss = { animatedDismiss() }
                             )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // AI подсказка
-                            AIInsightCard()
                         }
                     }
                 }
@@ -486,87 +493,214 @@ private fun MacroCard(
 }
 
 @Composable
-private fun DaySwitcher(
-    onPreviousDay: () -> Unit,
-    onNextDay: () -> Unit
+private fun AIAnalysisSection(
+    viewModel: CalorieTrackerViewModel,
+    onDismiss: () -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
-
-    Row(
+    
+    // Состояния для анализа - сохраняются до конца дня
+    var isAnalyzing by remember { mutableStateOf(false) }
+    
+    // Получаем сохраненный анализ из ViewModel
+    val todayKey = LocalDate.now().toString()
+    val savedAnalysis = viewModel.getDailyAnalysis(todayKey)
+    var analysisResult by remember(savedAnalysis) { mutableStateOf(savedAnalysis?.result) }
+    var lastAnalysisTime by remember(savedAnalysis) { mutableStateOf(savedAnalysis?.timestamp) }
+    
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        IconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onPreviousDay()
-            },
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                Icons.Default.KeyboardArrowLeft,
-                contentDescription = "Предыдущий день",
-                tint = Color(0xFF757575)
-            )
-        }
-
-        Text(
-            text = "Сегодня",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF212121),
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        IconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onNextDay()
-            },
-            enabled = false, // Нельзя перейти в будущее
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                Icons.Default.KeyboardArrowRight,
-                contentDescription = "Следующий день",
-                tint = Color(0xFFBDBDBD)
-            )
-        }
-    }
-}
-
-@Composable
-private fun AIInsightCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFFF8E1) // Светло-желтый фон
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.AutoAwesome,
-                contentDescription = null,
-                tint = Color(0xFFFF9800),
-                modifier = Modifier.size(20.dp)
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = "Отличный баланс макронутриентов!",
-                fontSize = 13.sp,
-                color = Color(0xFF795548),
-                modifier = Modifier.weight(1f)
-            )
+        // Если есть результат анализа - показываем его
+        if (analysisResult != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFF5F5F5)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = Color(0xFFFF9800),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        
+                        Text(
+                            text = "AI Анализ дня",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF212121),
+                            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                        )
+                        
+                        // Время анализа
+                        lastAnalysisTime?.let { time ->
+                            Text(
+                                text = time.format(DateTimeFormatter.ofPattern("HH:mm")),
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Результат анализа с прокруткой
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp) // Максимальная высота
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(
+                            text = analysisResult!!,
+                            fontSize = 13.sp,
+                            color = Color(0xFF424242),
+                            lineHeight = 20.sp
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Кнопка повторного анализа
+                    TextButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            analysisResult = null
+                            lastAnalysisTime = null
+                        },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Запросить повторный анализ",
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        } else {
+            // Кнопка для запуска анализа
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    
+                    coroutineScope.launch {
+                        isAnalyzing = true
+                        
+                        try {
+                            // Собираем информацию о каждом приеме пищи
+                            val mealsData = viewModel.meals.flatMap { meal ->
+                                meal.foods.map { food ->
+                                    FoodItemData(
+                                        name = food.name,
+                                        calories = food.calories,
+                                        protein = food.protein,
+                                        fat = food.fat,
+                                        carbs = food.carbs,
+                                        weight = food.weight.toIntOrNull() ?: 100
+                                    )
+                                }
+                            }
+                            
+                            // Создаем запрос для анализа
+                            val request = DailyAnalysisRequest(
+                                userId = viewModel.userId,
+                                date = LocalDate.now().toString(),
+                                userProfile = viewModel.userProfile.toNetworkProfile(),
+                                targetNutrients = TargetNutrients(
+                                    calories = viewModel.userProfile.dailyCalories,
+                                    proteins = viewModel.userProfile.dailyProteins.toFloat(),
+                                    fats = viewModel.userProfile.dailyFats.toFloat(),
+                                    carbs = viewModel.userProfile.dailyCarbs.toFloat()
+                                ),
+                                meals = mealsData,
+                                messageType = "daily_analysis" // Маркер для разделения сценариев
+                            )
+                            
+                            // Отправляем запрос
+                            val response = viewModel.sendDailyAnalysisRequest(request)
+                            
+                            if (response != null) {
+                                analysisResult = response
+                                lastAnalysisTime = LocalDateTime.now()
+                                // Анализ уже сохранен в ViewModel через sendDailyAnalysisRequest
+                            } else {
+                                // Обработка ошибки
+                                analysisResult = "Не удалось получить анализ. Проверьте подключение к интернету."
+                            }
+                            
+                        } catch (e: Exception) {
+                            analysisResult = "Произошла ошибка при анализе: ${e.message}"
+                        } finally {
+                            isAnalyzing = false
+                        }
+                    }
+                },
+                enabled = !isAnalyzing && viewModel.meals.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFF9800),
+                    disabledContainerColor = Color(0xFFE0E0E0)
+                )
+            ) {
+                if (isAnalyzing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Анализирую...",
+                        fontSize = 14.sp
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Проанализировать день с AI",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            
+            // Подсказка если нет данных
+            if (viewModel.meals.isEmpty()) {
+                Text(
+                    text = "Добавьте приемы пищи для анализа",
+                    fontSize = 12.sp,
+                    color = Color(0xFF757575),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
