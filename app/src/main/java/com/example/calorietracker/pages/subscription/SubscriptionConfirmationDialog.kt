@@ -62,26 +62,9 @@ fun SubscriptionConfirmationDialog(
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
             Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Декоративный элемент для PRO
-                if (isPro) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 30.dp, y = (-20).dp)
-                            .size(120.dp)
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        Color(0xFF2196F3).copy(alpha = 0.2f),
-                                        Color.Transparent
-                                    )
-                                ),
-                                shape = CircleShape
-                            )
-                    )
-                }
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.TopCenter
+                ) {
 
                 Column(
                     modifier = Modifier
@@ -121,7 +104,9 @@ fun SubscriptionConfirmationDialog(
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -131,7 +116,9 @@ fun SubscriptionConfirmationDialog(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
                                     imageVector = when (plan) {
@@ -147,7 +134,8 @@ fun SubscriptionConfirmationDialog(
                                     text = plan.displayName,
                                     fontSize = 22.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = primaryColor
+                                    color = primaryColor,
+                                    textAlign = TextAlign.Center
                                 )
                             }
 
@@ -158,7 +146,9 @@ fun SubscriptionConfirmationDialog(
                                     text = "399₽ в месяц",
                                     fontSize = 16.sp,
                                     color = Color(0xFF1976D2),
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
@@ -171,7 +161,8 @@ fun SubscriptionConfirmationDialog(
                         fontSize = 16.sp,
                         color = if (isPro) Color(0xFF666666) else Color(0xFF9E9E9E),
                         textAlign = TextAlign.Center,
-                        lineHeight = 24.sp
+                        lineHeight = 24.sp,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     // Дополнительные фичи для PRO
@@ -179,11 +170,23 @@ fun SubscriptionConfirmationDialog(
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            MiniFeatureIcon(Icons.Default.AllInclusive, "Безлимит")
-                            MiniFeatureIcon(Icons.Default.Analytics, "Аналитика")
-                            MiniFeatureIcon(Icons.Default.Restaurant, "Планы питания")
+                            MiniFeatureIcon(
+                                icon = Icons.Default.AllInclusive,
+                                label = "Безлимит",
+                                modifier = Modifier.weight(1f)
+                            )
+                            MiniFeatureIcon(
+                                icon = Icons.Default.Analytics,
+                                label = "Аналитика",
+                                modifier = Modifier.weight(1f)
+                            )
+                            MiniFeatureIcon(
+                                icon = Icons.Default.Restaurant,
+                                label = "Планы питания",
+                                modifier = Modifier.weight(1f)
+                            )
                         }
                     }
 
@@ -316,8 +319,13 @@ private fun AnimatedPlanIcon(isPro: Boolean) {
 }
 
 @Composable
-private fun MiniFeatureIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
+private fun MiniFeatureIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    modifier: Modifier = Modifier
+) {
     Column(
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(

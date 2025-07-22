@@ -72,7 +72,9 @@ fun AiOpinionDialog(
                     Text(
                         text = opinion,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = 22.sp  // Сохраняем lineHeight
+                            fontSize = MaterialTheme.typography.bodyMedium.fontSize * 1.05f,
+                            lineHeight = 20.sp,
+                            fontWeight = FontWeight.Medium
                         ),
                         color = Color.Black
                     )

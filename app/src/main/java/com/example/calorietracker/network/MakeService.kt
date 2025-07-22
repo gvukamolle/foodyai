@@ -235,6 +235,22 @@ data class HealthCheckRequest(
     val ping: String = "health"
 )
 
+// Модели для анализа недельных данных
+data class WeeklyDataForAnalysis(
+    val userId: String,
+    val weekData: List<DayDataForAnalysis>,
+    val userProfile: UserProfileData
+)
+
+data class DayDataForAnalysis(
+    val date: String,
+    val calories: Int,
+    val proteins: Float,
+    val fats: Float,
+    val carbs: Float,
+    val mealsCount: Int
+)
+
 // Make.com Service Interface
 interface MakeService {
     companion object {
@@ -320,4 +336,12 @@ interface MakeService {
         @Path("webhookId") webhookId: String,
         @Body request: HealthCheckRequest = HealthCheckRequest()
     ): HealthResponse
+    
+    // Анализ недельных данных для аналитики
+    @Headers("Content-Type: application/json")
+    @POST("{webhookId}")
+    suspend fun analyzeWeeklyData(
+        @Path("webhookId") webhookId: String,
+        @Body request: WeeklyDataForAnalysis
+    ): FoodAnalysisResponse
 }

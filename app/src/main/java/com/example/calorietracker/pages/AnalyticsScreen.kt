@@ -41,10 +41,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.data.DayData
 import com.example.calorietracker.extensions.fancyShadow
+import com.example.calorietracker.network.*
 import com.example.calorietracker.utils.NutritionFormatter
+import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -112,6 +117,27 @@ data class Achievement(
     val color: Color
 )
 
+data class Streak(
+    val type: StreakType,
+    val count: Int,
+    val startDate: LocalDate,
+    val isActive: Boolean
+)
+
+enum class StreakType(val label: String, val icon: ImageVector) {
+    DAILY_GOAL("Дневная цель", Icons.Default.LocalFireDepartment),
+    BALANCED_NUTRITION("Сбалансированное питание", Icons.Default.Balance),
+    LOGGING("Ведение дневника", Icons.Default.EditCalendar)
+}
+
+// Модель для AI анализа
+data class AIAnalysisResponse(
+    val trends: String,
+    val successes: String,
+    val growthAreas: String,
+    val recommendation: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
@@ -125,7 +151,7 @@ fun AnalyticsScreen(
     // Состояния для анимаций
     var isVisible by remember { mutableStateOf(false) }
     var selectedPeriod by remember { mutableStateOf(AnalyticsPeriod.WEEK) }
-    var showDetailedStats by remember { mutableStateOf(false) }
+    var showAchievementDialog by remember { mutableStateOf<Achievement?>(null) }
 
     // Загрузка данных
     val todayData = viewModel.getTodayData()
@@ -184,6 +210,13 @@ fun AnalyticsScreen(
                         weeklyTrend = weeklyTrend
                     )
 
+                    // AI Insights - перенесен сюда
+                    AIInsightsCard(
+                        viewModel = viewModel,
+                        weekData = weekData,
+                        coroutineScope = coroutineScope
+                    )
+
                     // График калорий
                     CaloriesChartCard(
                         period = selectedPeriod,
@@ -200,45 +233,30 @@ fun AnalyticsScreen(
                         userProfile = viewModel.userProfile
                     )
 
-                    // Серии и достижения
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        StreaksCard(
-                            streaks = streaks,
-                            modifier = Modifier.weight(1f)
-                        )
+                    // Серии - отдельным блоком
+                    StreaksCard(streaks = streaks)
 
-                        ConsistencyCard(
-                            weekData = weekData,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    // Постоянство - отдельным блоком
+                    ConsistencyCard(weekData = weekData)
 
-                    // Достижения
-                    AchievementsSection(
+                    // Достижения в белом блоке
+                    AchievementsCard(
                         achievements = achievements,
-                        onAchievementClick = { /* TODO: Показать детали достижения */ }
-                    )
-
-                    // AI Insights
-                    AIInsightsCard(
-                        viewModel = viewModel,
-                        weeklyTrend = weeklyTrend,
-                        nutritionBalance = nutritionBalance
-                    )
-
-                    // Детальная статистика
-                    DetailedStatsCard(
-                        isExpanded = showDetailedStats,
-                        onToggle = { showDetailedStats = !showDetailedStats },
-                        viewModel = viewModel,
-                        period = selectedPeriod
+                        onAchievementClick = { achievement ->
+                            showAchievementDialog = achievement
+                        }
                     )
                 }
             }
         }
+    }
+
+    // Диалог достижения
+    showAchievementDialog?.let { achievement ->
+        AchievementDialog(
+            achievement = achievement,
+            onDismiss = { showAchievementDialog = null }
+        )
     }
 }
 
@@ -443,6 +461,191 @@ private fun OverviewCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AIInsightsCard(
+    viewModel: CalorieTrackerViewModel,
+    weekData: List<Pair<LocalDate, DayData?>>,
+    coroutineScope: CoroutineScope
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var aiAnalysis by remember { mutableStateOf<AIAnalysisResponse?>(null) }
+    val haptic = LocalHapticFeedback.current
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF3F4F6)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = AnalyticsColors.Secondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        "AI Рекомендации",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Icon(
+                    if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = AnalyticsColors.TextSecondary
+                )
+            }
+
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (aiAnalysis != null) {
+                    // Показываем результаты анализа
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        AnalysisSection("📈 Тренды", aiAnalysis!!.trends)
+                        AnalysisSection("✅ Успехи", aiAnalysis!!.successes)
+                        AnalysisSection("🎯 Зоны роста", aiAnalysis!!.growthAreas)
+                        AnalysisSection("💡 Рекомендация", aiAnalysis!!.recommendation)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        coroutineScope.launch {
+                            performAIAnalysis(viewModel, weekData) { result ->
+                                aiAnalysis = result
+                                isLoading = false
+                            }
+                        }
+                        isLoading = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading && viewModel.isOnline,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AnalyticsColors.Primary
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Psychology,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Персональная рекомендация")
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Нажмите для анализа вашего прогресса за неделю",
+                    fontSize = 14.sp,
+                    color = AnalyticsColors.TextSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnalysisSection(title: String, content: String) {
+    Column {
+        Text(
+            title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = AnalyticsColors.TextPrimary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            content,
+            fontSize = 14.sp,
+            color = AnalyticsColors.TextSecondary,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+private suspend fun performAIAnalysis(
+    viewModel: CalorieTrackerViewModel,
+    weekData: List<Pair<LocalDate, DayData?>>,
+    onResult: (AIAnalysisResponse?) -> Unit
+) {
+    try {
+        // Подготавливаем данные для анализа
+        val weekDataForAnalysis = weekData.map { (date, data) ->
+            DayDataForAnalysis(
+                date = date.toString(),
+                calories = data?.calories?.toInt() ?: 0,
+                proteins = data?.proteins ?: 0f,
+                fats = data?.fats ?: 0f,
+                carbs = data?.carbs ?: 0f,
+                mealsCount = data?.mealsCount ?: 0
+            )
+        }
+
+        val request = WeeklyDataForAnalysis(
+            userId = viewModel.userId,
+            weekData = weekDataForAnalysis,
+            userProfile = viewModel.userProfile.toNetworkProfile()
+        )
+
+        // Отправляем запрос на сервер
+        val response = safeApiCall {
+            NetworkModule.makeService.analyzeWeeklyData(
+                webhookId = MakeService.WEBHOOK_ID,
+                request = request
+            )
+        }
+
+        if (response.isSuccess) {
+            val answer = response.getOrNull()?.answer
+            if (answer != null) {
+                val analysisResponse = Gson().fromJson(answer, AIAnalysisResponse::class.java)
+                onResult(analysisResponse)
+            } else {
+                onResult(null)
+            }
+        } else {
+            onResult(null)
+        }
+    } catch (e: Exception) {
+        onResult(null)
     }
 }
 
@@ -884,46 +1087,32 @@ private fun MacroLegendItem(
     }
 }
 
-data class Streak(
-    val type: StreakType,
-    val count: Int,
-    val startDate: LocalDate,
-    val isActive: Boolean
-)
-
-enum class StreakType(val label: String, val icon: ImageVector) {
-    DAILY_GOAL("Дневная цель", Icons.Default.LocalFireDepartment),
-    BALANCED_NUTRITION("Сбалансированное питание", Icons.Default.Balance),
-    LOGGING("Ведение дневника", Icons.Default.EditCalendar)
-}
-
 @Composable
 private fun StreaksCard(
-    streaks: List<Streak>,
-    modifier: Modifier = Modifier
+    streaks: List<Streak>
 ) {
     Card(
-        modifier = modifier,
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = AnalyticsColors.CardBackground)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
             Text(
                 "Серии",
-                fontSize = 16.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             streaks.forEach { streak ->
                 StreakItem(streak)
                 if (streak != streaks.last()) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         }
@@ -935,11 +1124,11 @@ private fun StreakItem(streak: Streak) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(48.dp)
                 .clip(CircleShape)
                 .background(
                     if (streak.isActive) AnalyticsColors.Warning.copy(alpha = 0.2f)
@@ -951,15 +1140,16 @@ private fun StreakItem(streak: Streak) {
                 streak.type.icon,
                 contentDescription = null,
                 tint = if (streak.isActive) AnalyticsColors.Warning else AnalyticsColors.TextSecondary,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 streak.type.label,
-                fontSize = 12.sp,
-                color = AnalyticsColors.TextSecondary
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = AnalyticsColors.TextPrimary
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -968,7 +1158,6 @@ private fun StreakItem(streak: Streak) {
                 Text(
                     "${streak.count} ${getDaysWord(streak.count)}",
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
                     color = if (streak.isActive) AnalyticsColors.TextPrimary else AnalyticsColors.TextSecondary
                 )
                 if (streak.isActive && streak.count > 0) {
@@ -976,7 +1165,7 @@ private fun StreakItem(streak: Streak) {
                         Icons.Default.LocalFireDepartment,
                         contentDescription = null,
                         tint = AnalyticsColors.Warning,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -986,102 +1175,182 @@ private fun StreakItem(streak: Streak) {
 
 @Composable
 private fun ConsistencyCard(
-    weekData: List<Pair<LocalDate, DayData?>>,
-    modifier: Modifier = Modifier
+    weekData: List<Pair<LocalDate, DayData?>>
 ) {
     val consistency = weekData.count { it.second != null } / 7f * 100
 
     Card(
-        modifier = modifier,
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = AnalyticsColors.CardBackground)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(20.dp)
         ) {
-            Text(
-                "Постоянство",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(80.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                CircularProgressIndicator(
-                    progress = consistency / 100f,
+                Text(
+                    "Постоянство",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    "${consistency.toInt()}%",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
                     color = when {
                         consistency >= 80 -> AnalyticsColors.Success
                         consistency >= 60 -> AnalyticsColors.Warning
                         else -> AnalyticsColors.Error
-                    },
-                    size = 80.dp
+                    }
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Визуализация дней недели
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                weekData.forEach { (date, data) ->
+                    DayIndicator(
+                        dayOfWeek = date.dayOfWeek.name.take(2),
+                        isLogged = data != null,
+                        isToday = date == LocalDate.now()
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                "Записей за неделю",
-                fontSize = 12.sp,
-                color = AnalyticsColors.TextSecondary
-            )
-        }
-    }
-}
-
-@Composable
-private fun AchievementsSection(
-    achievements: List<Achievement>,
-    onAchievementClick: (Achievement) -> Unit
-) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Достижения",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                "${achievements.count { it.isUnlocked }} из ${achievements.size}",
+                "Записей за последнюю неделю: ${weekData.count { it.second != null }} из 7",
                 fontSize = 14.sp,
                 color = AnalyticsColors.TextSecondary
             )
         }
+    }
+}
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+@Composable
+private fun DayIndicator(
+    dayOfWeek: String,
+    isLogged: Boolean,
+    isToday: Boolean
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(
+                    when {
+                        isToday && isLogged -> AnalyticsColors.Primary
+                        isToday -> AnalyticsColors.Primary.copy(alpha = 0.3f)
+                        isLogged -> AnalyticsColors.Success
+                        else -> AnalyticsColors.Border
+                    }
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            items(achievements.size) { index ->
-                AchievementCard(
-                    achievement = achievements[index],
-                    onClick = { onAchievementClick(achievements[index]) }
+            if (isLogged) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
                 )
+            }
+        }
+
+        Text(
+            dayOfWeek,
+            fontSize = 12.sp,
+            color = if (isToday) AnalyticsColors.Primary else AnalyticsColors.TextSecondary,
+            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+        )
+    }
+}
+
+@Composable
+private fun AchievementsCard(
+    achievements: List<Achievement>,
+    onAchievementClick: (Achievement) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = AnalyticsColors.CardBackground)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Достижения",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    "${achievements.count { it.isUnlocked }} из ${achievements.size}",
+                    fontSize = 14.sp,
+                    color = AnalyticsColors.TextSecondary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                achievements.chunked(2).forEach { rowAchievements ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        rowAchievements.forEach { achievement ->
+                            AchievementItem(
+                                achievement = achievement,
+                                onClick = { onAchievementClick(achievement) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        // Добавляем пустой элемент для выравнивания, если в строке только одно достижение
+                        if (rowAchievements.size == 1) {
+                            Box(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AchievementCard(
+private fun AchievementItem(
     achievement: Achievement,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val scale by animateFloatAsState(
-        targetValue = if (achievement.isUnlocked) 1f else 0.9f,
+        targetValue = if (achievement.isUnlocked) 1f else 0.95f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -1089,33 +1358,26 @@ private fun AchievementCard(
         label = "scale"
     )
 
-    Card(
-        modifier = Modifier
-            .width(140.dp)
-            .height(160.dp)
+    Box(
+        modifier = modifier
             .scale(scale)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (achievement.isUnlocked)
-                AnalyticsColors.CardBackground
-            else
-                AnalyticsColors.Background
-        ),
-        border = if (achievement.isUnlocked) {
-            BorderStroke(2.dp, achievement.color)
-        } else null
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (achievement.isUnlocked)
+                    achievement.color.copy(alpha = 0.1f)
+                else
+                    AnalyticsColors.Background
+            )
+            .clickable { onClick() }
+            .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(
                         if (achievement.isUnlocked)
@@ -1132,237 +1394,157 @@ private fun AchievementCard(
                         achievement.color
                     else
                         AnalyticsColors.TextSecondary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                achievement.title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                color = if (achievement.isUnlocked)
-                    AnalyticsColors.TextPrimary
-                else
-                    AnalyticsColors.TextSecondary
-            )
-
-            if (achievement.isUnlocked && achievement.unlockedDate != null) {
-                Spacer(modifier = Modifier.height(4.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    achievement.unlockedDate.format(
-                        DateTimeFormatter.ofPattern("d MMM", Locale("ru"))
-                    ),
-                    fontSize = 12.sp,
-                    color = AnalyticsColors.TextSecondary
+                    achievement.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (achievement.isUnlocked)
+                        AnalyticsColors.TextPrimary
+                    else
+                        AnalyticsColors.TextSecondary
                 )
-            } else if (!achievement.isUnlocked) {
-                Spacer(modifier = Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { achievement.progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = achievement.color,
-                    trackColor = AnalyticsColors.Border
-                )
+
+                if (!achievement.isUnlocked) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { achievement.progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = achievement.color,
+                        trackColor = AnalyticsColors.Border
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AIInsightsCard(
-    viewModel: CalorieTrackerViewModel,
-    weeklyTrend: WeeklyTrend,
-    nutritionBalance: NutritionBalance
+private fun AchievementDialog(
+    achievement: Achievement,
+    onDismiss: () -> Unit
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
-    val insights = generateInsights(viewModel, weeklyTrend, nutritionBalance)
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF3F4F6)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
         )
     ) {
-        Column(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { isExpanded = !isExpanded }
-                .padding(20.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = AnalyticsColors.CardBackground)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = AnalyticsColors.Secondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        "AI Рекомендации",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Icon(
-                    if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = AnalyticsColors.TextSecondary
-                )
-            }
-
-            if (isExpanded) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                insights.forEach { insight ->
-                    InsightItem(insight)
-                    if (insight != insights.last()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                }
-            } else {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    insights.firstOrNull()?.text ?: "Нажмите для просмотра рекомендаций",
-                    fontSize = 14.sp,
-                    color = AnalyticsColors.TextSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-data class Insight(
-    val type: InsightType,
-    val text: String,
-    val priority: Int
-)
-
-enum class InsightType {
-    POSITIVE, NEGATIVE, NEUTRAL, TIP
-}
-
-@Composable
-private fun InsightItem(insight: Insight) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .offset(y = 6.dp)
-                .clip(CircleShape)
-                .background(
-                    when (insight.type) {
-                        InsightType.POSITIVE -> AnalyticsColors.Success
-                        InsightType.NEGATIVE -> AnalyticsColors.Error
-                        InsightType.NEUTRAL -> AnalyticsColors.Info
-                        InsightType.TIP -> AnalyticsColors.Warning
-                    }
-                )
-        )
-
-        Text(
-            insight.text,
-            fontSize = 14.sp,
-            color = AnalyticsColors.TextPrimary,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun DetailedStatsCard(
-    isExpanded: Boolean,
-    onToggle: () -> Unit,
-    viewModel: CalorieTrackerViewModel,
-    period: AnalyticsPeriod
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AnalyticsColors.CardBackground)
-    ) {
-        Column {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onToggle() }
-                    .padding(20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    "Детальная статистика",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Icon(
-                    if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null
-                )
-            }
-
-            if (isExpanded) {
-                Divider(color = AnalyticsColors.Border)
-
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                // Иконка достижения
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (achievement.isUnlocked)
+                                achievement.color.copy(alpha = 0.2f)
+                            else
+                                AnalyticsColors.Border
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Статистика по периоду
-                    DetailedStatRow("Средние калории", "${calculateAverageCalories(viewModel, period)} ккал")
-                    DetailedStatRow("Всего калорий", "${calculateTotalCalories(viewModel, period)} ккал")
-                    DetailedStatRow("Дней в целевой зоне", "${calculateDaysInTarget(viewModel, period)} дней")
-                    DetailedStatRow("Самый калорийный день", getHighestCalorieDay(viewModel, period))
-                    DetailedStatRow("Самый легкий день", getLowestCalorieDay(viewModel, period))
+                    Icon(
+                        achievement.icon,
+                        contentDescription = null,
+                        tint = if (achievement.isUnlocked)
+                            achievement.color
+                        else
+                            AnalyticsColors.TextSecondary,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Название
+                Text(
+                    achievement.title,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Описание
+                Text(
+                    achievement.description,
+                    fontSize = 14.sp,
+                    color = AnalyticsColors.TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+
+                if (achievement.isUnlocked && achievement.unlockedDate != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Получено: ${achievement.unlockedDate.format(
+                            DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru"))
+                        )}",
+                        fontSize = 12.sp,
+                        color = AnalyticsColors.TextSecondary
+                    )
+                } else if (!achievement.isUnlocked) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "Прогресс: ${(achievement.progress * 100).toInt()}%",
+                            fontSize = 14.sp,
+                            color = AnalyticsColors.TextSecondary
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LinearProgressIndicator(
+                            progress = { achievement.progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = achievement.color,
+                            trackColor = AnalyticsColors.Border
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = achievement.color
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Отлично!")
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun DetailedStatRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            label,
-            fontSize = 14.sp,
-            color = AnalyticsColors.TextSecondary
-        )
-        Text(
-            value,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = AnalyticsColors.TextPrimary
-        )
     }
 }
 
@@ -1450,7 +1632,7 @@ private fun generateAchievements(viewModel: CalorieTrackerViewModel): List<Achie
         Achievement(
             id = "first_week",
             title = "Первая неделя",
-            description = "Ведите дневник 7 дней подряд",
+            description = "Ведите дневник питания 7 дней подряд",
             icon = Icons.Default.EmojiEvents,
             progress = minOf(allDays.size / 7f, 1f),
             isUnlocked = allDays.size >= 7,
@@ -1460,7 +1642,7 @@ private fun generateAchievements(viewModel: CalorieTrackerViewModel): List<Achie
         Achievement(
             id = "perfect_day",
             title = "Идеальный день",
-            description = "Достигните целевых показателей по всем макронутриентам",
+            description = "Достигните целевых показателей по всем макронутриентам за один день",
             icon = Icons.Default.Stars,
             progress = 0.7f,
             isUnlocked = false,
@@ -1469,7 +1651,7 @@ private fun generateAchievements(viewModel: CalorieTrackerViewModel): List<Achie
         Achievement(
             id = "consistency_master",
             title = "Мастер постоянства",
-            description = "Ведите дневник 30 дней",
+            description = "Ведите дневник питания 30 дней",
             icon = Icons.Default.WorkspacePremium,
             progress = minOf(allDays.size / 30f, 1f),
             isUnlocked = allDays.size >= 30,
@@ -1479,7 +1661,7 @@ private fun generateAchievements(viewModel: CalorieTrackerViewModel): List<Achie
         Achievement(
             id = "balanced_week",
             title = "Сбалансированная неделя",
-            description = "Поддерживайте баланс макронутриентов 7 дней",
+            description = "Поддерживайте баланс макронутриентов 7 дней подряд",
             icon = Icons.Default.Balance,
             progress = 0.3f,
             isUnlocked = false,
@@ -1548,89 +1730,6 @@ private fun calculateGoalStreak(viewModel: CalorieTrackerViewModel): Int {
     return streak
 }
 
-private fun generateInsights(
-    viewModel: CalorieTrackerViewModel,
-    weeklyTrend: WeeklyTrend,
-    nutritionBalance: NutritionBalance
-): List<Insight> {
-    val insights = mutableListOf<Insight>()
-
-    // Анализ недельного тренда
-    when (weeklyTrend.trend) {
-        TrendType.UP -> insights.add(
-            Insight(
-                InsightType.NEUTRAL,
-                "Потребление калорий увеличилось на ${weeklyTrend.changePercent.toInt()}% за неделю",
-                1
-            )
-        )
-        TrendType.DOWN -> insights.add(
-            Insight(
-                InsightType.NEUTRAL,
-                "Потребление калорий снизилось на ${abs(weeklyTrend.changePercent).toInt()}% за неделю",
-                1
-            )
-        )
-        TrendType.STABLE -> insights.add(
-            Insight(
-                InsightType.POSITIVE,
-                "Отличная стабильность! Потребление калорий остается постоянным",
-                1
-            )
-        )
-    }
-
-    // Анализ баланса макронутриентов
-    if (nutritionBalance.isBalanced) {
-        insights.add(
-            Insight(
-                InsightType.POSITIVE,
-                "Превосходный баланс макронутриентов! Продолжайте в том же духе",
-                2
-            )
-        )
-    } else {
-        if (nutritionBalance.proteinsPercent < 20) {
-            insights.add(
-                Insight(
-                    InsightType.TIP,
-                    "Рекомендуется увеличить потребление белка для поддержания мышечной массы",
-                    3
-                )
-            )
-        }
-        if (nutritionBalance.carbsPercent > 60) {
-            insights.add(
-                Insight(
-                    InsightType.TIP,
-                    "Попробуйте сбалансировать рацион, добавив больше белков и полезных жиров",
-                    3
-                )
-            )
-        }
-    }
-
-    // Анализ достижения целей
-    val todayData = viewModel.getTodayData()
-    if (todayData != null) {
-        val targetCalories = viewModel.userProfile.dailyCalories
-        val difference = abs(todayData.calories - targetCalories)
-        val percentDiff = (difference / targetCalories) * 100
-
-        if (percentDiff <= 5) {
-            insights.add(
-                Insight(
-                    InsightType.POSITIVE,
-                    "Идеально! Вы точно в целевой зоне калорий",
-                    4
-                )
-            )
-        }
-    }
-
-    return insights.sortedBy { it.priority }
-}
-
 private fun getDaysWord(count: Int): String {
     return when {
         count % 10 == 1 && count % 100 != 11 -> "день"
@@ -1639,82 +1738,15 @@ private fun getDaysWord(count: Int): String {
     }
 }
 
-private fun calculateAverageCalories(viewModel: CalorieTrackerViewModel, period: AnalyticsPeriod): Int {
-    val days = when (period) {
-        AnalyticsPeriod.WEEK -> 7
-        AnalyticsPeriod.MONTH -> 30
-        AnalyticsPeriod.YEAR -> 365
-    }
-
-    val data = (0 until days).mapNotNull { daysAgo ->
-        viewModel.getDayData(LocalDate.now().minusDays(daysAgo.toLong()))
-    }
-
-    return if (data.isNotEmpty()) {
-        (data.sumOf { it.calories.toDouble() } / data.size).toInt()
-    } else 0
-}
-
-private fun calculateTotalCalories(viewModel: CalorieTrackerViewModel, period: AnalyticsPeriod): Int {
-    val days = when (period) {
-        AnalyticsPeriod.WEEK -> 7
-        AnalyticsPeriod.MONTH -> 30
-        AnalyticsPeriod.YEAR -> 365
-    }
-
-    return (0 until days).sumOf { daysAgo ->
-        viewModel.getDayData(LocalDate.now().minusDays(daysAgo.toLong()))?.calories?.toInt() ?: 0
-    }
-}
-
-private fun calculateDaysInTarget(viewModel: CalorieTrackerViewModel, period: AnalyticsPeriod): Int {
-    val days = when (period) {
-        AnalyticsPeriod.WEEK -> 7
-        AnalyticsPeriod.MONTH -> 30
-        AnalyticsPeriod.YEAR -> 365
-    }
-
-    val targetCalories = viewModel.userProfile.dailyCalories
-
-    return (0 until days).count { daysAgo ->
-        val dayData = viewModel.getDayData(LocalDate.now().minusDays(daysAgo.toLong()))
-        if (dayData != null) {
-            val difference = abs(dayData.calories - targetCalories)
-            (difference / targetCalories) * 100 <= 10
-        } else false
-    }
-}
-
-private fun getHighestCalorieDay(viewModel: CalorieTrackerViewModel, period: AnalyticsPeriod): String {
-    val days = when (period) {
-        AnalyticsPeriod.WEEK -> 7
-        AnalyticsPeriod.MONTH -> 30
-        AnalyticsPeriod.YEAR -> 365
-    }
-
-    val highestDay = (0 until days).mapNotNull { daysAgo ->
-        val date = LocalDate.now().minusDays(daysAgo.toLong())
-        viewModel.getDayData(date)?.let { date to it }
-    }.maxByOrNull { it.second.calories }
-
-    return highestDay?.let {
-        "${it.second.calories.toInt()} ккал (${it.first.format(DateTimeFormatter.ofPattern("d MMM", Locale("ru")))})"
-    } ?: "Нет данных"
-}
-
-private fun getLowestCalorieDay(viewModel: CalorieTrackerViewModel, period: AnalyticsPeriod): String {
-    val days = when (period) {
-        AnalyticsPeriod.WEEK -> 7
-        AnalyticsPeriod.MONTH -> 30
-        AnalyticsPeriod.YEAR -> 365
-    }
-
-    val lowestDay = (0 until days).mapNotNull { daysAgo ->
-        val date = LocalDate.now().minusDays(daysAgo.toLong())
-        viewModel.getDayData(date)?.let { date to it }
-    }.filter { it.second.calories > 0 }.minByOrNull { it.second.calories }
-
-    return lowestDay?.let {
-        "${it.second.calories.toInt()} ккал (${it.first.format(DateTimeFormatter.ofPattern("d MMM", Locale("ru")))})"
-    } ?: "Нет данных"
+// Расширение для преобразования UserProfile в UserProfileData
+private fun com.example.calorietracker.data.UserProfile.toNetworkProfile(): UserProfileData {
+    val age = com.example.calorietracker.utils.calculateAge(birthday)
+    return UserProfileData(
+        age = age,
+        weight = weight,
+        height = height,
+        gender = gender,
+        activityLevel = condition,
+        goal = goal
+    )
 }

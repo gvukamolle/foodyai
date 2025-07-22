@@ -768,7 +768,9 @@ fun MarkdownText(
     Text(
         text = annotatedString,
         style = style.copy(
-            lineHeight = style.lineHeight * 1.2f
+            fontSize = style.fontSize * 1.05f,
+            lineHeight = style.lineHeight * 1.1f,
+            fontWeight = FontWeight.Medium
         ),
         color = color,
         modifier = modifier
