@@ -1226,20 +1226,7 @@ class CalorieTrackerViewModel(
             null
         }
     }
-    
-    // Методы для работы с анализами дня
-    fun getDailyAnalysis(date: String): DailyAnalysis? {
-        return dailyAnalysisCache[date]
-    }
-    
-    private fun saveDailyAnalysis(date: String, result: String) {
-        dailyAnalysisCache[date] = DailyAnalysis(
-            date = date,
-            result = result,
-            timestamp = LocalDateTime.now()
-        )
-    }
-    
+
     // Очищаем анализ при смене дня
     private fun clearOldAnalysis() {
         val today = LocalDate.now().toString()
