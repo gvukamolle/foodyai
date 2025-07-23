@@ -179,7 +179,7 @@ class CalorieTrackerViewModel(
         set(value) {
             _messages = value
         }
-    
+
     // Методы для работы с анализами дня
     fun getDailyAnalysis(date: String): DailyAnalysis? {
         // Проверяем, не устарел ли анализ (если это не сегодня)
@@ -190,7 +190,7 @@ class CalorieTrackerViewModel(
         }
         return dailyAnalysisCache[date]
     }
-    
+
     private fun saveDailyAnalysis(date: String, result: String) {
         dailyAnalysisCache[date] = DailyAnalysis(
             date = date,
@@ -198,6 +198,7 @@ class CalorieTrackerViewModel(
             timestamp = LocalDateTime.now()
         )
     }
+
     var inputMessage by mutableStateOf("")
     var pendingFood by mutableStateOf<FoodItem?>(null)
     var prefillFood by mutableStateOf<FoodItem?>(null)
@@ -266,7 +267,7 @@ class CalorieTrackerViewModel(
                 dailyCarbs = intake.carbs
                 dailyFat = intake.fat
                 meals = intake.meals
-                
+
                 // Очищаем старые анализы
                 clearOldAnalysis()
             }
@@ -546,7 +547,8 @@ class CalorieTrackerViewModel(
             val photoPart = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
 
             val profileJson = gson.toJson(userProfile.toNetworkProfile())
-            val profileRequestBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
+            val profileRequestBody =
+                profileJson.toRequestBody("application/json".toMediaTypeOrNull())
             val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
             val captionRequestBody = caption.toRequestBody("text/plain".toMediaTypeOrNull())
             val messageTypeRequestBody = "photo".toRequestBody("text/plain".toMediaTypeOrNull())
@@ -599,7 +601,8 @@ class CalorieTrackerViewModel(
                             type = MessageType.AI,
                             content = "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
                         )
-                        Toast.makeText(context, "На фото не обнаружено еды", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "На фото не обнаружено еды", Toast.LENGTH_LONG)
+                            .show()
                         showPhotoDialog = false
                     }
 
@@ -802,6 +805,7 @@ class CalorieTrackerViewModel(
                 )
                 lastDescriptionMessage = null
             }
+
             "photo" -> {
                 messages = messages + ChatMessage(
                     type = MessageType.USER,
@@ -812,6 +816,7 @@ class CalorieTrackerViewModel(
                 lastPhotoPath = null
                 lastPhotoCaption = ""
             }
+
             else -> {
                 messages = messages + ChatMessage(
                     type = MessageType.USER,
@@ -964,7 +969,10 @@ class CalorieTrackerViewModel(
             }
 
             if (response.isSuccess) {
-                Log.d("CalorieTracker", "Еда успешно отправлена на сервер (источник: ${currentFoodSource})")
+                Log.d(
+                    "CalorieTracker",
+                    "Еда успешно отправлена на сервер (источник: ${currentFoodSource})"
+                )
             } else {
                 Log.e("CalorieTracker", "Ошибка отправки еды на сервер", response.exceptionOrNull())
             }
@@ -979,6 +987,17 @@ class CalorieTrackerViewModel(
 
     // 3. Обновить метод sendMessage для использования анимированных точек
     fun sendMessage() {
+        val message = inputMessage.trim()
+
+        if (message.isBlank()) return
+
+        // Проверяем, является ли это запросом анализа
+        if (message.startsWith("[АНАЛИЗ]")) {
+            val query = message.removePrefix("[АНАЛИЗ]").trim()
+            sendAnalysisRequest(query)
+            return
+        }
+
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
             val isFirstOfDay = messages.none { it.type == MessageType.USER }
@@ -1137,7 +1156,7 @@ class CalorieTrackerViewModel(
             messages = messages.filterNot { it.id == messageId }
         }
     }
-    
+
     // Методы для экрана аналитики
     fun getTodayData(): com.example.calorietracker.data.DayData? {
         val today = LocalDate.now()
@@ -1154,7 +1173,7 @@ class CalorieTrackerViewModel(
             null
         }
     }
-    
+
     fun getDayData(date: LocalDate): com.example.calorietracker.data.DayData? {
         val dateString = date.toString()
         val intake = repository.getIntakeHistory(dateString)
@@ -1171,7 +1190,7 @@ class CalorieTrackerViewModel(
             null
         }
     }
-    
+
     fun getAllDaysData(): List<com.example.calorietracker.data.DayData> {
         val allDates = repository.getAvailableDates()
         return allDates.mapNotNull { dateString ->
@@ -1180,6 +1199,157 @@ class CalorieTrackerViewModel(
                 getDayData(date)
             } catch (e: Exception) {
                 null
+            }
+        }
+    }
+
+    fun sendAnalysisRequest(query: String) {
+        if (query.isBlank()) return
+
+        viewModelScope.launch {
+            try {
+                // Добавляем сообщение пользователя с меткой анализа
+                val userMessage = ChatMessage(
+                    type = MessageType.USER,
+                    content = "📊 Анализ: $query",
+                    animate = true
+                )
+                _chatMessages.value = _chatMessages.value + userMessage
+
+                // Очищаем поле ввода
+                inputMessage = ""
+
+                // Показываем индикатор обработки
+                val processingMessage = ChatMessage(
+                    type = MessageType.AI,
+                    content = "",
+                    isProcessing = true,
+                    animate = true
+                )
+                _chatMessages.value = _chatMessages.value + processingMessage
+
+                // Собираем данные за сегодня для анализа
+                val todayMeals = meals.toList()
+                val mealsData = todayMeals.flatMap { meal ->
+                    meal.foods.map { food ->
+                        FoodItemData(
+                            name = food.name,
+                            calories = food.calories,
+                            protein = food.protein,
+                            fat = food.fat,
+                            carbs = food.carbs,
+                            weight = food.weight.toIntOrNull() ?: 0,
+                            mealType = meal.name,
+                            time = meal.time
+                        )
+                    }
+                }
+
+                // Считаем общие показатели
+                val totalCalories = todayMeals.sumOf { meal ->
+                    meal.foods.sumOf { it.calories }
+                }
+                val totalProtein = todayMeals.sumOf { meal ->
+                    meal.foods.sumOf { it.protein }
+                }
+                val totalFat = todayMeals.sumOf { meal ->
+                    meal.foods.sumOf { it.fat }
+                }
+                val totalCarbs = todayMeals.sumOf { meal ->
+                    meal.foods.sumOf { it.carbs }
+                }
+
+                // Получаем цели пользователя
+                val userProfile = repository.getUserProfile()
+                val dailyCalorieGoal = userProfile?.dailyCalorieGoal ?: 2000
+                val proteinGoal = userProfile?.proteinGoal ?: 50.0
+                val fatGoal = userProfile?.fatGoal ?: 65.0
+                val carbsGoal = userProfile?.carbsGoal ?: 250.0
+
+                // Формируем контекст для анализа
+                val analysisContext = buildString {
+                    appendLine("Запрос пользователя: $query")
+                    appendLine()
+                    appendLine("Данные о питании за сегодня:")
+                    appendLine("- Калории: $totalCalories из $dailyCalorieGoal ккал")
+                    appendLine("- Белки: ${totalProtein.roundToInt()}г из ${proteinGoal.roundToInt()}г")
+                    appendLine("- Жиры: ${totalFat.roundToInt()}г из ${fatGoal.roundToInt()}г")
+                    appendLine("- Углеводы: ${totalCarbs.roundToInt()}г из ${carbsGoal.roundToInt()}г")
+                    appendLine()
+                    appendLine("Приемы пищи:")
+                    todayMeals.forEach { meal ->
+                        appendLine()
+                        appendLine("${meal.name} (${meal.time}):")
+                        meal.foods.forEach { food ->
+                            appendLine("- ${food.name}: ${food.calories} ккал, Б:${food.protein}г, Ж:${food.fat}г, У:${food.carbs}г")
+                        }
+                    }
+                }
+
+                // Создаем запрос к API для анализа
+                val analysisRequest = DailyAnalysisRequest(
+                    userProfile = UserProfileData(
+                        age = calculateAge(userProfile?.birthDate ?: ""),
+                        sex = userProfile?.sex ?: "male",
+                        height = userProfile?.height ?: 170,
+                        weight = userProfile?.weight ?: 70.0,
+                        activityLevel = userProfile?.activityLevel ?: "moderate",
+                        goal = userProfile?.goal ?: "maintain",
+                        targetNutrients = TargetNutrients(
+                            calories = dailyCalorieGoal,
+                            protein = proteinGoal,
+                            fat = fatGoal,
+                            carbs = carbsGoal
+                        )
+                    ),
+                    dayData = DayDataForAnalysis(
+                        date = LocalDate.now().toString(),
+                        meals = mealsData,
+                        totalNutrients = mapOf(
+                            "calories" to totalCalories.toDouble(),
+                            "protein" to totalProtein,
+                            "fat" to totalFat,
+                            "carbs" to totalCarbs
+                        )
+                    ),
+                    specificQuestion = query
+                )
+
+                // Отправляем запрос
+                val response = safeApiCall {
+                    apiService.analyzeDailyIntake(analysisRequest)
+                }
+
+                // Удаляем сообщение обработки
+                _chatMessages.value = _chatMessages.value.filter { !it.isProcessing }
+
+                // Добавляем ответ AI
+                response.onSuccess { analysisResponse ->
+                    val aiMessage = ChatMessage(
+                        type = MessageType.AI,
+                        content = analysisResponse.analysis,
+                        animate = true
+                    )
+                    _chatMessages.value = _chatMessages.value + aiMessage
+                }.onFailure { error ->
+                    val errorMessage = ChatMessage(
+                        type = MessageType.AI,
+                        content = "Извините, не удалось выполнить анализ. Попробуйте позже.",
+                        animate = true
+                    )
+                    _chatMessages.value = _chatMessages.value + errorMessage
+                }
+
+            } catch (e: Exception) {
+                // Удаляем сообщение обработки в случае ошибки
+                _chatMessages.value = _chatMessages.value.filter { !it.isProcessing }
+
+                val errorMessage = ChatMessage(
+                    type = MessageType.AI,
+                    content = "Произошла ошибка при анализе. Попробуйте еще раз.",
+                    animate = true
+                )
+                _chatMessages.value = _chatMessages.value + errorMessage
             }
         }
     }
