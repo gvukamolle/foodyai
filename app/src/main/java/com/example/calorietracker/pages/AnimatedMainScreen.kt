@@ -62,6 +62,7 @@ import com.example.calorietracker.ui.animations.SimpleChatTypingIndicator
 import com.example.calorietracker.ui.animations.AnimatedMessageWithBlur
 import androidx.compose.foundation.lazy.items
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.text.SpanStyle
@@ -79,6 +80,13 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material.icons.filled.AutoAwesome
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -204,6 +212,20 @@ fun AnimatedMainScreen(
                     modifier = Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
+
+                // НОВОЕ: Кнопка режима анализа
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AnimatedAnalysisToggle(
+                        isEnabled = viewModel.isDailyAnalysisEnabled,
+                        onClick = { viewModel.toggleDailyAnalysis() }
+                    )
+                }
 
                 // Разделитель с анимацией
                 AnimatedContentDivider()
@@ -1123,7 +1145,10 @@ fun MarkdownText(
 
 // Анимированная кнопка отправки
 @Composable
-private fun AnimatedSendButton(onClick: () -> Unit) {
+private fun AnimatedSendButton(
+    onClick: () -> Unit,
+    isAnalysisMode: Boolean
+) {
     val haptic = LocalHapticFeedback.current
     var isPressed by remember { mutableStateOf(false) }
 
@@ -1151,13 +1176,111 @@ private fun AnimatedSendButton(onClick: () -> Unit) {
             }
     ) {
         Icon(
-            Icons.Default.Send,
-            contentDescription = "Отправить",
+            if (isAnalysisMode) Icons.Default.Analytics else Icons.Default.Send,
+            contentDescription = if (isAnalysisMode) {
+                "Отправить запрос анализа"
+            } else {
+                "Отправить"
+            },
             tint = Color.White,
             modifier = Modifier
                 .background(Color.Black, CircleShape)
                 .padding(8.dp)
         )
+    }
+}
+
+// Добавить этот компонент в файл AnimatedMainScreen.kt
+
+@Composable
+private fun AnimatedAnalysisToggle(
+    isEnabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+
+    // Анимации
+    val animatedWidth by animateDpAsState(
+        targetValue = if (isEnabled) 120.dp else 48.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "toggle_width"
+    )
+
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isEnabled) Color(0xFF2196F3) else Color.White,
+        animationSpec = tween(300),
+        label = "toggle_bg_color"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isEnabled) Color(0xFF1976D2) else Color(0xFFE0E0E0),
+        animationSpec = tween(300),
+        label = "toggle_border_color"
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = if (isEnabled) Color.White else Color(0xFF757575),
+        animationSpec = tween(300),
+        label = "toggle_content_color"
+    )
+
+    val textAlpha by animateFloatAsState(
+        targetValue = if (isEnabled) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (isEnabled) 300 else 150,
+            delayMillis = if (isEnabled) 100 else 0
+        ),
+        label = "toggle_text_alpha"
+    )
+
+    Surface(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
+        modifier = modifier
+            .height(48.dp)
+            .width(animatedWidth),
+        shape = RoundedCornerShape(24.dp),
+        color = backgroundColor,
+        border = BorderStroke(2.dp, borderColor)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.AutoAwesome,
+                contentDescription = if (isEnabled) "Отключить режим анализа" else "Включить режим анализа",
+                tint = contentColor,
+                modifier = Modifier.size(24.dp)
+            )
+
+            AnimatedVisibility(
+                visible = isEnabled,
+                enter = fadeIn(animationSpec = tween(200, delayMillis = 100)) +
+                        expandHorizontally(animationSpec = tween(200)),
+                exit = shrinkHorizontally(animationSpec = tween(150)) +
+                        fadeOut(animationSpec = tween(150))
+            ) {
+                Row {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Анализ",
+                        color = contentColor.copy(alpha = textAlpha),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
     }
 }
 

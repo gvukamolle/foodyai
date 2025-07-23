@@ -224,6 +224,14 @@ class CalorieTrackerViewModel(
     var showAILoadingScreen by mutableStateOf(false)
         private set
 
+    var isDailyAnalysisEnabled by mutableStateOf(false)
+        private set
+
+    // Переключение режима анализа
+    fun toggleDailyAnalysis() {
+        isDailyAnalysisEnabled = !isDailyAnalysisEnabled
+    }
+
     // Хранилище анализов дня
     private val dailyAnalysisCache = mutableMapOf<String, DailyAnalysis>()
 
@@ -682,7 +690,7 @@ class CalorieTrackerViewModel(
                     userProfile = userProfile.toNetworkProfile(),
                     message = textToAnalyze,
                     userId = userId,
-                    messageType = "analysis",
+                    messageType = if (isDailyAnalysisEnabled) "dayfood_analysis" else "analysis",
                 )
 
                 val response = safeApiCall {
@@ -1214,7 +1222,7 @@ class CalorieTrackerViewModel(
                     content = "📊 Анализ: $query",
                     animate = true
                 )
-                _chatMessages.value = _chatMessages.value + userMessage
+                messages = messages + userMessage
 
                 // Очищаем поле ввода
                 inputMessage = ""
@@ -1226,7 +1234,7 @@ class CalorieTrackerViewModel(
                     isProcessing = true,
                     animate = true
                 )
-                _chatMessages.value = _chatMessages.value + processingMessage
+                messages = messages + processingMessage
 
                 // Собираем данные за сегодня для анализа
                 val todayMeals = meals.toList()
@@ -1238,9 +1246,7 @@ class CalorieTrackerViewModel(
                             protein = food.protein,
                             fat = food.fat,
                             carbs = food.carbs,
-                            weight = food.weight.toIntOrNull() ?: 0,
-                            mealType = meal.name,
-                            time = meal.time
+                            weight = food.weight.toIntOrNull() ?: 0
                         )
                     }
                 }
@@ -1260,11 +1266,11 @@ class CalorieTrackerViewModel(
                 }
 
                 // Получаем цели пользователя
-                val userProfile = repository.getUserProfile()
-                val dailyCalorieGoal = userProfile?.dailyCalorieGoal ?: 2000
-                val proteinGoal = userProfile?.proteinGoal ?: 50.0
-                val fatGoal = userProfile?.fatGoal ?: 65.0
-                val carbsGoal = userProfile?.carbsGoal ?: 250.0
+                val profile = repository.getUserProfile()
+                val dailyCalorieGoal = profile?.dailyCalories ?: 2000
+                val proteinGoal = profile?.dailyProteins ?: 50
+                val fatGoal = profile?.dailyFats ?: 65
+                val carbsGoal = profile?.dailyCarbs ?: 250
 
                 // Формируем контекст для анализа
                 val analysisContext = buildString {
@@ -1272,14 +1278,14 @@ class CalorieTrackerViewModel(
                     appendLine()
                     appendLine("Данные о питании за сегодня:")
                     appendLine("- Калории: $totalCalories из $dailyCalorieGoal ккал")
-                    appendLine("- Белки: ${totalProtein.roundToInt()}г из ${proteinGoal.roundToInt()}г")
-                    appendLine("- Жиры: ${totalFat.roundToInt()}г из ${fatGoal.roundToInt()}г")
-                    appendLine("- Углеводы: ${totalCarbs.roundToInt()}г из ${carbsGoal.roundToInt()}г")
+                    appendLine("- Белки: ${totalProtein.roundToInt()}г из ${proteinGoal}г")
+                    appendLine("- Жиры: ${totalFat.roundToInt()}г из ${fatGoal}г")
+                    appendLine("- Углеводы: ${totalCarbs.roundToInt()}г из ${carbsGoal}г")
                     appendLine()
                     appendLine("Приемы пищи:")
                     todayMeals.forEach { meal ->
                         appendLine()
-                        appendLine("${meal.name} (${meal.time}):")
+                        appendLine("${meal.type.displayName} (${meal.time}):")
                         meal.foods.forEach { food ->
                             appendLine("- ${food.name}: ${food.calories} ккал, Б:${food.protein}г, Ж:${food.fat}г, У:${food.carbs}г")
                         }
@@ -1288,68 +1294,56 @@ class CalorieTrackerViewModel(
 
                 // Создаем запрос к API для анализа
                 val analysisRequest = DailyAnalysisRequest(
-                    userProfile = UserProfileData(
-                        age = calculateAge(userProfile?.birthDate ?: ""),
-                        sex = userProfile?.sex ?: "male",
-                        height = userProfile?.height ?: 170,
-                        weight = userProfile?.weight ?: 70.0,
-                        activityLevel = userProfile?.activityLevel ?: "moderate",
-                        goal = userProfile?.goal ?: "maintain",
-                        targetNutrients = TargetNutrients(
-                            calories = dailyCalorieGoal,
-                            protein = proteinGoal,
-                            fat = fatGoal,
-                            carbs = carbsGoal
-                        )
+                    userId = userId,
+                    date = LocalDate.now().toString(),
+                    userProfile = profile?.toNetworkProfile() ?: UserProfile().toNetworkProfile(),
+                    targetNutrients = TargetNutrients(
+                        calories = dailyCalorieGoal,
+                        proteins = proteinGoal.toFloat(),
+                        fats = fatGoal.toFloat(),
+                        carbs = carbsGoal.toFloat()
                     ),
-                    dayData = DayDataForAnalysis(
-                        date = LocalDate.now().toString(),
-                        meals = mealsData,
-                        totalNutrients = mapOf(
-                            "calories" to totalCalories.toDouble(),
-                            "protein" to totalProtein,
-                            "fat" to totalFat,
-                            "carbs" to totalCarbs
-                        )
-                    ),
-                    specificQuestion = query
+                    meals = mealsData
                 )
 
                 // Отправляем запрос
                 val response = safeApiCall {
-                    apiService.analyzeDailyIntake(analysisRequest)
+                    NetworkModule.makeService.analyzeDailyIntake(
+                        webhookId = MakeService.WEBHOOK_ID,
+                        request = analysisRequest
+                    )
                 }
 
                 // Удаляем сообщение обработки
-                _chatMessages.value = _chatMessages.value.filter { !it.isProcessing }
+                messages = messages.filter { !it.isProcessing }
 
                 // Добавляем ответ AI
                 response.onSuccess { analysisResponse ->
                     val aiMessage = ChatMessage(
                         type = MessageType.AI,
-                        content = analysisResponse.analysis,
+                        content = analysisResponse.answer ?: "Ответ не получен",
                         animate = true
                     )
-                    _chatMessages.value = _chatMessages.value + aiMessage
+                    messages = messages + aiMessage
                 }.onFailure { error ->
                     val errorMessage = ChatMessage(
                         type = MessageType.AI,
                         content = "Извините, не удалось выполнить анализ. Попробуйте позже.",
                         animate = true
                     )
-                    _chatMessages.value = _chatMessages.value + errorMessage
+                    messages = messages + errorMessage
                 }
 
             } catch (e: Exception) {
                 // Удаляем сообщение обработки в случае ошибки
-                _chatMessages.value = _chatMessages.value.filter { !it.isProcessing }
+                messages = messages.filter { !it.isProcessing }
 
                 val errorMessage = ChatMessage(
                     type = MessageType.AI,
                     content = "Произошла ошибка при анализе. Попробуйте еще раз.",
                     animate = true
                 )
-                _chatMessages.value = _chatMessages.value + errorMessage
+                messages = messages + errorMessage
             }
         }
     }
