@@ -1197,7 +1197,10 @@ class CalorieTrackerViewModel(
 
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
-            val isFirstOfDay = messages.none { it.type == MessageType.USER }
+            val dayStart = DailyResetUtils.getCurrentFoodDayStartTime()
+            val isFirstOfDay = messages.none {
+                it.type == MessageType.USER && !it.timestamp.isBefore(dayStart)
+            }
             messages = messages + ChatMessage(
                 type = MessageType.USER,
                 content = userMessage,

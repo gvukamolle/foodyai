@@ -82,6 +82,22 @@ object DailyResetUtils {
     }
 
     /**
+     * Получить время начала текущего "пищевого" дня (последние 4:00 утра).
+     * Это время используется как граница, после которой сообщения считаются
+     * принадлежащими текущему дню.
+     */
+    fun getCurrentFoodDayStartTime(): LocalDateTime {
+        val now = LocalDateTime.now()
+        val todayReset = now.toLocalDate().atTime(RESET_HOUR, 0)
+        return if (now.isBefore(todayReset)) {
+            todayReset.minusDays(1)
+        } else {
+            todayReset
+        }
+    }
+
+
+    /**
      * Получить читаемую дату для отображения пользователю (например, "Ср, 25 Июня").
      * Этот метод теперь использует стандартные средства для форматирования.
      * @param date Дата в формате "YYYY-MM-DD".
