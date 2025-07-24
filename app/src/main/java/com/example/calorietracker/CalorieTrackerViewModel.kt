@@ -232,6 +232,65 @@ class CalorieTrackerViewModel(
         isDailyAnalysisEnabled = !isDailyAnalysisEnabled
     }
 
+    private fun startWatchMyFood(userQuery: String = "") {
+        viewModelScope.launch {
+            try {
+                if (userQuery.isNotBlank()) {
+                    messages = messages + ChatMessage(
+                        type = MessageType.USER,
+                        content = userQuery,
+                        animate = true
+                    )
+                    messages = messages + ChatMessage(
+                        type = MessageType.AI,
+                        content = "",
+                        isProcessing = true,
+                        animate = true
+                    )
+                }
+                val mealsData = meals.flatMap { meal ->
+                    meal.foods.map { food ->
+                        FoodItemData(
+                            name = food.name,
+                            calories = food.calories,
+                            protein = food.protein,
+                            fat = food.fat,
+                            carbs = food.carbs,
+                            weight = food.weight.toIntOrNull() ?: 100
+                        )
+                    }
+                }
+
+                val request = WatchMyFoodRequest(
+                    userId = userId,
+                    date = LocalDate.now().toString(),
+                    userProfile = userProfile.toNetworkProfile(),
+                    targetNutrients = TargetNutrients(
+                        calories = userProfile.dailyCalories,
+                        proteins = userProfile.dailyProteins.toFloat(),
+                        fats = userProfile.dailyFats.toFloat(),
+                        carbs = userProfile.dailyCarbs.toFloat()
+                    ),
+                    meals = mealsData,
+                    message = userQuery,
+                    messageType = "watch_myfood"
+                )
+
+                val answer = sendWatchMyFoodRequest(request)
+                if (userQuery.isNotBlank()) {
+                    messages = messages.filter { !it.isProcessing }
+                    messages = messages + ChatMessage(
+                        type = MessageType.AI,
+                        content = answer ?: "Ошибка сервера: не удалось получить ответ",
+                        animate = true
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("CalorieTracker", "Ошибка формирования watch_myfood", e)
+            }
+        }
+    }
+
     // Хранилище анализов дня
     private val dailyAnalysisCache = mutableMapOf<String, DailyAnalysis>()
 
@@ -1002,7 +1061,8 @@ class CalorieTrackerViewModel(
         // Проверяем, является ли это запросом анализа
         if (message.startsWith("[АНАЛИЗ]")) {
             val query = message.removePrefix("[АНАЛИЗ]").trim()
-            sendAnalysisRequest(query)
+            startWatchMyFood(query)
+            inputMessage = ""
             return
         }
 
@@ -1387,6 +1447,47 @@ class CalorieTrackerViewModel(
             }
         } catch (e: Exception) {
             Log.e("CalorieTracker", "Ошибка при анализе дня", e)
+            null
+        }
+    }
+
+    // Метод для отправки запроса "watch my food" на сервер
+    suspend fun sendWatchMyFoodRequest(request: WatchMyFoodRequest): String? {
+        val updatedRequest = request.copy(messageType = "watch_myfood")
+        return try {
+            if (!checkInternetConnection()) {
+                return null
+            }
+
+            val currentUser = authManager.currentUser.value
+            if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
+                showAILimitDialog = true
+                return null
+            }
+
+            val response = safeApiCall {
+                NetworkModule.makeService.watchMyFood(
+                    webhookId = MakeService.WEBHOOK_ID,
+                    request = updatedRequest
+                )
+            }
+
+            if (response.isSuccess) {
+                if (currentUser != null) {
+                    val updatedUserData = AIUsageManager.incrementUsage(currentUser)
+                    authManager.updateUserData(updatedUserData)
+                }
+
+                val answer = response.getOrNull()?.answer
+                if (answer != null) {
+                    saveDailyAnalysis(updatedRequest.date, answer)
+                }
+                answer
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("CalorieTracker", "Ошибка при отправке watch_myfood", e)
             null
         }
     }

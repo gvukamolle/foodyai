@@ -261,6 +261,17 @@ data class DailyAnalysisRequest(
     val messageType: String = "daily_analysis" // Маркер для разделения сценариев
 )
 
+// Отправка текущего рациона в режиме "watch my food"
+data class WatchMyFoodRequest(
+    val userId: String,
+    val date: String,
+    val userProfile: UserProfileData,
+    val targetNutrients: TargetNutrients,
+    val meals: List<FoodItemData>,
+    val message: String,
+    val messageType: String = "watch_myfood"
+)
+
 data class TargetNutrients(
     val calories: Int,
     val proteins: Float,
@@ -368,5 +379,14 @@ interface MakeService {
     suspend fun analyzeDailyIntake(
         @Path("webhookId") webhookId: String,
         @Body request: DailyAnalysisRequest
+    ): FoodAnalysisResponse
+
+
+    // Отправка рациона в режиме "watch my food"
+    @Headers("Content-Type: application/json")
+    @POST("{webhookId}")
+    suspend fun watchMyFood(
+        @Path("webhookId") webhookId: String,
+        @Body request: WatchMyFoodRequest
     ): FoodAnalysisResponse
 }

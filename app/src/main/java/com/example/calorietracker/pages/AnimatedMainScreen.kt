@@ -55,9 +55,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.expandHorizontally
 import com.example.calorietracker.ui.animations.SimpleChatTypingIndicator
 import com.example.calorietracker.ui.animations.AnimatedMessageWithBlur
 import androidx.compose.foundation.lazy.items
@@ -68,24 +66,20 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import java.io.File
 import androidx.compose.material.icons.filled.Menu
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.AutoAwesome
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -151,9 +145,6 @@ fun AnimatedMainScreen(
     var isDrawerOpen by remember { mutableStateOf(false) } // Состояние для выдвижного меню
     var showStatisticsCard by remember { mutableStateOf(false) } // Состояние для карточки статистики
 
-    var showAnalysisButton by remember { mutableStateOf(false) }
-    var analysisButtonExpanded by remember { mutableStateOf(false) }
-
     val isAnalysisMode = viewModel.inputMessage.startsWith("[АНАЛИЗ]")
 
 // Проверяем наличие блюд за сегодня
@@ -195,13 +186,6 @@ fun AnimatedMainScreen(
                     onNavigateToSubscription = onNavigateToSubscription
                 )
 
-                AnalysisModeIndicator(
-                    visible = isAnalysisMode,
-                    onClose = {
-                        viewModel.inputMessage = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
-                    }
-                )
-
                 ThinCaloriesBar(
                     current = viewModel.dailyIntake.calories,
                     target = viewModel.userProfile.dailyCalories,
@@ -212,20 +196,6 @@ fun AnimatedMainScreen(
                     modifier = Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-
-                // НОВОЕ: Кнопка режима анализа
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AnimatedAnalysisToggle(
-                        isEnabled = viewModel.isDailyAnalysisEnabled,
-                        onClick = { viewModel.toggleDailyAnalysis() }
-                    )
-                }
 
                 // Разделитель с анимацией
                 AnimatedContentDivider()
@@ -653,7 +623,7 @@ private fun AnimatedBottomBar(
     onManualClick: () -> Unit,
 ) {
     val hasTodayMeals = viewModel.meals.isNotEmpty()
-    var analysisButtonExpanded by remember { mutableStateOf(false) }
+    val isAnalysisMode = viewModel.inputMessage.startsWith("[АНАЛИЗ]")
 
     Column(
         modifier = Modifier
@@ -662,37 +632,6 @@ private fun AnimatedBottomBar(
             .navigationBarsPadding()
             .imePadding()
     ) {
-        // Область для дополнительных кнопок
-        AnimatedVisibility(
-            visible = true, // Всегда показываем область
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp) // Увеличенное пространство
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                // Кнопка анализа слева
-                EnhancedAnalysisButton(
-                    expanded = analysisButtonExpanded,
-                    enabled = hasTodayMeals,
-                    onExpandToggle = {
-                        analysisButtonExpanded = !analysisButtonExpanded
-                    },
-                    onAnalysisClick = {
-                        analysisButtonExpanded = false
-                        // Активируем режим анализа
-                        viewModel.inputMessage = "[АНАЛИЗ] "
-                    },
-                    modifier = Modifier.align(Alignment.CenterStart)
-                )
-
-                // Здесь можно добавить другие кнопки в будущем
-            }
-        }
-
         RoundedDivider(
             color = Color(0xFFE5E5E5),
             thickness = 1.dp,
@@ -700,17 +639,12 @@ private fun AnimatedBottomBar(
             curveHeight = 10.dp
         )
 
-        Row(
+        // Поле ввода
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            // Проверяем, активен ли режим анализа
-            val isAnalysisMode = viewModel.inputMessage.startsWith("[АНАЛИЗ]")
-
-            // Анимированное поле ввода с индикацией режима анализа
             AnimatedInputField(
                 value = if (isAnalysisMode) {
                     viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
@@ -724,27 +658,37 @@ private fun AnimatedBottomBar(
                         newValue
                     }
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 isOnline = viewModel.isOnline,
-                placeholder = if (isAnalysisMode) {
-                    "Задайте вопрос об анализе питания..."
-                } else {
-                    "Сообщение..."
-                },
-                leadingIcon = if (isAnalysisMode) {
-                    {
-                        Icon(
-                            Icons.Default.Analytics,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                placeholder = "Сообщение..."
+            )
+        }
+
+        // Кнопки под полем ввода
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Кнопка анализа СЛЕВА
+            AnimatedAnalysisToggle(
+                isEnabled = isAnalysisMode,
+                onClick = {
+                    if (hasTodayMeals) {
+                        viewModel.toggleDailyAnalysis()
+                        viewModel.inputMessage = if (isAnalysisMode) {
+                            viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
+                        } else {
+                            "[АНАЛИЗ] "
+                        }
                     }
-                } else null
+                }
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
-
+            // Кнопка отправки / меню СПРАВА
             Box {
                 AnimatedContent(
                     targetState = viewModel.inputMessage.isNotBlank(),
@@ -756,9 +700,8 @@ private fun AnimatedBottomBar(
                     if (hasText) {
                         AnimatedSendButton(
                             onClick = {
-                                viewModel.sendMessage() // Вся логика теперь внутри sendMessage
-                            },
-                            isAnalysisMode = isAnalysisMode
+                                viewModel.sendMessage()
+                            }
                         )
                     } else {
                         AnimatedPlusButton(
@@ -781,264 +724,13 @@ private fun AnimatedBottomBar(
     }
 }
 
-    @OptIn(ExperimentalAnimationApi::class)
-    @Composable
-    private fun EnhancedAnalysisButton(
-        expanded: Boolean,
-        enabled: Boolean,
-        onExpandToggle: () -> Unit,
-        onAnalysisClick: () -> Unit,
-        modifier: Modifier = Modifier
-    ) {
-        val haptic = LocalHapticFeedback.current
-
-        Box(modifier = modifier) {
-            AnimatedContent(
-                targetState = expanded,
-                transitionSpec = {
-                    if (targetState) {
-                        (fadeIn(animationSpec = tween(200)) +
-                                slideInHorizontally(
-                                    initialOffsetX = { -it / 2 },
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessLow
-                                    )
-                                )) with (fadeOut(animationSpec = tween(100)) +
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it / 2 },
-                                    animationSpec = tween(100)
-                                ))
-                    } else {
-                        (fadeIn(animationSpec = tween(100)) +
-                                scaleIn(
-                                    initialScale = 0.3f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium
-                                    )
-                                )) with (fadeOut(animationSpec = tween(200)) +
-                                scaleOut(
-                                    targetScale = 0.3f,
-                                    animationSpec = tween(200)
-                                ))
-                    }
-                },
-                label = "analysis_button_animation"
-            ) { isExpanded ->
-                if (isExpanded) {
-                    // Развернутая кнопка с градиентом
-                    Surface(
-                        onClick = {
-                            if (enabled) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onAnalysisClick()
-                            }
-                        },
-                        enabled = enabled,
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier
-                            .height(48.dp)
-                            .widthIn(min = 140.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    if (enabled) {
-                                        Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color(0xFF1976D2),
-                                                Color(0xFF42A5F5)
-                                            )
-                                        )
-                                    } else {
-                                        Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color(0xFFE0E0E0),
-                                                Color(0xFFE0E0E0)
-                                            )
-                                        )
-                                    }
-                                )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 20.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Analytics,
-                                    contentDescription = "Анализ",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = if (enabled) Color.White else Color(0xFF9E9E9E)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Анализ",
-                                    color = if (enabled) Color.White else Color(0xFF9E9E9E),
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 15.sp
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    // Свернутая круглая кнопка с анимацией
-                    if (enabled) {
-                        PulsingAnalysisButton(
-                            enabled = true,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onExpandToggle()
-                            }
-                        )
-                    } else {
-                        Surface(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                // Показываем подсказку, что нужно добавить еду
-                            },
-                            shape = CircleShape,
-                            color = Color(0xFFE0E0E0),
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Icon(
-                                    Icons.Default.Analytics,
-                                    contentDescription = "Анализ недоступен",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = Color(0xFF9E9E9E)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-@Composable
-private fun AnalysisModeIndicator(
-    visible: Boolean,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-        exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
-        modifier = modifier
-    ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Analytics,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Режим анализа",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier.size(20.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Закрыть режим анализа",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PulsingAnalysisButton(
-    enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "scale"
-    )
-
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha"
-    )
-
-    Surface(
-        onClick = onClick,
-        enabled = enabled,
-        shape = CircleShape,
-        color = if (enabled) Color.Black else Color(0xFFE0E0E0),
-        modifier = modifier
-            .size(48.dp)
-            .graphicsLayer {
-                if (enabled && !onClick.toString().contains("expanded")) {
-                    scaleX = scale
-                    scaleY = scale
-                    this.alpha = alpha
-                }
-            }
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Icon(
-                Icons.Default.Analytics,
-                contentDescription = "Анализ питания",
-                modifier = Modifier.size(24.dp),
-                tint = if (enabled) Color.White else Color(0xFF9E9E9E)
-            )
-        }
-    }
-}
-
-// Анимированное поле ввода
 @Composable
 private fun AnimatedInputField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     isOnline: Boolean,
-    placeholder: String = "Сообщение...",
-    leadingIcon: (@Composable () -> Unit)? = null
+    placeholder: String = "Сообщение..."
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var isFocused by remember { mutableStateOf(false) }
@@ -1060,16 +752,9 @@ private fun AnimatedInputField(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFFF5F5F5))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                leadingIcon?.let {
-                    it()
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-
                 Box(modifier = Modifier.weight(1f)) {
                     if (value.isEmpty()) {
                         Text(
@@ -1146,8 +831,7 @@ fun MarkdownText(
 // Анимированная кнопка отправки
 @Composable
 private fun AnimatedSendButton(
-    onClick: () -> Unit,
-    isAnalysisMode: Boolean
+    onClick: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
     var isPressed by remember { mutableStateOf(false) }
@@ -1176,12 +860,8 @@ private fun AnimatedSendButton(
             }
     ) {
         Icon(
-            if (isAnalysisMode) Icons.Default.Analytics else Icons.Default.Send,
-            contentDescription = if (isAnalysisMode) {
-                "Отправить запрос анализа"
-            } else {
-                "Отправить"
-            },
+            Icons.Default.Send,
+            contentDescription = "Отправить",
             tint = Color.White,
             modifier = Modifier
                 .background(Color.Black, CircleShape)
@@ -1199,10 +879,11 @@ private fun AnimatedAnalysisToggle(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
 
     // Анимации
     val animatedWidth by animateDpAsState(
-        targetValue = if (isEnabled) 120.dp else 48.dp,
+        targetValue = if (isEnabled) 100.dp else 40.dp, // Уменьшили максимальную ширину со 120 до 100
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -1237,22 +918,25 @@ private fun AnimatedAnalysisToggle(
         label = "toggle_text_alpha"
     )
 
-    Surface(
-        onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onClick()
-        },
+    Box(
         modifier = modifier
-            .height(48.dp)
-            .width(animatedWidth),
-        shape = RoundedCornerShape(24.dp),
-        color = backgroundColor,
-        border = BorderStroke(2.dp, borderColor)
+            .height(40.dp) // Уменьшили высоту с 48 до 40
+            .width(animatedWidth)
+            .clip(RoundedCornerShape(20.dp))
+            .background(backgroundColor)
+            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(20.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null // Убираем ripple эффект
+            ) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 10.dp), // Уменьшили padding
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
@@ -1260,7 +944,7 @@ private fun AnimatedAnalysisToggle(
                 imageVector = Icons.Default.AutoAwesome,
                 contentDescription = if (isEnabled) "Отключить режим анализа" else "Включить режим анализа",
                 tint = contentColor,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(20.dp) // Уменьшили иконку
             )
 
             AnimatedVisibility(
@@ -1271,11 +955,11 @@ private fun AnimatedAnalysisToggle(
                         fadeOut(animationSpec = tween(150))
             ) {
                 Row {
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Анализ",
                         color = contentColor.copy(alpha = textAlpha),
-                        fontSize = 16.sp,
+                        fontSize = 14.sp, // Уменьшили шрифт
                         fontWeight = FontWeight.SemiBold
                     )
                 }
