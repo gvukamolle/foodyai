@@ -1061,6 +1061,7 @@ class CalorieTrackerViewModel(
         // Проверяем, является ли это запросом анализа
         if (message.startsWith("[АНАЛИЗ]")) {
             val query = message.removePrefix("[АНАЛИЗ]").trim()
+            if (query.isBlank()) return
             startWatchMyFood(query)
             inputMessage = ""
             return

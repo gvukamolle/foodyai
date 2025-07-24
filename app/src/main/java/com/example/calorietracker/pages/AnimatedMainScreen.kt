@@ -145,7 +145,7 @@ fun AnimatedMainScreen(
     var isDrawerOpen by remember { mutableStateOf(false) } // Состояние для выдвижного меню
     var showStatisticsCard by remember { mutableStateOf(false) } // Состояние для карточки статистики
 
-    val isAnalysisMode = viewModel.inputMessage.startsWith("[АНАЛИЗ]")
+    val isAnalysisMode = viewModel.isDailyAnalysisEnabled
 
 // Проверяем наличие блюд за сегодня
     val hasTodayMeals = viewModel.meals.isNotEmpty()
@@ -623,7 +623,7 @@ private fun AnimatedBottomBar(
     onManualClick: () -> Unit,
 ) {
     val hasTodayMeals = viewModel.meals.isNotEmpty()
-    val isAnalysisMode = viewModel.inputMessage.startsWith("[АНАЛИЗ]")
+    val isAnalysisMode = viewModel.isDailyAnalysisEnabled
 
     Column(
         modifier = Modifier
@@ -678,11 +678,16 @@ private fun AnimatedBottomBar(
                 isEnabled = isAnalysisMode,
                 onClick = {
                     if (hasTodayMeals) {
-                        viewModel.toggleDailyAnalysis()
-                        viewModel.inputMessage = if (isAnalysisMode) {
+                        val currentText = if (isAnalysisMode) {
                             viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
                         } else {
-                            "[АНАЛИЗ] "
+                            viewModel.inputMessage
+                        }
+                        viewModel.toggleDailyAnalysis()
+                        viewModel.inputMessage = if (isAnalysisMode) {
+                            currentText
+                        } else {
+                            "[АНАЛИЗ] $currentText"
                         }
                     }
                 }
@@ -691,7 +696,11 @@ private fun AnimatedBottomBar(
             // Кнопка отправки / меню СПРАВА
             Box {
                 AnimatedContent(
-                    targetState = viewModel.inputMessage.isNotBlank(),
+                    targetState = if (isAnalysisMode) {
+                        viewModel.inputMessage.removePrefix("[АНАЛИЗ] ").isNotBlank()
+                    } else {
+                        viewModel.inputMessage.isNotBlank()
+                    },
                     transitionSpec = {
                         fadeIn() + scaleIn() with fadeOut() + scaleOut()
                     },
