@@ -255,21 +255,6 @@ fun AnimatedMainScreen(
                 animationSpec = tween(durationMillis = 250),
                 label = "ime_offset"
             )
-
-            // Новый экран загрузки AI поверх всего остального
-            AnimatedVisibility(
-                visible = viewModel.showAILoadingScreen,
-                enter = fadeIn(animationSpec = tween(300)),
-                exit = fadeOut(animationSpec = tween(300))
-            ) {
-                AIAnalysisLoadingScreen(
-                    onDismiss = {
-                        viewModel.cancelAIAnalysis()
-                    },
-                    showDismissButton = true,
-                    inputMethod = viewModel.inputMethod // Передаем метод ввода
-                )
-            }
         }
     }
 
@@ -535,8 +520,10 @@ private fun AnimatedChatMessageCard(
             val configuration = LocalConfiguration.current
             val maxMessageWidth = (configuration.screenWidthDp * 2 / 3).dp
 
-            val showCard = !(message.isProcessing ||
-                    (message.content.isEmpty() && message.isExpandable && message.foodItem?.aiOpinion != null))
+            val showCard = !(
+                    (message.isProcessing && message.inputMethod == null) ||
+                            (message.content.isEmpty() && message.isExpandable && message.foodItem?.aiOpinion != null)
+                    )
 
             if (showCard) {
                 Card(
@@ -569,7 +556,11 @@ private fun AnimatedChatMessageCard(
                                     vertical = 6.dp
                                 )
                             ) {
-                                SimpleChatTypingIndicator()
+                                if (message.inputMethod != null) {
+                                    AnimatedPhrases(inputMethod = message.inputMethod)
+                                } else {
+                                    SimpleChatTypingIndicator()
+                                }
                             }
                         } else {
                             if (message.imagePath != null) {

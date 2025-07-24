@@ -169,7 +169,7 @@ private fun AILoadingRing() {
  */
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-private fun AnimatedPhrases(inputMethod: String? = null) {
+fun AnimatedPhrases(inputMethod: String? = null) {
     // Базовые фразы
     val basePhrases = listOf(
         "Дайте подумать... 🤔",

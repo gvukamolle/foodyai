@@ -59,6 +59,7 @@ data class ChatMessage(
     val isWelcome: Boolean = false,
     val animate: Boolean = true,
     val isProcessing: Boolean = false, // Новое поле для индикации обработки
+    val inputMethod: String? = null, // Метод ввода для загрузочных сообщений
     val isVisible: Boolean = true // Для анимации удаления сообщений
 )
 
@@ -580,9 +581,8 @@ class CalorieTrackerViewModel(
         isAnalyzing = true
         currentFoodSource = "ai_photo"
 
-        // Показываем новый экран загрузки вместо временного сообщения
-        showAILoadingScreen = true
-        inputMethod = "photo" // Добавить это поле в ViewModel
+        // Запоминаем метод ввода для показа анимации в чате
+        inputMethod = "photo"
 
         // Сохраняем фото для отображения в чате
         val chatFile = File.createTempFile("photo_chat", ".jpg", context.cacheDir)
@@ -618,6 +618,15 @@ class CalorieTrackerViewModel(
             }
             return
         }
+
+        // Сообщение с анимацией ожидания
+        val loadingMessage = ChatMessage(
+            type = MessageType.AI,
+            content = "",
+            isProcessing = true,
+            inputMethod = "photo"
+        )
+        messages = messages + loadingMessage
 
         // Больше не нужно временное сообщение - у нас есть полноэкранная загрузка
         // val tempMessage = ChatMessage(...) - УДАЛЕНО
@@ -720,6 +729,7 @@ class CalorieTrackerViewModel(
             handleError("Ошибка анализа изображения: ${e.message}")
         } finally {
             showAILoadingScreen = false  // Обязательно скрываем экран загрузки
+            messages = messages.filter { !it.isProcessing }
             isAnalyzing = false
         }
     }
@@ -745,9 +755,8 @@ class CalorieTrackerViewModel(
             isAnalyzing = true
             currentFoodSource = "ai_description"
 
-            // Показываем новый экран загрузки
-            showAILoadingScreen = true
-            inputMethod = "text" // Указываем метод ввода
+            // Запоминаем метод ввода для анимации
+            inputMethod = "text"
 
             if (!checkInternetConnection()) {
                 showAILoadingScreen = false  // Скрываем экран загрузки
@@ -766,6 +775,15 @@ class CalorieTrackerViewModel(
                 isAnalyzing = false
                 return@launch
             }
+
+            // Сообщение с анимацией ожидания
+            val loadingMessage = ChatMessage(
+                type = MessageType.AI,
+                content = "",
+                isProcessing = true,
+                inputMethod = "text"
+            )
+            messages = messages + loadingMessage
 
             try {
                 val request = FoodAnalysisRequest(
@@ -831,6 +849,7 @@ class CalorieTrackerViewModel(
                 handleError("Не удалось проанализировать")
             } finally {
                 showAILoadingScreen = false  // Обязательно скрываем экран загрузки
+                messages = messages.filter { !it.isProcessing }
                 isAnalyzing = false
             }
         }
