@@ -82,6 +82,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -637,34 +638,50 @@ private fun AnimatedBottomBar(
             curveHeight = 10.dp
         )
 
+        // Прикреплённое фото (если есть)
+        AnimatedVisibility(
+        visible = viewModel.attachedPhotoPath != null,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
+        ) {
+        viewModel.attachedPhotoPath?.let { path ->
+        AttachedPhotoPreview(
+        photoPath = path,
+            onRemove = { viewModel.removeAttachedPhoto() },
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        }
+        }
+        
         // Поле ввода
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            AnimatedInputField(
-                value = if (isAnalysisMode) {
-                    viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
-                } else {
-                    viewModel.inputMessage
-                },
+        AnimatedInputField(
+        value = if (isAnalysisMode) {
+        viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
+        } else {
+            viewModel.inputMessage
+            },
                 onValueChange = { newValue ->
-                    viewModel.inputMessage = if (isAnalysisMode) {
-                        "[АНАЛИЗ] $newValue"
-                    } else {
-                        newValue
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                isOnline = viewModel.isOnline,
-                placeholder = when {
-                    viewModel.isRecordMode -> "Опишите ваш прием пищи..."
-                    isAnalysisMode -> "Задайте вопрос о питании..."
-                    else -> "Сообщение..."
-                }
-            )
-        }
+                        viewModel.inputMessage = if (isAnalysisMode) {
+                            "[АНАЛИЗ] $newValue"
+                        } else {
+                            newValue
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    isOnline = viewModel.isOnline,
+                    placeholder = when {
+                        viewModel.isRecordMode -> "Опишите ваш прием пищи..."
+                        isAnalysisMode -> "Задайте вопрос о питании..."
+                        else -> "Сообщение..."
+                    },
+                    hasAttachment = viewModel.attachedPhoto != null
+                )
+            }
 
         // Кнопки под полем ввода
         Row(
@@ -738,16 +755,16 @@ private fun AnimatedBottomBar(
             Box {
                 AnimatedContent(
                     targetState = if (isAnalysisMode) {
-                        viewModel.inputMessage.removePrefix("[АНАЛИЗ] ").isNotBlank()
+                        viewModel.inputMessage.removePrefix("[АНАЛИЗ] ").isNotBlank() || viewModel.attachedPhoto != null
                     } else {
-                        viewModel.inputMessage.isNotBlank()
+                        viewModel.inputMessage.isNotBlank() || viewModel.attachedPhoto != null
                     },
                     transitionSpec = {
                         fadeIn() + scaleIn() with fadeOut() + scaleOut()
                     },
                     label = "send_button"
-                ) { hasText ->
-                    if (hasText) {
+                ) { hasContent ->
+                    if (hasContent) {
                         AnimatedSendButton(
                             onClick = {
                                 viewModel.sendMessage()
@@ -780,7 +797,8 @@ private fun AnimatedInputField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     isOnline: Boolean,
-    placeholder: String = "Сообщение..."
+    placeholder: String = "Сообщение...",
+    hasAttachment: Boolean = false
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var isFocused by remember { mutableStateOf(false) }
@@ -828,6 +846,63 @@ private fun AnimatedInputField(
             }
         }
     )
+}
+
+// Компонент для превью прикреплённого фото
+@Composable
+private fun AttachedPhotoPreview(
+    photoPath: String,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(100.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF5F5F5)
+        )
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Фото
+            AsyncImage(
+                model = File(photoPath),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+            
+            // Кнопка удаления
+            IconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onRemove()
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(32.dp)
+                    .background(
+                        Color.Black.copy(alpha = 0.6f),
+                        CircleShape
+                    )
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Удалить фото",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
 }
 
 // Добавьте эту функцию для парсинга markdown-подобного текста

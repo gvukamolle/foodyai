@@ -207,6 +207,10 @@ class CalorieTrackerViewModel(
     var isAnalyzing by mutableStateOf(false)
     val currentUser: UserData?
         get() = authManager.currentUser.value
+    
+    // Новые поля для прикреплённых фото
+    var attachedPhoto by mutableStateOf<Bitmap?>(null)
+    var attachedPhotoPath by mutableStateOf<String?>(null)
 
     // AI и сетевые состояния
     var isOnline by mutableStateOf(false)
@@ -583,6 +587,9 @@ class CalorieTrackerViewModel(
 
         // Запоминаем метод ввода для показа анимации в чате
         inputMethod = "photo"
+        
+        // Не показываем экран загрузки AI
+        // showAILoadingScreen = true // Отключено по требованию
 
         // Сохраняем фото для отображения в чате
         val chatFile = File.createTempFile("photo_chat", ".jpg", context.cacheDir)
@@ -597,7 +604,7 @@ class CalorieTrackerViewModel(
 
         // Проверяем интернет
         if (!checkInternetConnection()) {
-            showAILoadingScreen = false  // Скрываем экран загрузки
+            // showAILoadingScreen = false  // Отключено
             messages = messages + ChatMessage(
                 type = MessageType.AI,
                 content = "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
@@ -609,7 +616,7 @@ class CalorieTrackerViewModel(
 
         val currentUser = authManager.currentUser.value
         if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
-            showAILoadingScreen = false  // Скрываем экран загрузки
+            // showAILoadingScreen = false  // Отключено
             showAILimitDialog = true
             pendingAIAction = {
                 viewModelScope.launch {
@@ -657,7 +664,7 @@ class CalorieTrackerViewModel(
             }
 
             // Скрываем экран загрузки после получения ответа
-            showAILoadingScreen = false
+            // showAILoadingScreen = false // Отключено
 
             if (response.isSuccess && currentUser != null) {
                 viewModelScope.launch {
@@ -725,10 +732,10 @@ class CalorieTrackerViewModel(
                 handleError("Неверный формат ответа от сервера")
             }
         } catch (e: Exception) {
-            showAILoadingScreen = false  // Скрываем экран загрузки при ошибке
+            // showAILoadingScreen = false  // Отключено
             handleError("Ошибка анализа изображения: ${e.message}")
         } finally {
-            showAILoadingScreen = false  // Обязательно скрываем экран загрузки
+            // showAILoadingScreen = false  // Отключено
             messages = messages.filter { !it.isProcessing }
             isAnalyzing = false
         }
@@ -759,7 +766,7 @@ class CalorieTrackerViewModel(
             inputMethod = "text"
 
             if (!checkInternetConnection()) {
-                showAILoadingScreen = false  // Скрываем экран загрузки
+                // showAILoadingScreen = false  // Отключено
                 handleError("Нет подключения к интернету")
                 isAnalyzing = false
                 return@launch
@@ -767,7 +774,7 @@ class CalorieTrackerViewModel(
 
             val currentUser = authManager.currentUser.value
             if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
-                showAILoadingScreen = false
+                // showAILoadingScreen = false // Отключено
                 showAILimitDialog = true
                 pendingAIAction = {
                     analyzeDescription()
@@ -799,12 +806,12 @@ class CalorieTrackerViewModel(
                         webhookId = MakeService.WEBHOOK_ID,
                         request = request
                     )
-                }
+                    }
 
-                // Скрываем экран загрузки после получения ответа
-                showAILoadingScreen = false
+                    // Скрываем экран загрузки после получения ответа
+                    // showAILoadingScreen = false // Отключено
 
-                if (!response.isSuccess) {
+                    if (!response.isSuccess) {
                     handleError("Ошибка соединения")
                     return@launch
                 }
@@ -844,11 +851,11 @@ class CalorieTrackerViewModel(
                     authManager.updateUserData(updatedUserData)
                 }
             } catch (e: Exception) {
-                showAILoadingScreen = false  // Скрываем экран загрузки при ошибке
+                // showAILoadingScreen = false  // Отключено
                 Log.e("CalorieTracker", "Ошибка анализа описания", e)
                 handleError("Не удалось проанализировать")
             } finally {
-                showAILoadingScreen = false  // Обязательно скрываем экран загрузки
+                // showAILoadingScreen = false  // Отключено
                 messages = messages.filter { !it.isProcessing }
                 isAnalyzing = false
             }
@@ -856,7 +863,7 @@ class CalorieTrackerViewModel(
     }
 
     fun cancelAIAnalysis() {
-        showAILoadingScreen = false
+        // showAILoadingScreen = false // Отключено
         isAnalyzing = false
         // Можно добавить отмену корутин если используете Job
     }
@@ -1033,9 +1040,18 @@ class CalorieTrackerViewModel(
     }
 
     fun onPhotoSelected(bitmap: Bitmap) {
-        pendingPhoto = bitmap
-        photoCaption = ""
-        showPhotoConfirmDialog = true
+        // Сохраняем фото во временный файл для отображения
+        viewModelScope.launch {
+            val file = File.createTempFile("attached_photo", ".jpg", context.cacheDir)
+            withContext(Dispatchers.IO) {
+                FileOutputStream(file).use { outputStream ->
+                    val scaledBitmap = scaleBitmap(bitmap, 800)
+                    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+                }
+            }
+            attachedPhoto = bitmap
+            attachedPhotoPath = file.absolutePath
+        }
     }
 
     fun confirmPhoto() {
@@ -1043,6 +1059,50 @@ class CalorieTrackerViewModel(
         showPhotoConfirmDialog = false
         pendingPhoto = null
         viewModelScope.launch { analyzePhotoWithAI(bitmap, photoCaption) }
+    }
+    
+    // Новые методы для работы с прикреплёнными фото
+    fun removeAttachedPhoto() {
+        attachedPhoto = null
+        attachedPhotoPath?.let { path ->
+            try {
+                File(path).delete()
+            } catch (e: Exception) {
+                Log.e("CalorieTracker", "Ошибка удаления временного файла", e)
+            }
+        }
+        attachedPhotoPath = null
+    }
+    
+    fun sendMessageWithPhoto() {
+        val message = inputMessage.trim()
+        val photo = attachedPhoto
+        val photoPath = attachedPhotoPath
+        
+        if (message.isBlank() && photo == null) return
+        
+        // Добавляем сообщение пользователя
+        messages = messages + ChatMessage(
+            type = MessageType.USER,
+            content = message,
+            imagePath = photoPath,
+            animate = true
+        )
+        
+        // Очищаем поля
+        inputMessage = ""
+        attachedPhoto = null
+        attachedPhotoPath = null
+        
+        // Если есть фото, отправляем на анализ
+        if (photo != null) {
+            viewModelScope.launch {
+                analyzePhotoWithAI(photo, message)
+            }
+        } else {
+            // Обычное текстовое сообщение
+            sendMessage()
+        }
     }
 
     private fun getAutoMealType(): MealType {
@@ -1107,6 +1167,12 @@ class CalorieTrackerViewModel(
 
     // 3. Обновить метод sendMessage для использования анимированных точек
     fun sendMessage() {
+        // Если есть прикреплённое фото, используем специальный метод
+        if (attachedPhoto != null) {
+            sendMessageWithPhoto()
+            return
+        }
+        
         val message = inputMessage.trim()
 
         if (message.isBlank()) return

@@ -107,7 +107,8 @@ fun AnimatedDialogs(
         )
     }
 
-    // Диалог подтверждения фото
+    // Отключаем диалог подтверждения фото - теперь фото прикрепляются к сообщению
+    /*
     if (viewModel.showPhotoConfirmDialog) {
         viewModel.pendingPhoto?.let { bitmap ->
             EnhancedPhotoConfirmDialog(
@@ -125,6 +126,7 @@ fun AnimatedDialogs(
             )
         }
     }
+    */
 
     if (viewModel.showAiOpinionDialog) {
         viewModel.aiOpinionText?.let { text ->
