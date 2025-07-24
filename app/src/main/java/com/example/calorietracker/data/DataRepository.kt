@@ -8,6 +8,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Репозиторий для управления данными приложения, такими как профиль пользователя и дневное потребление калорий.
@@ -98,6 +99,33 @@ class DataRepository(context: Context) {
                 sharedPreferences.edit { remove(key) }
             }
     }
+
+    /**
+     * Сохраняет время последнего пользовательского сообщения в формате ISO.
+     */
+    fun recordLastUserMessageTime(time: LocalDateTime = LocalDateTime.now()) {
+        sharedPreferences.edit {
+            putString("last_user_message_time", time.toString())
+        }
+    }
+
+    /**
+     * Получает время последнего пользовательского сообщения.
+     */
+    fun getLastUserMessageTime(): LocalDateTime? {
+        val value = sharedPreferences.getString("last_user_message_time", null)
+        return value?.let { LocalDateTime.parse(it) }
+    }
+
+    /**
+     * Проверяет, было ли сегодня уже пользовательское сообщение.
+     */
+    fun isFirstMessageOfDay(): Boolean {
+        val last = getLastUserMessageTime()
+        val dayStart = DailyResetUtils.getCurrentFoodDayStartTime()
+        return last == null || last.isBefore(dayStart)
+    }
+
 
     fun saveDailyIntake(intake: DailyIntake, date: String = DailyResetUtils.getFoodDate()) {
         val json = gson.toJson(intake)

@@ -1198,15 +1198,14 @@ class CalorieTrackerViewModel(
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
             val dayStart = DailyResetUtils.getCurrentFoodDayStartTime()
-            val isFirstOfDay = messages.none {
-                it.type == MessageType.USER && !it.timestamp.isBefore(dayStart)
-            }
+            val isFirstOfDay = repository.isFirstMessageOfDay()
             messages = messages + ChatMessage(
                 type = MessageType.USER,
                 content = userMessage,
                 animate = true
             )
-            inputMessage = ""
+        repository.recordLastUserMessageTime()
+        inputMessage = ""
 
             viewModelScope.launch {
                 if (isOnline) {
