@@ -245,11 +245,14 @@ private fun AnimatedPhrases(inputMethod: String? = null) {
 
         // Находим индекс, который еще не показывали
         var nextIndex: Int
-        do {
-            nextIndex = Random.nextInt(phrases.size)
-        } while (shownIndices.contains(nextIndex))
-
-        return nextIndex
+        val availableIndices = phrases.indices.filter { !shownIndices.contains(it) }
+        
+        return if (availableIndices.isNotEmpty()) {
+            availableIndices.random()
+        } else {
+            // Если все показаны (не должно происходить из-за проверки выше), берем случайный
+            Random.nextInt(phrases.size)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -297,7 +300,7 @@ private fun AnimatedPhrases(inputMethod: String? = null) {
         label = "phrase_animation"
     ) { index ->
         Text(
-            text = phrases[index],
+            text = phrases.getOrElse(index) { phrases.firstOrNull() ?: "" },
             modifier = Modifier.padding(horizontal = 18.dp),
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = 16.sp,

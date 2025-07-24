@@ -81,6 +81,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Search
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,6 +145,7 @@ fun AnimatedMainScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     var isDrawerOpen by remember { mutableStateOf(false) } // Состояние для выдвижного меню
     var showStatisticsCard by remember { mutableStateOf(false) } // Состояние для карточки статистики
+    var isRecordMode by remember { mutableStateOf(false) } // Состояние для режима записи
 
     val isAnalysisMode = viewModel.isDailyAnalysisEnabled
 
@@ -163,7 +165,9 @@ fun AnimatedMainScreen(
                 onCameraClick = onCameraClick,
                 onGalleryClick = onGalleryClick,
                 onDescribeClick = onDescribeClick,
-                onManualClick = onManualClick
+                onManualClick = onManualClick,
+                isRecordMode = isRecordMode,
+                onRecordModeToggle = { isRecordMode = it }
             )
         }
     ) { paddingValues ->
@@ -621,9 +625,12 @@ private fun AnimatedBottomBar(
     onGalleryClick: () -> Unit,
     onDescribeClick: () -> Unit,
     onManualClick: () -> Unit,
+    isRecordMode: Boolean,
+    onRecordModeToggle: (Boolean) -> Unit
 ) {
     val hasTodayMeals = viewModel.meals.isNotEmpty()
     val isAnalysisMode = viewModel.isDailyAnalysisEnabled
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -660,7 +667,11 @@ private fun AnimatedBottomBar(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 isOnline = viewModel.isOnline,
-                placeholder = "Сообщение..."
+                placeholder = when {
+                    viewModel.isRecordMode -> "Опишите ваш прием пищи..."
+                    isAnalysisMode -> "Задайте вопрос о питании..."
+                    else -> "Сообщение..."
+                }
             )
         }
 
@@ -673,25 +684,64 @@ private fun AnimatedBottomBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Кнопка анализа СЛЕВА
-            AnimatedAnalysisToggle(
-                isEnabled = isAnalysisMode,
-                onClick = {
-                    if (hasTodayMeals) {
-                        val currentText = if (isAnalysisMode) {
-                            viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
-                        } else {
-                            viewModel.inputMessage
-                        }
-                        viewModel.toggleDailyAnalysis()
-                        viewModel.inputMessage = if (isAnalysisMode) {
-                            currentText
-                        } else {
-                            "[АНАЛИЗ] $currentText"
+            // Кнопки слева
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Кнопка анализа
+                AnimatedAnalysisToggle(
+                    isEnabled = isAnalysisMode,
+                    onClick = {
+                        if (hasTodayMeals) {
+                            val currentText = if (isAnalysisMode) {
+                                viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
+                            } else {
+                                viewModel.inputMessage
+                            }
+                            
+                            // Если включаем режим анализа, отключаем режим записи
+                            if (!isAnalysisMode && isRecordMode) {
+                                onRecordModeToggle(false)
+                                // Небольшая задержка для плавного перехода
+                                coroutineScope.launch {
+                                    delay(100)
+                                    viewModel.toggleDailyAnalysis()
+                                    viewModel.inputMessage = "[АНАЛИЗ] $currentText"
+                                }
+                            } else {
+                                viewModel.toggleDailyAnalysis()
+                                viewModel.inputMessage = if (isAnalysisMode) {
+                                    currentText
+                                } else {
+                                    "[АНАЛИЗ] $currentText"
+                                }
+                            }
                         }
                     }
-                }
-            )
+                )
+                
+                // Кнопка записи
+                AnimatedRecordToggle(
+                    isEnabled = viewModel.isRecordMode,
+                    onClick = {
+                        // Если включаем режим записи, отключаем режим анализа
+                        if (!viewModel.isRecordMode && isAnalysisMode) {
+                            // Сначала убираем префикс анализа из сообщения
+                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
+                            viewModel.inputMessage = currentText
+                            viewModel.toggleDailyAnalysis()
+                            // Небольшая задержка для плавного перехода
+                            coroutineScope.launch {
+                                delay(100)
+                                viewModel.toggleRecordMode()
+                            }
+                        } else {
+                            viewModel.toggleRecordMode()
+                        }
+                    }
+                )
+            }
 
             // Кнопка отправки / меню СПРАВА
             Box {
@@ -950,7 +1000,7 @@ private fun AnimatedAnalysisToggle(
             horizontalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Default.AutoAwesome,
+                imageVector = Icons.Default.Search,
                 contentDescription = if (isEnabled) "Отключить режим анализа" else "Включить режим анализа",
                 tint = contentColor,
                 modifier = Modifier.size(20.dp) // Уменьшили иконку
@@ -969,6 +1019,103 @@ private fun AnimatedAnalysisToggle(
                         text = "Анализ",
                         color = contentColor.copy(alpha = textAlpha),
                         fontSize = 14.sp, // Уменьшили шрифт
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Анимированная кнопка записи
+@Composable
+private fun AnimatedRecordToggle(
+    isEnabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+
+    // Анимации
+    val animatedWidth by animateDpAsState(
+        targetValue = if (isEnabled) 100.dp else 40.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "record_toggle_width"
+    )
+
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isEnabled) Color(0xFF2196F3) else Color.White,
+        animationSpec = tween(300),
+        label = "record_toggle_bg_color"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isEnabled) Color(0xFF1976D2) else Color(0xFFE0E0E0),
+        animationSpec = tween(300),
+        label = "record_toggle_border_color"
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = if (isEnabled) Color.White else Color(0xFF757575),
+        animationSpec = tween(300),
+        label = "record_toggle_content_color"
+    )
+
+    val textAlpha by animateFloatAsState(
+        targetValue = if (isEnabled) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (isEnabled) 300 else 150,
+            delayMillis = if (isEnabled) 100 else 0
+        ),
+        label = "record_toggle_text_alpha"
+    )
+
+    Box(
+        modifier = modifier
+            .height(40.dp)
+            .width(animatedWidth)
+            .clip(RoundedCornerShape(20.dp))
+            .background(backgroundColor)
+            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(20.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.AutoAwesome,
+                contentDescription = if (isEnabled) "Отключить режим записи" else "Включить режим записи",
+                tint = contentColor,
+                modifier = Modifier.size(20.dp)
+            )
+
+            AnimatedVisibility(
+                visible = isEnabled,
+                enter = fadeIn(animationSpec = tween(200, delayMillis = 100)) +
+                        expandHorizontally(animationSpec = tween(200)),
+                exit = shrinkHorizontally(animationSpec = tween(150)) +
+                        fadeOut(animationSpec = tween(150))
+            ) {
+                Row {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Запись",
+                        color = contentColor.copy(alpha = textAlpha),
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }

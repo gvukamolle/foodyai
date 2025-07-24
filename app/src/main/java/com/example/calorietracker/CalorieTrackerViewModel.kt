@@ -226,10 +226,25 @@ class CalorieTrackerViewModel(
 
     var isDailyAnalysisEnabled by mutableStateOf(false)
         private set
+    var isRecordMode by mutableStateOf(false)
+        private set
 
     // Переключение режима анализа
     fun toggleDailyAnalysis() {
         isDailyAnalysisEnabled = !isDailyAnalysisEnabled
+        // Если включаем режим анализа, отключаем режим записи
+        if (isDailyAnalysisEnabled && isRecordMode) {
+            isRecordMode = false
+        }
+    }
+    
+    // Переключение режима записи
+    fun toggleRecordMode() {
+        isRecordMode = !isRecordMode
+        // Если включаем режим записи, отключаем режим анализа
+        if (isRecordMode && isDailyAnalysisEnabled) {
+            isDailyAnalysisEnabled = false
+        }
     }
 
     private fun startWatchMyFood(userQuery: String = "") {
@@ -717,6 +732,15 @@ class CalorieTrackerViewModel(
         pendingDescription = ""  // Очищаем после отправки
         lastDescriptionMessage = textToAnalyze
 
+        // Если вызвано из режима записи, добавляем сообщение пользователя
+        if (isRecordMode) {
+            messages = messages + ChatMessage(
+                type = MessageType.USER,
+                content = textToAnalyze,
+                animate = true
+            )
+        }
+
         viewModelScope.launch {
             isAnalyzing = true
             currentFoodSource = "ai_description"
@@ -786,7 +810,17 @@ class CalorieTrackerViewModel(
                     aiOpinion = foodData.opinion
                 )
 
-                showManualInputDialog = true
+// Если мы в режиме записи, можем автоматически подтвердить
+                if (isRecordMode) {
+                    // Автоматически устанавливаем pendingFood и вызываем confirmFood
+                    pendingFood = prefillFood
+                    confirmFood()
+                    // Отключаем режим записи после успешной записи
+                    isRecordMode = false
+                } else {
+                    showManualInputDialog = true
+                }
+
                 if (currentUser != null) {
                     val updatedUserData = AIUsageManager.incrementUsage(currentUser)
                     authManager.updateUserData(updatedUserData)
@@ -1057,6 +1091,15 @@ class CalorieTrackerViewModel(
         val message = inputMessage.trim()
 
         if (message.isBlank()) return
+
+        // Проверяем режим записи
+        if (isRecordMode) {
+            // Используем существующий метод analyzeDescription
+            pendingDescription = message
+            inputMessage = ""
+            analyzeDescription()
+            return
+        }
 
         // Проверяем, является ли это запросом анализа
         if (message.startsWith("[АНАЛИЗ]")) {
