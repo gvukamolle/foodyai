@@ -425,6 +425,7 @@ fun PlusDropdownMenu(
 fun AnimatedPlusButton(
     expanded: Boolean,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val rotation by animateFloatAsState(
@@ -450,12 +451,13 @@ fun AnimatedPlusButton(
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             onClick()
         },
+        enabled = enabled,
         modifier = modifier.size(40.dp) // Тот же размер что у Send
     ) {
         Icon(
             Icons.Default.Add,
             contentDescription = "Добавить",
-            tint = Color.Black,
+            tint = if (enabled) Color.Black else Color.LightGray,
             modifier = Modifier
                 .size(24.dp)
                 .graphicsLayer {

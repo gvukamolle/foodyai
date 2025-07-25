@@ -739,11 +739,8 @@ private fun AnimatedBottomBar(
                             val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
                             viewModel.inputMessage = currentText
                             viewModel.toggleDailyAnalysis()
-                            // Небольшая задержка для плавного перехода
-                            coroutineScope.launch {
-                                delay(100)
-                                viewModel.toggleRecordMode()
-                            }
+                            // Включаем режим записи сразу, чтобы placeholder сменился без задержки
+                            viewModel.toggleRecordMode()
                         } else {
                             viewModel.toggleRecordMode()
                         }
@@ -755,7 +752,7 @@ private fun AnimatedBottomBar(
             Box {
                 AnimatedContent(
                     targetState = if (isAnalysisMode) {
-                        viewModel.inputMessage.removePrefix("[АНАЛИЗ] ").isNotBlank() || viewModel.attachedPhoto != null
+                        viewModel.inputMessage.removePrefix("[АНАЛИЗ] ").isNotBlank()
                     } else {
                         viewModel.inputMessage.isNotBlank() || viewModel.attachedPhoto != null
                     },
@@ -764,8 +761,7 @@ private fun AnimatedBottomBar(
                     },
                     label = "send_button"
                 ) { hasContent ->
-                    val showSend = hasContent || isAnalysisMode
-                    if (showSend) {
+                    if (hasContent) {
                         AnimatedSendButton(
                             onClick = {
                                 viewModel.sendMessage()
@@ -774,7 +770,8 @@ private fun AnimatedBottomBar(
                     } else {
                         AnimatedPlusButton(
                             expanded = menuExpanded,
-                            onClick = { onMenuToggle(true) }
+                            onClick = { if (!isAnalysisMode) onMenuToggle(true) },
+                            enabled = !isAnalysisMode
                         )
                     }
                 }
@@ -1009,7 +1006,7 @@ private fun AnimatedAnalysisToggle(
 
     // Анимации
     val animatedWidth by animateDpAsState(
-        targetValue = if (isEnabled) 100.dp else 40.dp, // Уменьшили максимальную ширину со 120 до 100
+        targetValue = if (isEnabled) 120.dp else 40.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -1083,7 +1080,7 @@ private fun AnimatedAnalysisToggle(
                 Row {
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Анализ",
+                        text = "Спросить",
                         color = contentColor.copy(alpha = textAlpha),
                         fontSize = 14.sp, // Уменьшили шрифт
                         fontWeight = FontWeight.SemiBold
@@ -1106,7 +1103,7 @@ private fun AnimatedRecordToggle(
 
     // Анимации
     val animatedWidth by animateDpAsState(
-        targetValue = if (isEnabled) 100.dp else 40.dp,
+        targetValue = if (isEnabled) 120.dp else 40.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -1180,7 +1177,7 @@ private fun AnimatedRecordToggle(
                 Row {
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Запись",
+                        text = "Записать",
                         color = contentColor.copy(alpha = textAlpha),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
