@@ -104,13 +104,6 @@ data class FoodHistoryItem(
     val timestamp: LocalDateTime
 )
 
-// Модель для сохранения анализа дня
-data class DailyAnalysis(
-    val date: String,
-    val result: String,
-    val timestamp: LocalDateTime
-)
-
 class CalorieTrackerViewModel(
     internal val repository: DataRepository,
     private val context: Context,
@@ -180,25 +173,6 @@ class CalorieTrackerViewModel(
         set(value) {
             _messages = value
         }
-
-    // Методы для работы с анализами дня
-    fun getDailyAnalysis(date: String): DailyAnalysis? {
-        // Проверяем, не устарел ли анализ (если это не сегодня)
-        val today = LocalDate.now().toString()
-        if (date != today) {
-            dailyAnalysisCache.remove(date)
-            return null
-        }
-        return dailyAnalysisCache[date]
-    }
-
-    private fun saveDailyAnalysis(date: String, result: String) {
-        dailyAnalysisCache[date] = DailyAnalysis(
-            date = date,
-            result = result,
-            timestamp = LocalDateTime.now()
-        )
-    }
 
     var inputMessage by mutableStateOf("")
     var pendingFood by mutableStateOf<FoodItem?>(null)
@@ -349,10 +323,6 @@ class CalorieTrackerViewModel(
         }
     }
 
-    // Хранилище анализов дня
-    private val dailyAnalysisCache = mutableMapOf<String, DailyAnalysis>()
-
-
     init {
         loadUserData()
         viewModelScope.launch { checkInternetConnection() }
@@ -392,9 +362,6 @@ class CalorieTrackerViewModel(
                 dailyCarbs = intake.carbs
                 dailyFat = intake.fat
                 meals = intake.meals
-
-                // Очищаем старые анализы
-                clearOldAnalysis()
             }
         }
     }
@@ -1671,49 +1638,6 @@ class CalorieTrackerViewModel(
             }
         }
     }
-    
-    // Метод для отправки запроса на анализ дня
-    suspend fun sendDailyAnalysisRequest(request: DailyAnalysisRequest): String? {
-        return try {
-            if (!checkInternetConnection()) {
-                return null
-            }
-            
-            // Проверяем лимиты AI
-            val currentUser = authManager.currentUser.value
-            if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
-                showAILimitDialog = true
-                return null
-            }
-            
-            val response = safeApiCall {
-                NetworkModule.makeService.analyzeDailyIntake(
-                    webhookId = MakeService.WEBHOOK_ID,
-                    request = request
-                )
-            }
-            
-            if (response.isSuccess) {
-                // Увеличиваем счетчик использования AI
-                if (currentUser != null) {
-                    val updatedUserData = AIUsageManager.incrementUsage(currentUser)
-                    authManager.updateUserData(updatedUserData)
-                }
-                
-                val answer = response.getOrNull()?.answer
-                // Сохраняем анализ в кэш
-                if (answer != null) {
-                    saveDailyAnalysis(request.date, answer)
-                }
-                answer
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            Log.e("CalorieTracker", "Ошибка при анализе дня", e)
-            null
-        }
-    }
 
     // Метод для отправки запроса "watch my food" на сервер
     suspend fun sendWatchMyFoodRequest(request: WatchMyFoodRequest): String? {
@@ -1743,9 +1667,6 @@ class CalorieTrackerViewModel(
                 }
 
                 val answer = response.getOrNull()?.answer
-                if (answer != null) {
-                    saveDailyAnalysis(updatedRequest.date, answer)
-                }
                 answer
             } else {
                 null
@@ -1754,11 +1675,5 @@ class CalorieTrackerViewModel(
             Log.e("CalorieTracker", "Ошибка при отправке watch_myfood", e)
             null
         }
-    }
-
-    // Очищаем анализ при смене дня
-    private fun clearOldAnalysis() {
-        val today = LocalDate.now().toString()
-        dailyAnalysisCache.keys.removeAll { it != today }
     }
 }
