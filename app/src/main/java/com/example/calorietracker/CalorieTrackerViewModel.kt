@@ -233,6 +233,10 @@ class CalorieTrackerViewModel(
         private set
     var isRecordMode by mutableStateOf(false)
         private set
+    var isSearchMode by mutableStateOf(false)
+        private set
+    var isRecipeMode by mutableStateOf(false)
+        private set
 
     // Переключение режима анализа
     fun toggleDailyAnalysis() {
@@ -240,6 +244,12 @@ class CalorieTrackerViewModel(
         // Если включаем режим анализа, отключаем режим записи
         if (isDailyAnalysisEnabled && isRecordMode) {
             isRecordMode = false
+        }
+        if (isDailyAnalysisEnabled && isSearchMode) {
+            isSearchMode = false
+        }
+        if (isDailyAnalysisEnabled && isRecipeMode) {
+            isRecipeMode = false
         }
         if (isDailyAnalysisEnabled) {
             removeAttachedPhoto()
@@ -252,6 +262,31 @@ class CalorieTrackerViewModel(
         // Если включаем режим записи, отключаем режим анализа
         if (isRecordMode && isDailyAnalysisEnabled) {
             isDailyAnalysisEnabled = false
+        }
+        if (isRecordMode && isSearchMode) {
+            isSearchMode = false
+        }
+        if (isRecordMode && isRecipeMode) {
+            isRecipeMode = false
+        }
+    }
+
+    fun toggleSearchMode() {
+        isSearchMode = !isSearchMode
+        if (isSearchMode) {
+            if (isDailyAnalysisEnabled) isDailyAnalysisEnabled = false
+            if (isRecordMode) isRecordMode = false
+            if (isRecipeMode) isRecipeMode = false
+            removeAttachedPhoto()
+        }
+    }
+
+    fun toggleRecipeMode() {
+        isRecipeMode = !isRecipeMode
+        if (isRecipeMode) {
+            if (isDailyAnalysisEnabled) isDailyAnalysisEnabled = false
+            if (isRecordMode) isRecordMode = false
+            if (isSearchMode) isSearchMode = false
         }
     }
 
@@ -1137,6 +1172,11 @@ class CalorieTrackerViewModel(
 
                 try {
                     val profileData = userProfile.toNetworkProfile()
+                    val type = when {
+                        isSearchMode -> "search"
+                        isRecipeMode -> "recipe"
+                        else -> "chat"
+                    }
                     val response = safeApiCall {
                         NetworkModule.makeService.askAiDietitian(
                             webhookId = MakeService.WEBHOOK_ID,
@@ -1145,7 +1185,7 @@ class CalorieTrackerViewModel(
                                 userProfile = profileData,
                                 userId = userId,
                                 isFirstMessageOfDay = isFirstOfDay,
-                                messageType = "chat"
+                                messageType = type
                             )
                         )
                     }
@@ -1228,7 +1268,8 @@ class CalorieTrackerViewModel(
             val profileBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
             val userIdBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
             val captionBody = caption.toRequestBody("text/plain".toMediaTypeOrNull())
-            val typeBody = "chat_photo".toRequestBody("text/plain".toMediaTypeOrNull())
+            val messageTypeValue = if (isRecipeMode) "recipe_photo" else "chat_photo"
+            val typeBody = messageTypeValue.toRequestBody("text/plain".toMediaTypeOrNull())
             val firstBody = isFirstOfDay.toString().toRequestBody("text/plain".toMediaTypeOrNull())
 
             val response = safeApiCall {
