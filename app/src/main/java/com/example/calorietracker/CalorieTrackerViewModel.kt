@@ -60,11 +60,12 @@ data class ChatMessage(
     val animate: Boolean = true,
     val isProcessing: Boolean = false, // Новое поле для индикации обработки
     val inputMethod: String? = null, // Метод ввода для загрузочных сообщений
-    val isVisible: Boolean = true // Для анимации удаления сообщений
+    val isVisible: Boolean = true, // Для анимации удаления сообщений
+    val isFoodConfirmation: Boolean = false // Новый флаг для карточки подтверждения еды
 )
 
 enum class MessageType {
-    USER, AI
+    USER, AI, FOOD_CONFIRMATION
 }
 
 data class FoodItem(
@@ -710,9 +711,8 @@ class CalorieTrackerViewModel(
                     }
 
                     "да", "yes" -> {
-
                         // Создаем FoodItem из полученных данных С МНЕНИЕМ AI
-                        prefillFood = FoodItem(
+                        val foodItem = FoodItem(
                             name = foodData.name,
                             calories = foodData.calories,
                             protein = foodData.protein,
@@ -723,8 +723,29 @@ class CalorieTrackerViewModel(
                             aiOpinion = foodData.opinion
                         )
 
-                        Log.d("CalorieTracker", "Установлен prefillFood с AI мнением: $prefillFood")
-                        showManualInputDialog = true
+                        Log.d("CalorieTracker", "Создан FoodItem с AI мнением: $foodItem")
+                        
+                        // Удаляем сообщения обработки
+                        messages = messages.filter { !it.isProcessing }
+                        
+                        // Добавляем сообщение пользователя с фото
+                        messages = messages + ChatMessage(
+                            type = MessageType.USER,
+                            content = caption.ifEmpty { "Фото для анализа" },
+                            imagePath = lastPhotoPath,
+                            animate = true
+                        )
+                        
+                        // Добавляем карточку подтверждения еды
+                        messages = messages + ChatMessage(
+                            type = MessageType.FOOD_CONFIRMATION,
+                            content = "",
+                            foodItem = foodItem,
+                            animate = true
+                        )
+                        
+                        // Сохраняем для возможного редактирования
+                        prefillFood = foodItem
                     }
 
                     else -> {
@@ -741,7 +762,6 @@ class CalorieTrackerViewModel(
             handleError("Ошибка анализа изображения: ${e.message}")
         } finally {
             // showAILoadingScreen = false  // Отключено
-            messages = messages.filter { !it.isProcessing }
             isAnalyzing = false
         }
     }
@@ -829,7 +849,7 @@ class CalorieTrackerViewModel(
 
                 val foodData = Gson().fromJson(answer, FoodDataFromAnswer::class.java)
 
-                prefillFood = FoodItem(
+                val foodItem = FoodItem(
                     name = foodData.name,
                     calories = foodData.calories,
                     protein = foodData.protein,
@@ -839,17 +859,20 @@ class CalorieTrackerViewModel(
                     source = currentFoodSource ?: "ai_description",
                     aiOpinion = foodData.opinion
                 )
+                
+                // Удаляем сообщения обработки
+                messages = messages.filter { !it.isProcessing }
 
-// Если мы в режиме записи, можем автоматически подтвердить
-                if (isRecordMode) {
-                    // Автоматически устанавливаем pendingFood и вызываем confirmFood
-                    pendingFood = prefillFood
-                    confirmFood()
-                    // Отключаем режим записи после успешной записи
-                    isRecordMode = false
-                } else {
-                    showManualInputDialog = true
-                }
+                // Всегда добавляем карточку подтверждения еды
+                messages = messages + ChatMessage(
+                    type = MessageType.FOOD_CONFIRMATION,
+                    content = "",
+                    foodItem = foodItem,
+                    animate = true
+                )
+                
+                // Сохраняем для возможного редактирования
+                prefillFood = foodItem
 
                 if (currentUser != null) {
                     val updatedUserData = AIUsageManager.incrementUsage(currentUser)
@@ -915,7 +938,7 @@ class CalorieTrackerViewModel(
 
         Log.d("CalorieTracker", "handleManualInput - aiOpinion: $aiOpinionToSave")
 
-        pendingFood = FoodItem(
+        val foodItem = FoodItem(
             name = name,
             calories = calories.toFloatOrNull()?.roundToInt() ?: 0,
             protein = proteins.toDoubleOrNull() ?: 0.0,
@@ -927,43 +950,72 @@ class CalorieTrackerViewModel(
         )
 
         selectedMeal = getAutoMealType()
+        
+        // Если это редактирование из карточки подтверждения, удаляем старую
+        messages = messages.filter { it.type != MessageType.FOOD_CONFIRMATION }
+        
+        // Если есть inputMethod, значит это первичный ввод, иначе - редактирование
+        val isEditing = inputMethod == null
+        
+        if (!isEditing) {
+            // Первичный ввод - добавляем сообщение пользователя
+            when (inputMethod) {
+                "text" -> {
+                    messages = messages + ChatMessage(
+                        type = MessageType.USER,
+                        content = lastDescriptionMessage ?: "Добавлен продукт: $name",
+                        animate = true
+                    )
+                    lastDescriptionMessage = null
+                }
 
-        when (inputMethod) {
-            "text" -> {
-                messages = messages + ChatMessage(
-                    type = MessageType.USER,
-                    content = lastDescriptionMessage ?: "Добавлен продукт: $name",
-                    animate = true
-                )
-                lastDescriptionMessage = null
-            }
+                "photo" -> {
+                    messages = messages + ChatMessage(
+                        type = MessageType.USER,
+                        content = lastPhotoCaption,
+                        imagePath = lastPhotoPath,
+                        animate = true
+                    )
+                    lastPhotoPath = null
+                    lastPhotoCaption = ""
+                }
 
-            "photo" -> {
-                messages = messages + ChatMessage(
-                    type = MessageType.USER,
-                    content = lastPhotoCaption,
-                    imagePath = lastPhotoPath,
-                    animate = true
-                )
-                lastPhotoPath = null
-                lastPhotoCaption = ""
-            }
-
-            else -> {
-                messages = messages + ChatMessage(
-                    type = MessageType.USER,
-                    content = "Добавлен продукт: $name",
-                    animate = true
-                )
+                else -> {
+                    messages = messages + ChatMessage(
+                        type = MessageType.USER,
+                        content = "Добавлен продукт: $name",
+                        animate = true
+                    )
+                }
             }
         }
-
+        
+        // Добавляем новую карточку подтверждения
+        messages = messages + ChatMessage(
+            type = MessageType.FOOD_CONFIRMATION,
+            content = "",
+            foodItem = foodItem,
+            animate = true
+        )
+        
+        pendingFood = foodItem
+        prefillFood = foodItem
         showManualInputDialog = false
+        
+        // Очищаем inputMethod после обработки
+        inputMethod = null
     }
 
 // В CalorieTrackerViewModel.kt обновите метод confirmFood():
 
     fun confirmFood() {
+        // Удаляем карточку подтверждения из чата
+        messages = messages.filter { it.type != MessageType.FOOD_CONFIRMATION }
+        
+        // Если был включен режим записи, отключаем его
+        if (isRecordMode) {
+            isRecordMode = false
+        }
         Log.d("CalorieTracker", "confirmFood called, source: $currentFoodSource")
         pendingFood?.let { food ->
             selectedMeal = getAutoMealType()
@@ -1038,6 +1090,15 @@ class CalorieTrackerViewModel(
             currentFoodSource = null
             inputMethod = null
             lastDescriptionMessage = null
+            
+            // Очищаем временные файлы фото
+            lastPhotoPath?.let { path ->
+                try {
+                    File(path).delete()
+                } catch (e: Exception) {
+                    Log.e("CalorieTracker", "Ошибка удаления временного файла", e)
+                }
+            }
             lastPhotoPath = null
             lastPhotoCaption = ""
             saveUserData()
@@ -1091,14 +1152,6 @@ class CalorieTrackerViewModel(
         
         if (message.isBlank() && photo == null) return
         
-        // Добавляем сообщение пользователя
-        messages = messages + ChatMessage(
-            type = MessageType.USER,
-            content = message,
-            imagePath = photoPath,
-            animate = true
-        )
-        
         // Очищаем поля
         inputMessage = ""
         attachedPhoto = null
@@ -1106,11 +1159,24 @@ class CalorieTrackerViewModel(
 
         // Если есть фото и активен режим записи - отправляем на анализ
         if (photo != null && isRecordMode) {
+            // Сохраняем путь к фото для отображения в чате
+            lastPhotoPath = photoPath
+            lastPhotoCaption = message
             viewModelScope.launch { analyzePhotoWithAI(photo, message) }
-        } else if (photo != null) {
-            viewModelScope.launch { sendPhotoChatMessage(photo, message) }
-        } else if (message.isNotBlank()) {
-            sendChatMessage(message)
+        } else {
+            // Для всех других случаев добавляем сообщение пользователя
+            messages = messages + ChatMessage(
+                type = MessageType.USER,
+                content = message,
+                imagePath = photoPath,
+                animate = true
+            )
+            
+            if (photo != null) {
+                viewModelScope.launch { sendPhotoChatMessage(photo, message) }
+            } else if (message.isNotBlank()) {
+                sendChatMessage(message)
+            }
         }
     }
 

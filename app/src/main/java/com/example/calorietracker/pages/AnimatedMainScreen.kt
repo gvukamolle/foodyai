@@ -58,6 +58,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.core.FastOutSlowInEasing
 import com.example.calorietracker.ui.animations.SimpleChatTypingIndicator
 import com.example.calorietracker.ui.animations.AnimatedMessageWithBlur
+import com.example.calorietracker.components.chat.FoodConfirmationCard
 import androidx.compose.foundation.lazy.items
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -85,6 +86,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Restaurant
+import com.example.calorietracker.FoodItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -207,15 +209,7 @@ fun AnimatedMainScreen(
                 // Разделитель с анимацией
                 AnimatedContentDivider()
 
-                // Карточка подтверждения еды
-                viewModel.pendingFood?.let { food ->
-                    AnimatedPendingFoodCard(
-                        food = food,
-                        selectedMeal = viewModel.selectedMeal,
-                        onConfirm = { viewModel.confirmFood() },
-                        onCancel = { viewModel.pendingFood = null }
-                    )
-                }
+                // Отображение подтверждения еды теперь происходит в чате
 
                 // Анимированный чат
                 AnimatedChatContent(
@@ -493,6 +487,14 @@ private fun AnimatedChatContent(
                         onAiOpinionClick = { text ->
                             viewModel.aiOpinionText = text
                             viewModel.showAiOpinionDialog = true
+                        },
+                        onFoodEdit = { food ->
+                            viewModel.prefillFood = food
+                            viewModel.showManualInputDialog = true
+                        },
+                        onFoodConfirm = { food ->
+                            viewModel.pendingFood = food
+                            viewModel.confirmFood()
                         }
                     )
                 }
@@ -506,8 +508,29 @@ private fun AnimatedChatContent(
 @Composable
 private fun AnimatedChatMessageCard(
     message: com.example.calorietracker.ChatMessage,
-    onAiOpinionClick: (String) -> Unit
+    onAiOpinionClick: (String) -> Unit,
+    onFoodEdit: (FoodItem) -> Unit = {},
+    onFoodConfirm: (FoodItem) -> Unit = {}
 ) {
+    // Если это карточка подтверждения еды - показываем специальный компонент
+    if (message.type == MessageType.FOOD_CONFIRMATION && message.foodItem != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            val configuration = LocalConfiguration.current
+            val maxMessageWidth = (configuration.screenWidthDp * 2 / 3).dp
+            
+            FoodConfirmationCard(
+                foodItem = message.foodItem,
+                onEdit = { onFoodEdit(message.foodItem) },
+                onConfirm = { onFoodConfirm(message.foodItem) },
+                modifier = Modifier.widthIn(max = maxMessageWidth)
+            )
+        }
+        return
+    }
+    
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
