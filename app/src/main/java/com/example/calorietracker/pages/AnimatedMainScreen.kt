@@ -764,7 +764,8 @@ private fun AnimatedBottomBar(
                     },
                     label = "send_button"
                 ) { hasContent ->
-                    if (hasContent) {
+                    val showSend = hasContent || isAnalysisMode
+                    if (showSend) {
                         AnimatedSendButton(
                             onClick = {
                                 viewModel.sendMessage()
@@ -779,7 +780,7 @@ private fun AnimatedBottomBar(
                 }
 
                 EnhancedPlusDropdownMenu(
-                    expanded = menuExpanded,
+                    expanded = menuExpanded && !isAnalysisMode,
                     onDismissRequest = { onMenuToggle(false) },
                     onCameraClick = onCameraClick,
                     onGalleryClick = onGalleryClick,

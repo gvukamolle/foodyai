@@ -241,6 +241,9 @@ class CalorieTrackerViewModel(
         if (isDailyAnalysisEnabled && isRecordMode) {
             isRecordMode = false
         }
+        if (isDailyAnalysisEnabled) {
+            removeAttachedPhoto()
+        }
     }
     
     // Переключение режима записи
@@ -1040,6 +1043,11 @@ class CalorieTrackerViewModel(
     }
 
     fun onPhotoSelected(bitmap: Bitmap) {
+        // Запрещаем прикрепление в режиме анализа
+        if (isDailyAnalysisEnabled) {
+            Toast.makeText(context, "Прикрепление фото недоступно в режиме анализа", Toast.LENGTH_SHORT).show()
+            return
+        }
         // Сохраняем фото во временный файл для отображения
         viewModelScope.launch {
             val file = File.createTempFile("attached_photo", ".jpg", context.cacheDir)
@@ -1093,15 +1101,172 @@ class CalorieTrackerViewModel(
         inputMessage = ""
         attachedPhoto = null
         attachedPhotoPath = null
-        
-        // Если есть фото, отправляем на анализ
-        if (photo != null) {
-            viewModelScope.launch {
-                analyzePhotoWithAI(photo, message)
+
+        // Если есть фото и активен режим записи - отправляем на анализ
+        if (photo != null && isRecordMode) {
+            viewModelScope.launch { analyzePhotoWithAI(photo, message) }
+        } else if (photo != null) {
+            viewModelScope.launch { sendPhotoChatMessage(photo, message) }
+        } else if (message.isNotBlank()) {
+            sendChatMessage(message)
+        }
+    }
+
+    private fun sendChatMessage(userMessage: String) {
+        val isFirstOfDay = repository.isFirstMessageOfDay()
+        repository.recordLastUserMessageTime()
+
+        viewModelScope.launch {
+            if (isOnline) {
+                val currentUser = authManager.currentUser.value
+                if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
+                    showAILimitDialog = true
+                    pendingAIAction = {
+                        inputMessage = userMessage
+                        sendMessage()
+                    }
+                    return@launch
+                }
+
+                val tempMessage = ChatMessage(
+                    type = MessageType.AI,
+                    content = "",
+                    isProcessing = true
+                )
+                messages = messages + tempMessage
+
+                try {
+                    val profileData = userProfile.toNetworkProfile()
+                    val response = safeApiCall {
+                        NetworkModule.makeService.askAiDietitian(
+                            webhookId = MakeService.WEBHOOK_ID,
+                            request = AiChatRequest(
+                                message = userMessage,
+                                userProfile = profileData,
+                                userId = userId,
+                                isFirstMessageOfDay = isFirstOfDay,
+                                messageType = "chat"
+                            )
+                        )
+                    }
+
+                    removeMessageWithAnimation(tempMessage.id)
+
+                    if (response.isSuccess) {
+                        val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
+                        messages = messages + ChatMessage(
+                            type = MessageType.AI,
+                            content = answer
+                        )
+                        if (currentUser != null) {
+                            val updatedUserData = AIUsageManager.incrementUsage(currentUser)
+                            authManager.updateUserData(updatedUserData)
+                        }
+                    } else {
+                        messages = messages + ChatMessage(
+                            type = MessageType.AI,
+                            content = "Ошибка сервера: не удалось получить ответ от AI."
+                        )
+                    }
+                } catch (e: Exception) {
+                    removeMessageWithAnimation(tempMessage.id)
+                    messages = messages + ChatMessage(
+                        type = MessageType.AI,
+                        content = "Произошла ошибка при обращении к AI: ${e.message}"
+                    )
+                }
+            } else {
+                val offlineResponse = getOfflineResponse(userMessage)
+                messages = messages + ChatMessage(
+                    type = MessageType.AI,
+                    content = offlineResponse
+                )
             }
-        } else {
-            // Обычное текстовое сообщение
-            sendMessage()
+        }
+    }
+
+    private suspend fun sendPhotoChatMessage(photo: Bitmap, caption: String) {
+        if (!checkInternetConnection()) {
+            messages = messages + ChatMessage(
+                type = MessageType.AI,
+                content = "Нет подключения к интернету"
+            )
+            return
+        }
+
+        val isFirstOfDay = repository.isFirstMessageOfDay()
+        repository.recordLastUserMessageTime()
+
+        val currentUser = authManager.currentUser.value
+        if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
+            showAILimitDialog = true
+            pendingAIAction = {
+                viewModelScope.launch { sendPhotoChatMessage(photo, caption) }
+            }
+            return
+        }
+
+        val loadingMessage = ChatMessage(
+            type = MessageType.AI,
+            content = "",
+            isProcessing = true
+        )
+        messages = messages + loadingMessage
+
+        try {
+            val tempFile = File.createTempFile("chat_photo", ".jpg", context.cacheDir)
+            FileOutputStream(tempFile).use { out ->
+                val scaled = scaleBitmap(photo, 800)
+                scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            }
+
+            val gson = Gson()
+            val requestBody = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+            val photoPart = MultipartBody.Part.createFormData("photo", tempFile.name, requestBody)
+
+            val profileJson = gson.toJson(userProfile.toNetworkProfile())
+            val profileBody = profileJson.toRequestBody("application/json".toMediaTypeOrNull())
+            val userIdBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
+            val captionBody = caption.toRequestBody("text/plain".toMediaTypeOrNull())
+            val typeBody = "chat_photo".toRequestBody("text/plain".toMediaTypeOrNull())
+            val firstBody = isFirstOfDay.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val response = safeApiCall {
+                NetworkModule.makeService.askAiDietitianWithPhoto(
+                    webhookId = MakeService.WEBHOOK_ID,
+                    photo = photoPart,
+                    userProfile = profileBody,
+                    userId = userIdBody,
+                    caption = captionBody,
+                    messageType = typeBody,
+                    isFirstMessageOfDay = firstBody
+                )
+            }
+
+            removeMessageWithAnimation(loadingMessage.id)
+
+            if (response.isSuccess) {
+                val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
+                messages = messages + ChatMessage(
+                    type = MessageType.AI,
+                    content = answer
+                )
+                if (currentUser != null) {
+                    val updatedUserData = AIUsageManager.incrementUsage(currentUser)
+                    authManager.updateUserData(updatedUserData)
+                }
+            } else {
+                messages = messages + ChatMessage(
+                    type = MessageType.AI,
+                    content = "Ошибка сервера: не удалось получить ответ от AI."
+                )
+            }
+        } catch (e: Exception) {
+            removeMessageWithAnimation(loadingMessage.id)
+            messages = messages + ChatMessage(
+                type = MessageType.AI,
+                content = "Произошла ошибка при обращении к AI: ${e.message}"
+            )
         }
     }
 
@@ -1197,86 +1362,13 @@ class CalorieTrackerViewModel(
 
         if (inputMessage.isNotBlank()) {
             val userMessage = inputMessage
-            val dayStart = DailyResetUtils.getCurrentFoodDayStartTime()
-            val isFirstOfDay = repository.isFirstMessageOfDay()
             messages = messages + ChatMessage(
                 type = MessageType.USER,
                 content = userMessage,
                 animate = true
             )
-        repository.recordLastUserMessageTime()
-        inputMessage = ""
-
-            viewModelScope.launch {
-                if (isOnline) {
-                    val currentUser = authManager.currentUser.value
-                    if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
-                        showAILimitDialog = true
-                        pendingAIAction = {
-                            inputMessage = userMessage
-                            sendMessage()
-                        }
-                        return@launch
-                    }
-
-                    // Добавляем сообщение с анимированными точками
-                    val tempMessage = ChatMessage(
-                        type = MessageType.AI,
-                        content = "", // Пустое содержимое
-                        isProcessing = true // Флаг для отображения точек
-                    )
-                    messages = messages + tempMessage
-
-                    try {
-                        val profileData = userProfile.toNetworkProfile()
-                        val response = safeApiCall {
-                            NetworkModule.makeService.askAiDietitian(
-                                webhookId = MakeService.WEBHOOK_ID,
-                                request = AiChatRequest(
-                                    message = userMessage,
-                                    userProfile = profileData,
-                                    userId = userId,
-                                    isFirstMessageOfDay = isFirstOfDay,
-                                    messageType = "chat"
-                                )
-                            )
-                        }
-
-                        // Удаляем временное сообщение с анимацией
-                        removeMessageWithAnimation(tempMessage.id)
-
-                        if (response.isSuccess) {
-                            val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
-                            messages = messages + ChatMessage(
-                                type = MessageType.AI,
-                                content = answer
-                            )
-                            if (currentUser != null) {
-                                val updatedUserData = AIUsageManager.incrementUsage(currentUser)
-                                authManager.updateUserData(updatedUserData)
-                            }
-                        } else {
-                            messages = messages + ChatMessage(
-                                type = MessageType.AI,
-                                content = "Ошибка сервера: не удалось получить ответ от AI."
-                            )
-                        }
-                    } catch (e: Exception) {
-                        // Удаляем временное сообщение в случае ошибки
-                        removeMessageWithAnimation(tempMessage.id)
-                        messages = messages + ChatMessage(
-                            type = MessageType.AI,
-                            content = "Произошла ошибка при обращении к AI: ${e.message}"
-                        )
-                    }
-                } else {
-                    val offlineResponse = getOfflineResponse(userMessage)
-                    messages = messages + ChatMessage(
-                        type = MessageType.AI,
-                        content = offlineResponse
-                    )
-                }
-            }
+            inputMessage = ""
+            sendChatMessage(userMessage)
         }
     }
 

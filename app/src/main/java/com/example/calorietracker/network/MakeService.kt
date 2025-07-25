@@ -341,6 +341,18 @@ interface MakeService {
         @Part("messageType") messageType: RequestBody
     ): FoodAnalysisResponse
 
+    // Отправка фото как обычного чат-сообщения
+    @Multipart
+    @POST("{webhookId}")
+    suspend fun askAiDietitianWithPhoto(
+        @Path("webhookId") webhookId: String,
+        @Part photo: MultipartBody.Part,
+        @Part("userProfile") userProfile: RequestBody,
+        @Part("userId") userId: RequestBody,
+        @Part("caption") caption: RequestBody,
+        @Part("messageType") messageType: RequestBody,
+        @Part("isFirstMessageOfDay") isFirstMessageOfDay: RequestBody
+    ): AiChatResponse
 
     // Анализ по URL на изображение
     @Headers("Content-Type: application/json")
