@@ -30,8 +30,7 @@ import com.example.calorietracker.CalorieTrackerViewModel
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.vector.ImageVector
 import java.util.Locale
-
-
+import kotlin.math.roundToInt
 
 // Обертка для всех диалогов с анимациями
 @Composable
@@ -61,12 +60,18 @@ fun AnimatedDialogs(
     if (viewModel.showManualInputDialog) {
         val prefill = viewModel.prefillFood
         val initialData = if (prefill != null) {
+            val weight = prefill.weight.toFloatOrNull() ?: 100f
+            fun per100(value: Double): String {
+                val per = (value * 100f / weight * 10f).roundToInt() / 10f
+                return per.toString()
+            }
+
             ManualInputData(
                 name = prefill.name,
-                caloriesPer100g = prefill.calories.toString(),
-                proteinsPer100g = prefill.protein.toString(),
-                fatsPer100g = prefill.fat.toString(),
-                carbsPer100g = prefill.carbs.toString(),
+                caloriesPer100g = ((prefill.calories.toFloat() * 100f / weight).roundToInt()).toString(),
+                proteinsPer100g = per100(prefill.protein),
+                fatsPer100g = per100(prefill.fat),
+                carbsPer100g = per100(prefill.carbs),
                 weight = prefill.weight
             )
         } else null

@@ -711,12 +711,14 @@ class CalorieTrackerViewModel(
 
                     "да", "yes" -> {
                         // Создаем FoodItem из полученных данных С МНЕНИЕМ AI
+                        val weightValue = foodData.weight.toFloatOrNull() ?: 100f
+                        val factor = weightValue / 100f
                         val foodItem = FoodItem(
                             name = foodData.name,
-                            calories = foodData.calories,
-                            protein = foodData.protein,
-                            fat = foodData.fat,
-                            carbs = foodData.carbs,
+                            calories = (foodData.calories * factor).roundToInt(),
+                            protein = foodData.protein * factor,
+                            fat = foodData.fat * factor,
+                            carbs = foodData.carbs * factor,
                             weight = foodData.weight,
                             source = currentFoodSource ?: "ai_photo",
                             aiOpinion = foodData.opinion
@@ -847,13 +849,14 @@ class CalorieTrackerViewModel(
                 }
 
                 val foodData = Gson().fromJson(answer, FoodDataFromAnswer::class.java)
-
+                val weightValue = foodData.weight.toFloatOrNull() ?: 100f
+                val factor = weightValue / 100f
                 val foodItem = FoodItem(
                     name = foodData.name,
-                    calories = foodData.calories,
-                    protein = foodData.protein,
-                    fat = foodData.fat,
-                    carbs = foodData.carbs,
+                    calories = (foodData.calories * factor).roundToInt(),
+                    protein = foodData.protein * factor,
+                    fat = foodData.fat * factor,
+                    carbs = foodData.carbs * factor,
                     weight = foodData.weight,
                     source = currentFoodSource ?: "ai_description",
                     aiOpinion = foodData.opinion
