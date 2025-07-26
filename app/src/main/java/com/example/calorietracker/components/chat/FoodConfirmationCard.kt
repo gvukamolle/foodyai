@@ -56,7 +56,7 @@ fun FoodConfirmationCard(
                     topStart = 20.dp,
                     topEnd = 20.dp,
                     bottomStart = 6.dp,
-                    bottomEnd = 20.dp
+                    bottomEnd = 6.dp
                 ),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFFF3F4F6)
@@ -129,7 +129,7 @@ fun FoodConfirmationCard(
             // Кнопки действий как отдельные элементы
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // Кнопка "Изменить"
                 OutlinedButton(
@@ -138,7 +138,7 @@ fun FoodConfirmationCard(
                         onEdit()
                     },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(6.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = Color(0xFFF0F0F0),
                         contentColor = Color(0xFF868686)
@@ -160,7 +160,12 @@ fun FoodConfirmationCard(
                         onConfirm()
                     },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(
+                        topStart = 6.dp,
+                        topEnd = 6.dp,
+                        bottomStart = 6.dp,
+                        bottomEnd = 20.dp
+                    ),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFDBF0E4),
                         contentColor = Color(0xFF00BA65)

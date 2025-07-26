@@ -220,6 +220,10 @@ fun AnimatedMainScreen(
                 AnimatedChatContent(
                     viewModel = viewModel,
                     listState = listState,
+                    onAiOpinionClick = { food ->
+                        selectedFood = food
+                        showFoodDetailScreen = true
+                    },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -484,6 +488,7 @@ private fun AnimatedContentDivider() {
 private fun AnimatedChatContent(
     viewModel: CalorieTrackerViewModel,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    onAiOpinionClick: (FoodItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
@@ -520,11 +525,8 @@ private fun AnimatedChatContent(
                 ) {
                     AnimatedChatMessageCard(
                     message = message,
-                    onAiOpinionClick = { food ->
-                        selectedFood = food
-                        showFoodDetailScreen = true
-                    },
-                    onFoodEdit = { food ->
+                        onAiOpinionClick = onAiOpinionClick,
+                        onFoodEdit = { food ->
                     viewModel.prefillFood = food
                     viewModel.showManualInputDialog = true
                     },
