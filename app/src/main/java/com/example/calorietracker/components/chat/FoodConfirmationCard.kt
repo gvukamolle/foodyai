@@ -47,7 +47,7 @@ fun FoodConfirmationCard(
                         stiffness = Spring.StiffnessLow
                     )
                 ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             // Основная карточка с данными
             Card(
@@ -129,7 +129,7 @@ fun FoodConfirmationCard(
             // Кнопки действий как отдельные элементы
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Кнопка "Изменить"
                 OutlinedButton(
@@ -140,7 +140,7 @@ fun FoodConfirmationCard(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(6.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color(0xFFF0F0F0),
+                        containerColor = Color(0xFFF3F4F6),
                         contentColor = Color(0xFF868686)
                     ),
                     border = null
