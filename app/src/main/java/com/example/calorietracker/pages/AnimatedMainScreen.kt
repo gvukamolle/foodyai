@@ -87,6 +87,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Restaurant
 import com.example.calorietracker.FoodItem
+import com.example.calorietracker.pages.FoodDetailScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -151,6 +152,10 @@ fun AnimatedMainScreen(
     var isDrawerOpen by remember { mutableStateOf(false) } // Состояние для выдвижного меню
     var showStatisticsCard by remember { mutableStateOf(false) } // Состояние для карточки статистики
     var isRecordMode by remember { mutableStateOf(false) } // Состояние для режима записи
+    
+    // Состояние для FoodDetailScreen
+    var showFoodDetailScreen by remember { mutableStateOf(false) }
+    var selectedFood by remember { mutableStateOf<FoodItem?>(null) }
 
     val isAnalysisMode = viewModel.isDailyAnalysisEnabled
 
@@ -277,6 +282,37 @@ fun AnimatedMainScreen(
         onSettingsClick = onSettingsClick,
         onFeedbackClick = onFeedbackClick
     )
+    
+    // Диалог с деталями продукта
+    if (showFoodDetailScreen && selectedFood != null) {
+        FoodDetailScreen(
+            food = selectedFood!!,
+            onDismiss = {
+                showFoodDetailScreen = false
+                selectedFood = null
+            },
+            onEdit = {
+                showFoodDetailScreen = false
+                viewModel.prefillFood = selectedFood
+                viewModel.showManualInputDialog = true
+                selectedFood = null
+            },
+            onDelete = {
+                showFoodDetailScreen = false
+                // Находим индекс продукта в списке приемов пищи
+                val mealIndex = viewModel.meals.indexOfFirst { meal ->
+                    meal.foods.contains(selectedFood)
+                }
+                if (mealIndex != -1) {
+                    viewModel.deleteMealFromHistory(
+                        DailyResetUtils.getFoodDate(),
+                        mealIndex
+                    )
+                }
+                selectedFood = null
+            }
+        )
+    }
 }
 
 
@@ -483,19 +519,19 @@ private fun AnimatedChatContent(
                     }
                 ) {
                     AnimatedChatMessageCard(
-                        message = message,
-                        onAiOpinionClick = { text ->
-                            viewModel.aiOpinionText = text
-                            viewModel.showAiOpinionDialog = true
-                        },
-                        onFoodEdit = { food ->
-                            viewModel.prefillFood = food
-                            viewModel.showManualInputDialog = true
-                        },
-                        onFoodConfirm = { food ->
-                            viewModel.pendingFood = food
-                            viewModel.confirmFood()
-                        }
+                    message = message,
+                    onAiOpinionClick = { food ->
+                        selectedFood = food
+                        showFoodDetailScreen = true
+                    },
+                    onFoodEdit = { food ->
+                    viewModel.prefillFood = food
+                    viewModel.showManualInputDialog = true
+                    },
+                    onFoodConfirm = { food ->
+                    viewModel.pendingFood = food
+                    viewModel.confirmFood()
+                    }
                     )
                 }
             }
@@ -508,7 +544,7 @@ private fun AnimatedChatContent(
 @Composable
 private fun AnimatedChatMessageCard(
     message: com.example.calorietracker.ChatMessage,
-    onAiOpinionClick: (String) -> Unit,
+    onAiOpinionClick: (FoodItem) -> Unit,
     onFoodEdit: (FoodItem) -> Unit = {},
     onFoodConfirm: (FoodItem) -> Unit = {}
 ) {
@@ -623,7 +659,7 @@ private fun AnimatedChatMessageCard(
                     }
                 } else if (message.content.isEmpty() && message.isExpandable && message.foodItem?.aiOpinion != null) {
                     AnimatedAiChip(
-                        onClick = { onAiOpinionClick(message.foodItem.aiOpinion!!) }
+                        onClick = { onAiOpinionClick(message.foodItem!!) }
                     )
                 }
             }

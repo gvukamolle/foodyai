@@ -194,8 +194,7 @@ class CalorieTrackerViewModel(
     var showPhotoDialog by mutableStateOf(false)
     var showPhotoConfirmDialog by mutableStateOf(false)
     var pendingPhoto by mutableStateOf<Bitmap?>(null)
-    var showAiOpinionDialog by mutableStateOf(false)
-    var aiOpinionText by mutableStateOf<String?>(null)
+    // Удалены переменные showAiOpinionDialog и aiOpinionText - теперь используется FoodDetailScreen
     var photoCaption by mutableStateOf("")
     var pendingDescription by mutableStateOf("")
     var lastDescriptionMessage by mutableStateOf<String?>(null)
