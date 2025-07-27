@@ -483,7 +483,7 @@ private fun FoodItemCard(
                     onViewDetails()
                 },
                 shape = RoundedCornerShape(16.dp),
-                color = if (food.aiOpinion != null) Color(0xFFDBF0E4) else Color(0xFFE0E0E0),
+                color = Color(0xFFDFEBF4),
                 modifier = Modifier.height(28.dp)
             ) {
                 Row(
@@ -496,20 +496,20 @@ private fun FoodItemCard(
                             imageVector = Icons.Default.AutoAwesome,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
-                            tint = Color(0xFF00BA65)
+                            tint = Color(0xFF2196F3)
                         )
                         Text(
                             text = "Foody AI",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF00BA65)
+                            color = Color(0xFF2196F3)
                         )
                     } else {
                         Text(
                             text = "Больше",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color.Gray
+                            color = Color(0xFF2196F3)
                         )
                     }
                 }
@@ -619,7 +619,7 @@ fun AiInfoButton(
             }
         },
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFFDBF0E4),
+        color = Color(0xFFDFEBF4),
         modifier = Modifier.height(28.dp)
     ) {
         Row(
@@ -631,20 +631,20 @@ fun AiInfoButton(
                 imageVector = Icons.Default.AutoAwesome,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = Color(0xFF00BA65)
+                tint = Color(0xFF2196F3)
             )
             Text(
                 text = "Foody AI",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF00BA65)
+                color = Color(0xFF2196F3)
             )
             if (hasAiOpinion) {
                 Box(
                     modifier = Modifier
                         .size(20.dp)
                         .background(
-                            color = Color(0xFF00BA65).copy(alpha = 0.2f),
+                            color = Color(0xFF2196F3).copy(alpha = 0.2f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -653,7 +653,7 @@ fun AiInfoButton(
                         imageVector = Icons.Default.Info,
                         contentDescription = "Информация",
                         modifier = Modifier.size(14.dp),
-                        tint = Color(0xFF00BA65)
+                        tint = Color(0xFF2196F3)
                     )
                 }
             }

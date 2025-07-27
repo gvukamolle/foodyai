@@ -1529,7 +1529,7 @@ fun AnimatedAiChip(
         },
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFFDBF0E4),
+        color = Color(0xFFDFEBF4),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -1539,14 +1539,14 @@ fun AnimatedAiChip(
             Icon(
                 imageVector = Icons.Default.AutoAwesome,
                 contentDescription = null,
-                tint = Color(0xFF00BA65),
+                tint = Color(0xFF2196F3),
                 modifier = Modifier.size(20.dp)
             )
             Text(
                 text = "Что думает Foody?",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF00BA65)
+                color = Color(0xFF2196F3)
             )
         }
     }

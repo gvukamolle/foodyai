@@ -60,12 +60,12 @@ import kotlin.math.*
 
 // Обновленные цвета для более современного вида
 object AnalyticsColors {
-    val Primary = Color(0xFF6366F1) // Indigo
-    val Secondary = Color(0xFF8B5CF6) // Purple
-    val Success = Color(0xFF10B981) // Emerald
+    val Primary = Color(0xFF2196F3) // Фирменный синий
+    val Secondary = Color(0xFF1976D2) // Темно-синий
+    val Success = Color(0xFF4CAF50) // Зеленый
     val Warning = Color(0xFFF59E0B) // Amber
     val Error = Color(0xFFEF4444) // Red
-    val Info = Color(0xFF3B82F6) // Blue
+    val Info = Color(0xFF03A9F4) // Light Blue
 
     val CardBackground = Color(0xFFFFFFFF)
     val Background = Color(0xFFF9FAFB)
@@ -75,11 +75,11 @@ object AnalyticsColors {
 
     // Градиенты
     val PrimaryGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+        colors = listOf(Color(0xFF2196F3), Color(0xFF1976D2))
     )
 
     val SuccessGradient = Brush.linearGradient(
-        colors = listOf(Color(0xFF10B981), Color(0xFF34D399))
+        colors = listOf(Color(0xFF4CAF50), Color(0xFF66BB6A))
     )
 
     val WarningGradient = Brush.linearGradient(
@@ -132,10 +132,9 @@ enum class StreakType(val label: String, val icon: ImageVector) {
 
 // Модель для AI анализа
 data class AIAnalysisResponse(
-    val trends: String,
-    val successes: String,
-    val growthAreas: String,
-    val recommendation: String
+    val general_analysis: String,  // Общий анализ
+    val trends: String,           // Тренды
+    val recommendations: String   // Рекомендации на следующую неделю
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -473,7 +472,12 @@ private fun AIInsightsCard(
     var isExpanded by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var aiAnalysis by remember { mutableStateOf<AIAnalysisResponse?>(null) }
+    var analysisDate by remember { mutableStateOf<LocalDate?>(null) }
     val haptic = LocalHapticFeedback.current
+    val today = LocalDate.now()
+    
+    // Проверяем, был ли анализ выполнен сегодня
+    val isAnalysisFromToday = analysisDate == today
 
     Card(
         modifier = Modifier
@@ -524,48 +528,97 @@ private fun AIInsightsCard(
 
                 if (aiAnalysis != null) {
                     // Показываем результаты анализа
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        AnalysisSection("📈 Тренды", aiAnalysis!!.trends)
-                        AnalysisSection("✅ Успехи", aiAnalysis!!.successes)
-                        AnalysisSection("🎯 Зоны роста", aiAnalysis!!.growthAreas)
-                        AnalysisSection("💡 Рекомендация", aiAnalysis!!.recommendation)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            AnalysisSection(
+                                "📊 Общий анализ", 
+                                aiAnalysis!!.general_analysis
+                            )
+                            Divider(color = AnalyticsColors.Border)
+                            AnalysisSection(
+                                "📈 Тренды", 
+                                aiAnalysis!!.trends
+                            )
+                            Divider(color = AnalyticsColors.Border)
+                            AnalysisSection(
+                                "🎯 Рекомендации на следующую неделю", 
+                                aiAnalysis!!.recommendations
+                            )
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                // Показываем кнопку только если анализ не выполнен сегодня
+                if (!isAnalysisFromToday) {
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        coroutineScope.launch {
-                            performAIAnalysis(viewModel, weekData) { result ->
-                                aiAnalysis = result
-                                isLoading = false
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            coroutineScope.launch {
+                                performAIAnalysis(viewModel, weekData) { result ->
+                                    aiAnalysis = result
+                                    analysisDate = today
+                                    isLoading = false
+                                }
                             }
+                            isLoading = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading && viewModel.isOnline,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AnalyticsColors.Primary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Psychology,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Персональная рекомендация")
                         }
-                        isLoading = true
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading && viewModel.isOnline,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AnalyticsColors.Primary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
+                    }
+                } else if (aiAnalysis != null) {
+                    // Если анализ уже выполнен сегодня
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
-                            Icons.Default.Psychology,
+                            Icons.Default.CheckCircle,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp)
+                            tint = AnalyticsColors.Success,
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Персональная рекомендация")
+                        Text(
+                            "Анализ выполнен сегодня",
+                            fontSize = 14.sp,
+                            color = AnalyticsColors.Success
+                        )
                     }
                 }
             } else {
@@ -622,7 +675,13 @@ private suspend fun performAIAnalysis(
         val request = WeeklyDataForAnalysis(
             userId = viewModel.userId,
             weekData = weekDataForAnalysis,
-            userProfile = viewModel.userProfile.toNetworkProfile()
+            userProfile = viewModel.userProfile.toNetworkProfile(),
+            userTargets = TargetNutrients(
+                calories = viewModel.userProfile.dailyCalories,
+                proteins = viewModel.userProfile.targetProteins,
+                fats = viewModel.userProfile.targetFats,
+                carbs = viewModel.userProfile.targetCarbs
+            )
         )
 
         // Отправляем запрос на сервер
@@ -754,12 +813,24 @@ private fun WeeklyBarChart(
     userProfile: com.example.calorietracker.data.UserProfile
 ) {
     val maxCalories = data.maxOfOrNull { it.second?.calories ?: 0f } ?: 1f
+    val targetHeight = userProfile.dailyCalories / maxCalories
 
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.Bottom
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Подпись для линии нормы
+        Text(
+            "Норма: ${userProfile.dailyCalories} ккал",
+            fontSize = 12.sp,
+            color = AnalyticsColors.Success,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(y = ((1f - targetHeight) * 150).dp - 10.dp)
+        )
+        
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.Bottom
+        ) {
         data.forEach { (date, dayData) ->
             val progress = (dayData?.calories ?: 0f) / maxCalories
             val animatedHeight by animateFloatAsState(
@@ -813,18 +884,6 @@ private fun WeeklyBarChart(
                                 else AnalyticsColors.Primary.copy(alpha = 0.6f)
                             )
                     )
-
-                    // Значение
-                    if (dayData != null) {
-                        Text(
-                            "${dayData.calories.toInt()}",
-                            fontSize = 10.sp,
-                            color = AnalyticsColors.TextSecondary,
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .offset(y = (-animatedHeight * 100).dp - 20.dp)
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -839,6 +898,7 @@ private fun WeeklyBarChart(
                         AnalyticsColors.TextSecondary
                 )
             }
+        }
         }
     }
 }
