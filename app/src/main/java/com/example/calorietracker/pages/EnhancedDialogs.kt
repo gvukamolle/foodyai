@@ -20,21 +20,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.core.view.drawToBitmap
 import com.example.calorietracker.extensions.fancyShadow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -80,22 +77,17 @@ fun AnimatedDialogContainer(
     content: @Composable () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val view = LocalView.current
     val density = LocalDensity.current
     val focusManager = LocalFocusManager.current
     val ime = WindowInsets.ime
     val imeVisible by remember {
         derivedStateOf { ime.getBottom(density) > 0 }
     }
-    var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isVisible by remember { mutableStateOf(false) }
 
 
     LaunchedEffect(Unit) {
         delay(5)
-        try {
-            backgroundBitmap = view.drawToBitmap()
-        } catch (e: Exception) { /* ignore */ }
         isVisible = true
     }
 
@@ -136,26 +128,17 @@ fun AnimatedDialogContainer(
                 },
             contentAlignment = Alignment.Center
         ) {
-            // Визуальная часть фона (размытие, затемнение)
+            // Полупрозрачный фон
             AnimatedVisibility(
-                visible = isVisible && backgroundBitmap != null,
+                visible = isVisible,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(100))
             ) {
-                backgroundBitmap?.let { bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .blur(
-                                radiusX = animateDpAsState(if (isVisible) 20.dp else 0.dp, tween(200), "blur").value,
-                                radiusY = animateDpAsState(if (isVisible) 20.dp else 0.dp, tween(200), "blur").value
-                            ),
-                        contentScale = ContentScale.Crop
-                    )
-                    Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.7f)))
-                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = 0.7f))
+                )
             }
 
             // Слой 2: Контейнер для контента диалога

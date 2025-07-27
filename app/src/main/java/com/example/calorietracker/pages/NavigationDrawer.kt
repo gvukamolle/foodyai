@@ -1,10 +1,8 @@
 package com.example.calorietracker.pages
 
-import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,25 +12,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.core.view.drawToBitmap
 import com.example.calorietracker.auth.UserData
 import com.example.calorietracker.extensions.fancyShadow
 import kotlinx.coroutines.delay
@@ -153,19 +146,13 @@ fun NavigationDrawer(
 ) {
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
-    val view = LocalView.current
     val density = LocalDensity.current
-
-    var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isVisible by remember { mutableStateOf(false) }
 
     // Запоминаем состояние открытия
     LaunchedEffect(isOpen) {
         if (isOpen) {
             delay(5)
-            try {
-                backgroundBitmap = view.drawToBitmap()
-            } catch (e: Exception) { /* ignore */ }
             isVisible = true
         }
     }
@@ -204,35 +191,16 @@ fun NavigationDrawer(
             )
 
             // Фон с размытием и затемнением
-            val blurRadius by animateDpAsState(
-                targetValue = if (isVisible) 20.dp else 0.dp,
-                animationSpec = tween(200, easing = FastOutSlowInEasing),
-                label = "blur_animation"
-            )
-            
             AnimatedVisibility(
-                visible = isVisible && backgroundBitmap != null,
+                visible = isVisible,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(100))
             ) {
-                backgroundBitmap?.let { bitmap ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .blur(radius = blurRadius),
-                            contentScale = ContentScale.Crop
-                        )
-                        // Затемнение
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.White.copy(alpha = 0.7f))
-                        )
-                    }
-                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = 0.7f))
+                )
             }
 
             // Выдвижная панель в стиле левитирующего блока

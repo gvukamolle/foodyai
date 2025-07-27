@@ -239,8 +239,9 @@ data class HealthCheckRequest(
 data class WeeklyDataForAnalysis(
     val userId: String,
     val weekData: List<DayDataForAnalysis>,
-    val userProfile: UserProfileData
-)
+    val userProfile: UserProfileData,
+    val messageType: String = "daily_analysis" // Маркер для сценария недельного анализа
+    )
 
 data class DayDataForAnalysis(
     val date: String,

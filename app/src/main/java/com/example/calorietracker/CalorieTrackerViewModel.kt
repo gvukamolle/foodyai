@@ -277,6 +277,7 @@ class CalorieTrackerViewModel(
                         type = MessageType.AI,
                         content = "",
                         isProcessing = true,
+                        inputMethod = "analysis",
                         animate = true
                     )
                 }
@@ -466,10 +467,12 @@ class CalorieTrackerViewModel(
 
     // Удаление приема пищи с учётом синхронизации состояния
     fun deleteMealFromHistory(date: String, index: Int) {
+        val meal = repository.getIntakeHistory(date)?.meals?.getOrNull(index)
         repository.deleteMeal(date, index)
         refreshCalendarData()
         if (date == DailyResetUtils.getFoodDate()) {
             refreshTodayIntake()
+            meal?.foods?.firstOrNull()?.let { removeFoodMessages(it) }
         }
     }
 
@@ -1055,18 +1058,16 @@ class CalorieTrackerViewModel(
                 isExpandable = false
             )
 
-            // Если есть мнение AI, добавляем отдельное сообщение с кнопкой с небольшой задержкой
-            if (food.aiOpinion != null) {
-                viewModelScope.launch {
-                    delay(500) // Небольшая задержка для эффекта
-                    messages = messages + ChatMessage(
-                        type = MessageType.AI,
-                        content = "",  // Пустой контент, так как будет только кнопка
-                        foodItem = food,
-                        isExpandable = true,
-                        animate = true
-                    )
-                }
+            // Добавляем сообщение-кнопку для деталей
+            viewModelScope.launch {
+                delay(500) // Небольшая задержка для эффекта
+                messages = messages + ChatMessage(
+                    type = MessageType.AI,
+                    content = "",  // Пустой контент, так как будет только кнопка
+                    foodItem = food,
+                    isExpandable = true,
+                    animate = true
+                )
             }
 
             // Сохраняем в репозиторий
@@ -1198,10 +1199,17 @@ class CalorieTrackerViewModel(
                     return@launch
                 }
 
+                // Определяем метод ввода для анимации
+                val method = when {
+                    isSearchMode -> "search"
+                    isRecipeMode -> "recipe"
+                    else -> "chat"
+                }
                 val tempMessage = ChatMessage(
                     type = MessageType.AI,
                     content = "",
-                    isProcessing = true
+                    isProcessing = true,
+                    inputMethod = method
                 )
                 messages = messages + tempMessage
 
@@ -1281,10 +1289,17 @@ class CalorieTrackerViewModel(
             return
         }
 
+        // Определяем метод ввода для анимации
+        val method = when {
+            isSearchMode -> "search"
+            isRecipeMode -> "recipe"
+            else -> "chat"
+        }
         val loadingMessage = ChatMessage(
             type = MessageType.AI,
             content = "",
-            isProcessing = true
+            isProcessing = true,
+            inputMethod = method
         )
         messages = messages + loadingMessage
 
@@ -1524,6 +1539,10 @@ class CalorieTrackerViewModel(
         }
     }
 
+    fun removeFoodMessages(food: FoodItem) {
+        messages = messages.filterNot { it.foodItem == food }
+    }
+
     // Методы для экрана аналитики
     fun getTodayData(): com.example.calorietracker.data.DayData? {
         val today = LocalDate.now()
@@ -1591,6 +1610,7 @@ class CalorieTrackerViewModel(
                     type = MessageType.AI,
                     content = "",
                     isProcessing = true,
+                    inputMethod = "analysis",
                     animate = true
                 )
                 messages = messages + processingMessage

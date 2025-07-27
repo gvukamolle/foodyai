@@ -15,21 +15,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.core.view.drawToBitmap
 import com.example.calorietracker.data.DailyIntake
 import com.example.calorietracker.data.DailyNutritionSummary
 import com.example.calorietracker.FoodItem
@@ -57,9 +54,7 @@ fun DayHistoryDialog(
     onMealUpdate: (Int, Meal) -> Unit = { _, _ -> },
     onMealDelete: (Int) -> Unit = {}
 ) {
-    val view = LocalView.current
     val density = LocalDensity.current
-    var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isVisible by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -108,9 +103,6 @@ fun DayHistoryDialog(
 
     LaunchedEffect(Unit) {
         delay(10)
-        try {
-            backgroundBitmap = view.drawToBitmap()
-        } catch (e: Exception) { /* ignore */ }
         isVisible = true
     }
 
@@ -130,33 +122,21 @@ fun DayHistoryDialog(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Размытый фон
+            // Полупрозрачный фон
             AnimatedVisibility(
-                visible = isVisible && backgroundBitmap != null,
+                visible = isVisible,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(100))
             ) {
-                backgroundBitmap?.let { bitmap ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .blur(20.dp),
-                            contentScale = ContentScale.Crop
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.White.copy(alpha = 0.7f))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { animatedDismiss() }
-                        )
-                    }
-                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = 0.7f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { animatedDismiss() }
+                )
             }
 
             // Контент диалога

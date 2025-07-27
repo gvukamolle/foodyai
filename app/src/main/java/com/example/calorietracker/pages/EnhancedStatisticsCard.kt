@@ -9,40 +9,25 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.core.view.drawToBitmap
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.extensions.fancyShadow
-import com.example.calorietracker.utils.NutritionFormatter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.graphics.Bitmap
@@ -54,11 +39,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import com.example.calorietracker.extensions.toNetworkProfile
-import kotlinx.coroutines.launch
 
 // Цвета для макронутриентов
 object MacroColors {
@@ -79,18 +59,12 @@ fun EnhancedStatisticsCard(
     buttonPosition: ButtonPosition? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val view = LocalView.current
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
-
-    var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         delay(5)
-        try {
-            backgroundBitmap = view.drawToBitmap()
-        } catch (e: Exception) { /* ignore */ }
         isVisible = true
     }
 
@@ -121,40 +95,17 @@ fun EnhancedStatisticsCard(
                     }
             )
 
-            // Размытый фон с затемнением
+            // Полупрозрачный фон
             AnimatedVisibility(
-                visible = isVisible && backgroundBitmap != null,
+                visible = isVisible,
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(100))
             ) {
-                backgroundBitmap?.let { bitmap ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .blur(
-                                    radiusX = animateDpAsState(
-                                        targetValue = if (isVisible) 20.dp else 0.dp,
-                                        animationSpec = tween(200),
-                                        label = "blur_x"
-                                    ).value,
-                                    radiusY = animateDpAsState(
-                                        targetValue = if (isVisible) 20.dp else 0.dp,
-                                        animationSpec = tween(200),
-                                        label = "blur_y"
-                                    ).value
-                                ),
-                            contentScale = ContentScale.Crop
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.White.copy(alpha = 0.7f))
-                        )
-                    }
-                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = 0.7f))
+                )
             }
 
             // Карточка статистики с позиционированием под кнопкой

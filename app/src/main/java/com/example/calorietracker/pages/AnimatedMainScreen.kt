@@ -56,7 +56,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.core.FastOutSlowInEasing
-import com.example.calorietracker.ui.animations.SimpleChatTypingIndicator
+// SimpleChatTypingIndicator больше не используется
 import com.example.calorietracker.ui.animations.AnimatedMessageWithBlur
 import com.example.calorietracker.components.chat.FoodConfirmationCard
 import androidx.compose.foundation.lazy.items
@@ -586,7 +586,7 @@ private fun AnimatedChatMessageCard(
 
             val showCard = !(
                     (message.isProcessing && message.inputMethod == null) ||
-                            (message.content.isEmpty() && message.isExpandable && message.foodItem?.aiOpinion != null)
+                            (message.content.isEmpty() && message.isExpandable && message.foodItem != null)
                     )
 
             if (showCard) {
@@ -620,11 +620,15 @@ private fun AnimatedChatMessageCard(
                                     vertical = 6.dp
                                 )
                             ) {
-                                if (message.inputMethod != null) {
-                                    AnimatedPhrases(inputMethod = message.inputMethod)
-                                } else {
-                                    SimpleChatTypingIndicator()
+                                // Определяем метод ввода для AnimatedPhrases
+                                val method = when {
+                                    message.inputMethod != null -> message.inputMethod
+                                    message.content.startsWith("[АНАЛИЗ]") -> "analysis"
+                                    message.content.startsWith("[ПОИСК]") -> "search"
+                                    message.content.startsWith("[РЕЦЕПТ]") -> "recipe"
+                                    else -> "chat"
                                 }
+                                AnimatedPhrases(inputMethod = method)
                             }
                         } else {
                             if (message.imagePath != null) {
@@ -659,10 +663,16 @@ private fun AnimatedChatMessageCard(
                     ) {
                         SimpleChatTypingIndicator()
                     }
-                } else if (message.content.isEmpty() && message.isExpandable && message.foodItem?.aiOpinion != null) {
-                    AnimatedAiChip(
-                        onClick = { onAiOpinionClick(message.foodItem!!) }
-                    )
+                } else if (message.content.isEmpty() && message.isExpandable && message.foodItem != null) {
+                    if (message.foodItem.aiOpinion != null) {
+                        AnimatedAiChip(
+                            onClick = { onAiOpinionClick(message.foodItem!!) }
+                        )
+                    } else {
+                        AnimatedMoreChip(
+                            onClick = { onAiOpinionClick(message.foodItem!!) }
+                        )
+                    }
                 }
             }
         }
@@ -1537,6 +1547,35 @@ fun AnimatedAiChip(
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF00BA65)
+            )
+        }
+    }
+}
+
+@Composable
+fun AnimatedMoreChip(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    Surface(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFFE0E0E0)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Больше",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+                color = Color.Gray
             )
         }
     }

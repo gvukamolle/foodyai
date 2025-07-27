@@ -1,10 +1,8 @@
 package com.example.calorietracker.pages
 
 import android.content.Context
-import android.graphics.Bitmap
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -18,12 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -31,14 +27,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.core.view.drawToBitmap
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalTime
@@ -62,22 +56,17 @@ fun EnhancedPlusDropdownMenu(
     val contextualHint = getContextualHint()
 
     val coroutineScope = rememberCoroutineScope()
-    val view = LocalView.current
     val density = LocalDensity.current
     val focusManager = LocalFocusManager.current
     val ime = WindowInsets.ime
     val imeVisible by remember {
         derivedStateOf { ime.getBottom(density) > 0 }
     }
-    var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(expanded) {
         if (expanded) {
             delay(10)
-            try {
-                backgroundBitmap = view.drawToBitmap()
-            } catch (e: Exception) { /* ignore */ }
             isVisible = true
         }
     }
@@ -125,40 +114,25 @@ fun EnhancedPlusDropdownMenu(
                         }
                 )
                 AnimatedVisibility(
-                    visible = isVisible && backgroundBitmap != null,
+                    visible = isVisible,
                     enter = fadeIn(tween(200)),
                     exit = fadeOut(tween(100))
                 ) {
-                    backgroundBitmap?.let { bitmap ->
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .blur(
-                                        radiusX = animateDpAsState(if (isVisible) 20.dp else 0.dp, tween(200), "blur").value,
-                                        radiusY = animateDpAsState(if (isVisible) 20.dp else 0.dp, tween(200), "blur").value
-                                    ),
-                                contentScale = ContentScale.Crop
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.White.copy(alpha = 0.6f))
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) {
-                                        if (imeVisible) {
-                                            focusManager.clearFocus()
-                                        } else {
-                                            animatedDismiss()
-                                        }
-                                    }
-                            )
-                        }
-                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.White.copy(alpha = 0.6f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                if (imeVisible) {
+                                    focusManager.clearFocus()
+                                } else {
+                                    animatedDismiss()
+                                }
+                            }
+                    )
                 }
 
                 AnimatedVisibility(

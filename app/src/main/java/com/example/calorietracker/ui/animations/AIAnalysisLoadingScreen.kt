@@ -1,6 +1,5 @@
 package com.example.calorietracker.ui.animations
 
-import android.graphics.Bitmap
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -14,25 +13,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.core.view.drawToBitmap
 import kotlinx.coroutines.delay
 import kotlin.random.Random
-import androidx.compose.ui.platform.LocalDensity
 
 /**
  * Универсальный контейнер, который реализует эффект размытия фона в новом окне.
@@ -42,16 +36,6 @@ private fun FullscreenEffectContainer(
     onDismiss: () -> Unit,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val view = LocalView.current
-    val backgroundScreenshot by produceState<Bitmap?>(null) {
-        value = try {
-            view.drawToBitmap()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    val density = LocalDensity.current
 
     val focusManager = LocalFocusManager.current
     LaunchedEffect(Unit) {
@@ -71,17 +55,6 @@ private fun FullscreenEffectContainer(
                 .fillMaxSize()
                 .background(Color.White.copy(alpha = 0.35f))
         ) {
-            backgroundScreenshot?.let { bitmap ->
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(30.dp),
-                    contentScale = ContentScale.Crop,
-                    alpha = 1f
-                )
-            }
 
             AnimatedVisibility(
                 visible = true,
@@ -165,13 +138,13 @@ private fun AILoadingRing() {
 /**
  * Компонент с анимированными забавными фразами
  *
- * @param inputMethod Метод ввода данных: "photo" или "text"
+ * @param inputMethod Метод ввода данных: "photo", "text", "chat", "analysis", "search", "recipe"
  */
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun AnimatedPhrases(inputMethod: String? = null) {
-    // Базовые фразы
-    val basePhrases = listOf(
+    // Базовые фразы для анализа еды
+    val baseFoodPhrases = listOf(
         "Дайте подумать... 🤔",
         "Так, это похоже на еду... 🍽️",
         "Мне кажется это съедобно... 🧐",
@@ -194,8 +167,8 @@ fun AnimatedPhrases(inputMethod: String? = null) {
         "Анализирую цвета и текстуры... 🎨"
     )
 
-    // Фразы для текста
-    val textPhrases = listOf(
+    // Фразы для текста описания еды
+    val textFoodPhrases = listOf(
         "Читаю ваше описание... 📖",
         "Разбираю текст по буквам... 📝",
         "Понимаю, о чем вы говорите... 💬",
@@ -212,21 +185,94 @@ fun AnimatedPhrases(inputMethod: String? = null) {
         "Подсчитываю БЖУ... 🧮"
     )
 
-    // Комбинируем фразы в зависимости от метода
+    // Фразы для обычного чата
+    val chatPhrases = listOf(
+        "Размышляю над ответом... 💭",
+        "Формулирую мысли... 🤔",
+        "Подбираю нужные слова... 📝",
+        "Обдумываю ваш вопрос... 🧠",
+        "Готовлю ответ... ⏳",
+        "Консультируюсь с базой знаний... 📚",
+        "Анализирую контекст... 🔍",
+        "Почти готов ответить... 🎯",
+        "Обрабатываю информацию... 💡",
+        "Секундочку, думаю... ⚡"
+    )
+
+    // Фразы для режима анализа дня
+    val analysisPhrases = listOf(
+        "Изучаю ваш рацион... 📊",
+        "Анализирую статистику дня... 📈",
+        "Считаю общее КБЖУ... 🧮",
+        "Проверяю баланс нутриентов... ⚖️",
+        "Оцениваю полезность питания... 🥗",
+        "Сравниваю с вашими целями... 🎯",
+        "Ищу паттерны в питании... 🔍",
+        "Готовлю персональные советы... 💡",
+        "Анализирую калорийность... 🔥",
+        "Формирую рекомендации... 📋"
+    )
+
+    // Фразы для поиска в интернете
+    val searchPhrases = listOf(
+        "Ищу в интернете... 🌐",
+        "Сканирую веб-страницы... 🔍",
+        "Проверяю надежные источники... 📰",
+        "Гуглю информацию... 🔎",
+        "Анализирую результаты поиска... 📊",
+        "Фильтрую полезные данные... 🗂️",
+        "Изучаю найденное... 📖",
+        "Сопоставляю факты... 🧩",
+        "Проверяю актуальность... ⏰",
+        "Обрабатываю информацию... 💭"
+    )
+
+    // Фразы для режима рецептов
+    val recipePhrases = listOf(
+        "Придумываю рецепт... 👨‍🍳",
+        "Подбираю ингредиенты... 🥕",
+        "Рассчитываю пропорции... ⚖️",
+        "Вспоминаю кулинарные секреты... 🔐",
+        "Колдую на кухне... ✨",
+        "Составляю список продуктов... 📝",
+        "Определяю время готовки... ⏲️",
+        "Продумываю этапы приготовления... 📋",
+        "Адаптирую под ваши предпочтения... 🎯",
+        "Создаю кулинарный шедевр... 🍳"
+    )
+
+    // Выбираем фразы в зависимости от метода
     val phrases = remember(inputMethod) {
         val combinedPhrases = mutableListOf<String>()
 
-        // Добавляем базовые фразы
-        combinedPhrases.addAll(basePhrases)
-
-        // Добавляем специфичные фразы
         when (inputMethod) {
-            "photo" -> combinedPhrases.addAll(photoPhrases)
-            "text" -> combinedPhrases.addAll(textPhrases)
+            "photo" -> {
+                combinedPhrases.addAll(baseFoodPhrases)
+                combinedPhrases.addAll(photoPhrases)
+                combinedPhrases.addAll(macrosPhrases)
+            }
+            "text" -> {
+                combinedPhrases.addAll(baseFoodPhrases)
+                combinedPhrases.addAll(textFoodPhrases)
+                combinedPhrases.addAll(macrosPhrases)
+            }
+            "chat" -> {
+                combinedPhrases.addAll(chatPhrases)
+            }
+            "analysis" -> {
+                combinedPhrases.addAll(analysisPhrases)
+            }
+            "search" -> {
+                combinedPhrases.addAll(searchPhrases)
+            }
+            "recipe" -> {
+                combinedPhrases.addAll(recipePhrases)
+            }
+            else -> {
+                // По умолчанию используем фразы для чата
+                combinedPhrases.addAll(chatPhrases)
+            }
         }
-
-        // Добавляем фразы про макронутриенты
-        combinedPhrases.addAll(macrosPhrases)
 
         // Перемешиваем для рандомизации
         combinedPhrases.shuffled()
@@ -261,7 +307,7 @@ fun AnimatedPhrases(inputMethod: String? = null) {
         shownIndices = shownIndices + currentPhraseIndex
 
         while (true) {
-            delay(2500) // Показываем каждую фразу 2.5 секунды
+            delay(2500) // Показываем каждую фразу 2.5 секунды (стандарт)
             val nextIndex = getNextRandomIndex()
             shownIndices = shownIndices + nextIndex
             currentPhraseIndex = nextIndex

@@ -69,19 +69,11 @@ fun AnimatedPopup(
     var isVisible by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Снимаем скриншот текущего экрана, чтобы размыть его под диалогом
-    val view = LocalView.current
     val density = LocalDensity.current
     val focusManager = LocalFocusManager.current
     val ime = WindowInsets.ime
     val imeVisible by remember {
         derivedStateOf { ime.getBottom(density) > 0 }
-    }
-    var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(view) {
-        // Даем вью отрисоваться перед захватом
-        kotlinx.coroutines.delay(10)
-        backgroundBitmap = view.drawToBitmap()
     }
 
     // Функция, которая запускает анимацию закрытия и только потом вызывает onDismissRequest
@@ -112,16 +104,6 @@ fun AnimatedPopup(
         label = "scale"
     )
 
-    // Радиус размытия фона анимируем синхронно с появлением
-    val blurRadius by animateDpAsState(
-        targetValue = if (isVisible) 16.dp else 0.dp,
-        animationSpec = tween(
-            durationMillis = if (isVisible) 150 else 100,
-            easing = FastOutSlowInEasing
-        ),
-        label = "blur"
-    )
-
     Popup(
         onDismissRequest = { dismiss() },
         properties = PopupProperties(focusable = true)
@@ -131,17 +113,6 @@ fun AnimatedPopup(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Размытый фон из скриншота
-            backgroundBitmap?.let { bmp ->
-                Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .blur(blurRadius),
-                    contentScale = ContentScale.Crop
-                )
-            }
             // Светлый оверлей, по нажатию закрывающий диалог
             Box(
                 modifier = Modifier
