@@ -2,14 +2,10 @@ package com.example.calorietracker.pages
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,29 +38,6 @@ fun FoodDetailScreen(
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Заголовок с иконкой
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(
-                        color = if (food.aiOpinion != null) 
-                            DialogColors.Photo.copy(alpha = 0.1f) 
-                        else 
-                            Color.Gray.copy(alpha = 0.1f),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (food.aiOpinion != null) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = DialogColors.Photo,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-
             Spacer(modifier = Modifier.height(16.dp))
 
             // Название продукта
@@ -194,7 +167,7 @@ fun FoodDetailScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Кнопка редактирования
-                OutlinedButton(
+                Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onEdit()
@@ -203,20 +176,11 @@ fun FoodDetailScreen(
                         .weight(1f)
                         .height(48.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.Gray
-                    ),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = Color.Gray
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Black,
+                        contentColor = Color.White
                     )
                 ) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         "Редактировать",
                         style = MaterialTheme.typography.labelLarge
@@ -224,7 +188,7 @@ fun FoodDetailScreen(
                 }
 
                 // Кнопка удаления
-                OutlinedButton(
+                Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onDelete()
@@ -233,51 +197,16 @@ fun FoodDetailScreen(
                         .weight(1f)
                         .height(48.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFF5252)
-                    ),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = Color(0xFFFF5252)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF5252),
+                        contentColor = Color.White
                     )
                 ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         "Удалить",
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Кнопка закрытия
-            Button(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onDismiss()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DialogColors.Photo
-                )
-            ) {
-                Text(
-                    "Закрыть",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = Color.White
-                )
             }
         }
     }
@@ -295,7 +224,7 @@ private fun MacroInfo(
     ) {
         Text(
             text = value,
-            fontSize = if (isMain) 20.sp else 16.sp,
+            fontSize = 16.sp,
             fontWeight = if (isMain) FontWeight.Bold else FontWeight.Medium,
             color = color
         )

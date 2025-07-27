@@ -1038,7 +1038,7 @@ fun MarkdownText(
         style = style.copy(
             fontSize = style.fontSize * 1.05f,
             lineHeight = style.lineHeight * 1.1f,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Normal
         ),
         color = color,
         modifier = modifier
@@ -1518,11 +1518,11 @@ fun AnimatedAiChip(
             onClick()
         },
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         color = Color(0xFFDBF0E4),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
