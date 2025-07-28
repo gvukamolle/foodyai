@@ -678,9 +678,9 @@ private suspend fun performAIAnalysis(
             userProfile = viewModel.userProfile.toNetworkProfile(),
             userTargets = TargetNutrients(
                 calories = viewModel.userProfile.dailyCalories,
-                proteins = viewModel.userProfile.targetProteins,
-                fats = viewModel.userProfile.targetFats,
-                carbs = viewModel.userProfile.targetCarbs
+                proteins = viewModel.userProfile.dailyProteins.toFloat(),
+                fats = viewModel.userProfile.dailyFats.toFloat(),
+                carbs = viewModel.userProfile.dailyCarbs.toFloat()
             )
         )
 

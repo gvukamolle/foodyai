@@ -27,9 +27,15 @@ fun AuthScreen(
     onAuthSuccess: () -> Unit // Лямбда, которая будет вызвана при успешном входе/регистрации
 ) {
     var showLogin by remember { mutableStateOf(true) }
+    val authState by authManager.authState.collectAsState()
     val systemUiController = rememberSystemUiController()
     LaunchedEffect(Unit) {
         systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
+    }
+    LaunchedEffect(authState) {
+        if (authState == AuthManager.AuthState.AUTHENTICATED) {
+            onAuthSuccess()
+        }
     }
     Column(
         modifier = Modifier

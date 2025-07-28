@@ -142,6 +142,16 @@ fun CalorieTrackerApp(
     var showFeedbackScreen by remember { mutableStateOf(false) }
     var showAnalyticsScreen by remember { mutableStateOf(false) }
 
+    LaunchedEffect(authState) {
+        if (authState == AuthManager.AuthState.AUTHENTICATED && currentScreen == null) {
+            currentScreen = if (viewModel.userProfile.isSetupComplete) {
+                Screen.Main
+            } else {
+                Screen.Setup
+            }
+        }
+    }
+
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
             viewModel.syncWithUserData(user)
@@ -248,7 +258,13 @@ fun CalorieTrackerApp(
         }
 
         AuthManager.AuthState.UNAUTHENTICATED -> {
-            AuthScreen(authManager = authManager, onAuthSuccess = {})
+            AuthScreen(authManager = authManager, onAuthSuccess = {
+                currentScreen = if (viewModel.userProfile.isSetupComplete) {
+                    Screen.Main
+                } else {
+                    Screen.Setup
+                }
+            })
         }
 
         AuthManager.AuthState.AUTHENTICATED -> {
