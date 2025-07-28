@@ -306,8 +306,10 @@ class CalorieTrackerViewModel(
                     ),
                     meals = mealsData,
                     message = userQuery,
-                    messageType = "watch_myfood"
+                    messageType = "watch_myfood",
+                    isFirstMessageOfDay = repository.isFirstMessageOfDay()
                 )
+                repository.recordLastUserMessageTime()
 
                 val answer = sendWatchMyFoodRequest(request)
                 if (userQuery.isNotBlank()) {
@@ -418,6 +420,14 @@ class CalorieTrackerViewModel(
             isSetupComplete = userData.isSetupComplete || userProfile.isSetupComplete
             // Тут можно добавить и другие поля, если они хранятся в Firebase
         )
+    }
+    
+    fun clearLocalData() {
+        // Очищаем локальные данные при выходе
+        userProfile = UserProfile()
+        repository.saveUserProfile(userProfile)
+        // Можно также очистить историю чата и дневное потребление
+        repository.clearChatHistory()
     }
 
     private fun loadInitialData() {
@@ -658,6 +668,9 @@ class CalorieTrackerViewModel(
             val userIdRequestBody = userId.toRequestBody("text/plain".toMediaTypeOrNull())
             val captionRequestBody = caption.toRequestBody("text/plain".toMediaTypeOrNull())
             val messageTypeRequestBody = "photo".toRequestBody("text/plain".toMediaTypeOrNull())
+            val firstBody = repository.isFirstMessageOfDay().toString().toRequestBody("text/plain".toMediaTypeOrNull())
+            repository.recordLastUserMessageTime()
+
 
             // 2. Отправляем запрос
             val response = safeApiCall {
@@ -667,7 +680,8 @@ class CalorieTrackerViewModel(
                     userProfile = profileRequestBody,
                     userId = userIdRequestBody,
                     caption = captionRequestBody,
-                    messageType = messageTypeRequestBody
+                    messageType = messageTypeRequestBody,
+                    isFirstMessageOfDay = firstBody
                 )
             }
 
@@ -822,12 +836,15 @@ class CalorieTrackerViewModel(
             messages = messages + loadingMessage
 
             try {
+                val isFirstOfDay = repository.isFirstMessageOfDay()
+                repository.recordLastUserMessageTime()
                 val request = FoodAnalysisRequest(
                     weight = 100,
                     userProfile = userProfile.toNetworkProfile(),
                     message = textToAnalyze,
                     userId = userId,
                     messageType = if (isDailyAnalysisEnabled) "dayfood_analysis" else "analysis",
+                    isFirstMessageOfDay = isFirstOfDay
                 )
 
                 val response = safeApiCall {
@@ -1184,8 +1201,14 @@ class CalorieTrackerViewModel(
     }
 
     private fun sendChatMessage(userMessage: String) {
-        val isFirstOfDay = repository.isFirstMessageOfDay()
-        repository.recordLastUserMessageTime()
+        val isFirstOfDay = if (!isSearchMode) {
+            repository.isFirstMessageOfDay()
+        } else {
+            false
+        }
+        if (!isSearchMode) {
+            repository.recordLastUserMessageTime()
+        }
 
         viewModelScope.launch {
             if (isOnline) {
@@ -1277,8 +1300,14 @@ class CalorieTrackerViewModel(
             return
         }
 
-        val isFirstOfDay = repository.isFirstMessageOfDay()
-        repository.recordLastUserMessageTime()
+        val isFirstOfDay = if (!isSearchMode) {
+            repository.isFirstMessageOfDay()
+        } else {
+            false
+        }
+        if (!isSearchMode) {
+            repository.recordLastUserMessageTime()
+        }
 
         val currentUser = authManager.currentUser.value
         if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
@@ -1373,6 +1402,8 @@ class CalorieTrackerViewModel(
 
     private suspend fun sendFoodToServer(food: FoodItem, mealType: MealType) {
         try {
+            val isFirstOfDay = repository.isFirstMessageOfDay()
+            repository.recordLastUserMessageTime()
             val now = LocalDateTime.now()
             val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
             val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -1394,7 +1425,8 @@ class CalorieTrackerViewModel(
                 date = now.format(dateFormatter),
                 time = now.format(timeFormatter),
                 source = currentFoodSource ?: "manual", // Используем сохраненный источник
-                userProfile = userProfile.toNetworkProfile()
+                userProfile = userProfile.toNetworkProfile(),
+                isFirstMessageOfDay = isFirstOfDay
             )
 
             val response = safeApiCall {
@@ -1672,6 +1704,8 @@ class CalorieTrackerViewModel(
                 }
 
                 // Создаем запрос к API для анализа
+                val isFirstOfDay = repository.isFirstMessageOfDay()
+                repository.recordLastUserMessageTime()
                 val analysisRequest = DailyAnalysisRequest(
                     userId = userId,
                     date = LocalDate.now().toString(),
@@ -1682,7 +1716,8 @@ class CalorieTrackerViewModel(
                         fats = fatGoal.toFloat(),
                         carbs = carbsGoal.toFloat()
                     ),
-                    meals = mealsData
+                    meals = mealsData,
+                    isFirstMessageOfDay = isFirstOfDay
                 )
 
                 // Отправляем запрос
@@ -1729,7 +1764,9 @@ class CalorieTrackerViewModel(
 
     // Метод для отправки запроса "watch my food" на сервер
     suspend fun sendWatchMyFoodRequest(request: WatchMyFoodRequest): String? {
-        val updatedRequest = request.copy(messageType = "watch_myfood")
+        val isFirstOfDay = repository.isFirstMessageOfDay()
+        repository.recordLastUserMessageTime()
+        val updatedRequest = request.copy(messageType = "watch_myfood", isFirstMessageOfDay = isFirstOfDay)
         return try {
             if (!checkInternetConnection()) {
                 return null

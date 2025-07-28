@@ -12,8 +12,9 @@ data class FoodAnalysisRequest(
     val message: String,
     val userId: String,
     val messageType: String = "analysis",
-    val includeOpinion: Boolean = true  // Флаг для запроса мнения
-)
+    val includeOpinion: Boolean = true,  // Флаг для запроса мнения
+    val isFirstMessageOfDay: Boolean = false
+    )
 
 data class ImageAnalysisRequest(
     val imageBase64: String,
@@ -89,7 +90,8 @@ data class LogFoodRequest(
     val date: String, // YYYY-MM-DD
     val time: String, // HH:mm
     val source: String, // "ai_photo" или "manual"
-    val userProfile: UserProfileData
+    val userProfile: UserProfileData,
+    val isFirstMessageOfDay: Boolean = false
 )
 
 data class LogFoodResponse(
@@ -260,7 +262,8 @@ data class DailyAnalysisRequest(
     val userProfile: UserProfileData,
     val targetNutrients: TargetNutrients,
     val meals: List<FoodItemData>,
-    val messageType: String = "daily_analysis" // Маркер для разделения сценариев
+    val messageType: String = "daily_analysis", // Маркер для разделения сценариев
+    val isFirstMessageOfDay: Boolean = false
 )
 
 // Отправка текущего рациона в режиме "watch my food"
@@ -271,7 +274,8 @@ data class WatchMyFoodRequest(
     val targetNutrients: TargetNutrients,
     val meals: List<FoodItemData>,
     val message: String,
-    val messageType: String = "watch_myfood"
+    val messageType: String = "watch_myfood",
+    val isFirstMessageOfDay: Boolean = false
 )
 
 data class TargetNutrients(
@@ -340,7 +344,8 @@ interface MakeService {
         @Part("userProfile") userProfile: RequestBody,
         @Part("userId") userId: RequestBody,
         @Part("caption") caption: RequestBody,
-        @Part("messageType") messageType: RequestBody
+        @Part("messageType") messageType: RequestBody,
+        @Part("isFirstMessageOfDay") isFirstMessageOfDay: RequestBody
     ): FoodAnalysisResponse
 
     // Отправка фото как обычного чат-сообщения

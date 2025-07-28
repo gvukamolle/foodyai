@@ -103,16 +103,19 @@ class AuthManager(private val context: Context) {
 
     private suspend fun loadUserData(firebaseUser: FirebaseUser) {
         try {
+            Log.d("AuthManager", "Loading user data for UID: ${firebaseUser.uid}")
+            
             val document = firestore.collection("users")
                 .document(firebaseUser.uid)
                 .get()
                 .await()
 
             if (document.exists()) {
+                // Пользователь существует - загружаем его данные
                 _currentUser.value = UserData(
                     uid = firebaseUser.uid,
                     email = firebaseUser.email ?: "",
-                    displayName = document.getString("displayName").toString(),
+                    displayName = document.getString("displayName") ?: firebaseUser.displayName ?: "Пользователь",
                     isSetupComplete = document.getBoolean("isSetupComplete") ?: false,
                     subscriptionPlan = try {
                         SubscriptionPlan.valueOf(document.getString("subscriptionPlan") ?: "FREE")
@@ -122,15 +125,24 @@ class AuthManager(private val context: Context) {
                     aiUsageCount = document.getLong("aiUsageCount")?.toInt() ?: 0,
                     aiUsageResetDate = document.getLong("aiUsageResetDate") ?: 0
                 )
+                
+                // Обновляем lastLogin
+                firestore.collection("users")
+                    .document(firebaseUser.uid)
+                    .update("lastLogin", Date())
+                    
             } else {
+                // Новый пользователь - создаем запись
                 val newUserData = UserData(
                     uid = firebaseUser.uid,
                     email = firebaseUser.email ?: "",
-                    displayName = firebaseUser.displayName.toString(),
+                    displayName = firebaseUser.displayName ?: "Пользователь",
                     isSetupComplete = false,
                     subscriptionPlan = SubscriptionPlan.FREE,
                     aiUsageCount = 0,
-                    aiUsageResetDate = System.currentTimeMillis()
+                    aiUsageResetDate = System.currentTimeMillis(),
+                    createdAt = Date(),
+                    lastLogin = Date()
                 )
 
                 firestore.collection("users")
@@ -145,9 +157,47 @@ class AuthManager(private val context: Context) {
                 _authState.value = AuthState.AUTHENTICATED
             }
         } catch (e: Exception) {
-            Log.e("AuthManager", "Error loading user data", e)
-            withContext(Dispatchers.Main) {
-                _authState.value = AuthState.UNAUTHENTICATED
+            Log.e("AuthManager", "Error loading user data for ${firebaseUser.uid}", e)
+            
+            // Если это ошибка прав доступа, попробуем создать нового пользователя
+            if (e is com.google.firebase.firestore.FirebaseFirestoreException && 
+                e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                Log.w("AuthManager", "Permission denied, trying to create new user document")
+                
+                try {
+                    // Попытка создать нового пользователя
+                    val newUserData = UserData(
+                        uid = firebaseUser.uid,
+                        email = firebaseUser.email ?: "",
+                        displayName = firebaseUser.displayName ?: "Пользователь",
+                        isSetupComplete = false,
+                        subscriptionPlan = SubscriptionPlan.FREE,
+                        aiUsageCount = 0,
+                        aiUsageResetDate = System.currentTimeMillis(),
+                        createdAt = Date(),
+                        lastLogin = Date()
+                    )
+                    
+                    firestore.collection("users")
+                        .document(firebaseUser.uid)
+                        .set(newUserData)
+                        .await()
+                        
+                    _currentUser.value = newUserData
+                    withContext(Dispatchers.Main) {
+                        _authState.value = AuthState.AUTHENTICATED
+                    }
+                } catch (createError: Exception) {
+                    Log.e("AuthManager", "Failed to create user document", createError)
+                    withContext(Dispatchers.Main) {
+                        _authState.value = AuthState.UNAUTHENTICATED
+                    }
+                }
+            } else {
+                // Другая ошибка - просто выходим
+                withContext(Dispatchers.Main) {
+                    _authState.value = AuthState.UNAUTHENTICATED
+                }
             }
         }
     }
@@ -211,6 +261,7 @@ class AuthManager(private val context: Context) {
             displayName = initialDisplayName ?: firebaseUser.displayName ?: "Пользователь",
             photoUrl = firebaseUser.photoUrl?.toString(),
             isEmailVerified = firebaseUser.isEmailVerified,
+            isSetupComplete = false, // Для новых пользователей всегда false
             createdAt = Date(),
             lastLogin = Date()
         )
@@ -260,6 +311,9 @@ class AuthManager(private val context: Context) {
 
     fun signOut() {
         auth.signOut()
+        // Очищаем локальные данные при выходе
+        _currentUser.value = null
+        _authState.value = AuthState.UNAUTHENTICATED
     }
 
     suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {

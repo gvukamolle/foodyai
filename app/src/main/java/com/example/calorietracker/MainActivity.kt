@@ -142,27 +142,26 @@ fun CalorieTrackerApp(
     var showFeedbackScreen by remember { mutableStateOf(false) }
     var showAnalyticsScreen by remember { mutableStateOf(false) }
 
-    LaunchedEffect(authState) {
-        if (authState == AuthManager.AuthState.AUTHENTICATED && currentScreen == null) {
-            currentScreen = if (viewModel.userProfile.isSetupComplete) {
-                Screen.Main
-            } else {
-                Screen.Setup
-            }
-        }
-    }
-
+    // Убираем LaunchedEffect для authState - он вызывает проблемы
+    // Оставляем только LaunchedEffect для currentUser, который правильно синхронизирует данные
     LaunchedEffect(currentUser) {
-        currentUser?.let { user ->
-            viewModel.syncWithUserData(user)
-
-            if (viewModel.userProfile.isSetupComplete) {
-                if (!user.isSetupComplete) {
-                    authManager.updateUserSetupComplete(true)
+        if (authState == AuthManager.AuthState.AUTHENTICATED) {
+            currentUser?.let { user ->
+                // Сначала синхронизируем данные
+                viewModel.syncWithUserData(user)
+                
+                // Проверяем isSetupComplete из Firebase
+                if (user.isSetupComplete) {
+                    // Если в Firebase setup завершен, но локально нет - обновляем локальные данные
+                    if (!viewModel.userProfile.isSetupComplete) {
+                        val updatedProfile = viewModel.userProfile.copy(isSetupComplete = true)
+                        viewModel.updateUserProfile(updatedProfile)
+                    }
+                    currentScreen = Screen.Main
+                } else {
+                    // Если в Firebase setup не завершен
+                    currentScreen = Screen.Setup
                 }
-                currentScreen = Screen.Main
-            } else {
-                currentScreen = Screen.Setup
             }
         }
     }
@@ -389,7 +388,10 @@ fun CalorieTrackerApp(
                                 showAppSettingsScreen = false
                                 currentScreen = Screen.Main
                             },
-                            onSignOut = { authManager.signOut() }
+                            onSignOut = { 
+                                viewModel.clearLocalData()
+                                authManager.signOut() 
+                            }
                         )
                     }
 

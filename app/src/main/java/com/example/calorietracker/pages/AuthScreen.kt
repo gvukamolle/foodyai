@@ -32,11 +32,8 @@ fun AuthScreen(
     LaunchedEffect(Unit) {
         systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
     }
-    LaunchedEffect(authState) {
-        if (authState == AuthManager.AuthState.AUTHENTICATED) {
-            onAuthSuccess()
-        }
-    }
+    // Убираем LaunchedEffect для authState - 
+    // теперь логика навигации обрабатывается в MainActivity через currentUser
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -90,7 +87,7 @@ fun LoginView(
                 scope.launch {
                     val result = authManager.signInWithEmail(email, password)
                     if (result.isSuccess) {
-                        onAuthSuccess()
+                        // Не вызываем onAuthSuccess() - навигация через currentUser в MainActivity
                     } else {
                         error = result.exceptionOrNull()?.message ?: "Ошибка входа"
                     }
@@ -147,7 +144,7 @@ fun SignUpView(
                 scope.launch {
                     val result = authManager.signUpWithEmail(email, password, displayName)
                     if (result.isSuccess) {
-                        onAuthSuccess()
+                        // Не вызываем onAuthSuccess() - навигация через currentUser в MainActivity
                     } else {
                         error = result.exceptionOrNull()?.message ?: "Ошибка регистрации"
                     }

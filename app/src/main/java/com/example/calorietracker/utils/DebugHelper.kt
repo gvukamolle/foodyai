@@ -55,7 +55,8 @@ object DebugHelper {
             date = now.format(dateFormatter),
             time = now.format(timeFormatter),
             source = viewModel.currentFoodSource ?: "manual",
-            userProfile = viewModel.userProfile.toNetworkProfile()
+            userProfile = viewModel.userProfile.toNetworkProfile(),
+            isFirstMessageOfDay = viewModel.repository.isFirstMessageOfDay()
         )
 
         Log.d(TAG, "UserId: ${request.userId}")
