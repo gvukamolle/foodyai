@@ -15,10 +15,8 @@ class OfflineManager(
     private val networkManager: NetworkManager,
     private val scope: CoroutineScope
 ) {
-    companion object {
-        private const val LOADING_TIMEOUT_MS = 5000L // 5 секунд
-    }
-    
+    // Таймаут отключён, приложение остаётся в режиме LOADING до появления сети
+
     private val _appMode = MutableStateFlow(AppMode.LOADING)
     val appMode: StateFlow<AppMode> = _appMode.asStateFlow()
     
@@ -46,20 +44,13 @@ class OfflineManager(
             }
         }
     }
-    
-    fun startLoadingWithTimeout(onTimeout: () -> Unit = {}) {
+
+    fun startLoading() {
+        // Переходим в режим загрузки без таймаута. Смена режима произойдёт при изменении состояния сети
         _appMode.value = AppMode.LOADING
         
         loadingJob?.cancel()
-        loadingJob = scope.launch {
-            delay(LOADING_TIMEOUT_MS)
-            
-            // Если через 5 секунд все еще загружаемся - переходим в офлайн режим
-            if (_appMode.value == AppMode.LOADING) {
-                _appMode.value = AppMode.OFFLINE
-                onTimeout()
-            }
-        }
+        loadingJob = null
     }
     
     fun stopLoading() {

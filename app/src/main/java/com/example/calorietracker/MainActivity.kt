@@ -250,16 +250,9 @@ fun CalorieTrackerApp(
         }
     }
 
-    // Запускаем загрузку с таймаутом при старте
+    // Запускаем загрузку при старте без таймаута
     LaunchedEffect(Unit) {
-        viewModel.startLoadingWithTimeout {
-            // Callback при переходе в офлайн после таймаута
-            Toast.makeText(
-                context,
-                "Загрузка заняла слишком много времени. Включен офлайн-режим.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
+        viewModel.startLoading()
     }
 
     when (authState) {

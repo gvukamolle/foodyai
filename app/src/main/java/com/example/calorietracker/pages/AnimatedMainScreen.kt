@@ -87,9 +87,6 @@ import com.example.calorietracker.FoodItem
 import com.example.calorietracker.managers.AppMode
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.CloudOff
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -404,7 +401,7 @@ private fun AnimatedHeader(
                         else -> ""
                     }
                     val day = currentDate.dayOfMonth
-                    
+
                     Text(
                         text = "$day $month",
                         fontSize = 18.sp,
@@ -421,49 +418,8 @@ private fun AnimatedHeader(
                     )
                 }
             }
-            
-            // Индикатор сети
-            AnimatedVisibility(
-                visible = appMode != AppMode.ONLINE,
-                enter = fadeIn() + scaleIn(),
-                exit = fadeOut() + scaleOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(32.dp)
-                        .background(
-                            color = when (appMode) {
-                                AppMode.LOADING -> Color(0xFFFFA726)
-                                AppMode.OFFLINE -> Color(0xFFE91E63)
-                                else -> Color.Transparent
-                            },
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when (appMode) {
-                        AppMode.LOADING -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        }
-                        AppMode.OFFLINE -> {
-                            Icon(
-                                Icons.Default.CloudOff,
-                                contentDescription = "Офлайн-режим",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        else -> {}
-                    }
-                }
-            }
         }
-        
+
         // Правая часть - AI индикатор
         Box(modifier = Modifier.align(Alignment.CenterEnd)) {
             AIUsageToolbarIndicator(
@@ -740,7 +696,6 @@ private fun AnimatedBottomBar(
     val isRecipeMode = viewModel.isRecipeMode
     val coroutineScope = rememberCoroutineScope()
     val appMode by viewModel.appMode.collectAsState()
-    val isOffline = appMode == AppMode.OFFLINE
 
     Column(
         modifier = Modifier
@@ -770,7 +725,7 @@ private fun AnimatedBottomBar(
         )
         }
         }
-        
+
         // Поле ввода
         Box(
         modifier = Modifier
@@ -826,7 +781,7 @@ private fun AnimatedBottomBar(
                             } else {
                                 viewModel.inputMessage
                             }
-                            
+
                             // Если включаем режим анализа, отключаем режим записи
                             if (!isAnalysisMode && isRecordMode) {
                                 onRecordModeToggle(false)
@@ -851,20 +806,17 @@ private fun AnimatedBottomBar(
                 // Кнопка записи
                 AnimatedRecordToggle(
                     isEnabled = viewModel.isRecordMode,
-                    enabled = !isOffline,
                     onClick = {
-                        if (!isOffline) {
-                            // Если включаем режим записи, отключаем режим анализа
-                            if (!viewModel.isRecordMode && isAnalysisMode) {
-                                // Сначала убираем префикс анализа из сообщения
-                                val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
-                                viewModel.inputMessage = currentText
-                                viewModel.toggleDailyAnalysis()
-                                // Включаем режим записи сразу, чтобы placeholder сменился без задержки
-                                viewModel.toggleRecordMode()
-                            } else {
-                                viewModel.toggleRecordMode()
-                            }
+                        // Если включаем режим записи, отключаем режим анализа
+                        if (!viewModel.isRecordMode && isAnalysisMode) {
+                            // Сначала убираем префикс анализа из сообщения
+                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
+                            viewModel.inputMessage = currentText
+                            viewModel.toggleDailyAnalysis()
+                            // Включаем режим записи сразу, чтобы placeholder сменился без задержки
+                            viewModel.toggleRecordMode()
+                        } else {
+                            viewModel.toggleRecordMode()
                         }
                     }
                 )
@@ -872,16 +824,13 @@ private fun AnimatedBottomBar(
                 // Кнопка рецептов
                 AnimatedRecipeToggle(
                     isEnabled = isRecipeMode,
-                    enabled = !isOffline,
                     onClick = {
-                        if (!isOffline) {
-                            if (!isRecipeMode && isAnalysisMode) {
-                                val currentText = viewModel.inputMessage.removePrefix("[АНАЛИз] ")
-                                viewModel.inputMessage = currentText
-                                viewModel.toggleDailyAnalysis()
-                            }
-                            viewModel.toggleRecipeMode()
+                        if (!isRecipeMode && isAnalysisMode) {
+                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИз] ")
+                            viewModel.inputMessage = currentText
+                            viewModel.toggleDailyAnalysis()
                         }
+                        viewModel.toggleRecipeMode()
                     }
                 )
             }

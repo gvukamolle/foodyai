@@ -123,8 +123,8 @@ class CalorieTrackerViewModel(
     val appMode: StateFlow<AppMode> = offlineManager.appMode
     
     // Методы для управления режимами
-    fun startLoadingWithTimeout(onTimeout: () -> Unit = {}) {
-        offlineManager.startLoadingWithTimeout(onTimeout)
+    fun startLoading() {
+        offlineManager.startLoading()
     }
     
     fun stopLoading() {
