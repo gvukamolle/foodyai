@@ -199,7 +199,6 @@ fun PlusDropdownMenuV2(
                                 when (action) {
                                     "camera" -> onCameraClick()
                                     "gallery" -> onGalleryClick()
-                                    "describe" -> onDescribeClick()
                                     "manual" -> onManualClick()
                                 }
                             },

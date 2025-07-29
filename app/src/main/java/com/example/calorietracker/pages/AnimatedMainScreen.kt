@@ -1232,6 +1232,7 @@ private fun AnimatedAnalysisToggle(
 @Composable
 private fun AnimatedRecordToggle(
     isEnabled: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -1283,11 +1284,14 @@ private fun AnimatedRecordToggle(
             .background(backgroundColor)
             .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(20.dp))
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onClick()
+                if (enabled) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onClick()
+                }
             }
     ) {
         Row(
@@ -1328,6 +1332,7 @@ private fun AnimatedRecordToggle(
 @Composable
 private fun AnimatedRecipeToggle(
     isEnabled: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -1378,11 +1383,14 @@ private fun AnimatedRecipeToggle(
             .background(backgroundColor)
             .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(20.dp))
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onClick()
+                if (enabled) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onClick()
+                }
             }
     ) {
         Row(
