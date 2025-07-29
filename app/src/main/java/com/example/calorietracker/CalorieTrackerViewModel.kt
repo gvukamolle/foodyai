@@ -13,6 +13,9 @@ import com.example.calorietracker.utils.NetworkUtils
 import com.example.calorietracker.network.safeApiCall
 import com.example.calorietracker.utils.calculateAge
 import com.example.calorietracker.utils.getOrCreateUserId
+import com.example.calorietracker.managers.NetworkManager
+import com.example.calorietracker.managers.OfflineManager
+import com.example.calorietracker.managers.AppMode
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -111,6 +114,26 @@ class CalorieTrackerViewModel(
     private val authManager: AuthManager
 ) : ViewModel() {
     val userId = getOrCreateUserId(context)
+    
+    // Менеджеры для офлайн-режима
+    private val networkManager = NetworkManager(context)
+    private val offlineManager = OfflineManager(networkManager, viewModelScope)
+    
+    // Публичный доступ к состоянию приложения
+    val appMode: StateFlow<AppMode> = offlineManager.appMode
+    
+    // Методы для управления режимами
+    fun startLoadingWithTimeout(onTimeout: () -> Unit = {}) {
+        offlineManager.startLoadingWithTimeout(onTimeout)
+    }
+    
+    fun stopLoading() {
+        offlineManager.stopLoading()
+    }
+    
+    fun forceOfflineMode() {
+        offlineManager.forceOfflineMode()
+    }
 
     // Поля для отслеживания дневного потребления
     var dailyCalories by mutableStateOf(0)
@@ -188,7 +211,8 @@ class CalorieTrackerViewModel(
     var attachedPhotoPath by mutableStateOf<String?>(null)
 
     // AI и сетевые состояния
-    var isOnline by mutableStateOf(false)
+    val isOnline: Boolean
+        get() = networkManager.isOnline.value
     var showManualInputDialog by mutableStateOf(false)
     var showDescriptionDialog by mutableStateOf(false)
     var showPhotoDialog by mutableStateOf(false)
@@ -322,7 +346,6 @@ class CalorieTrackerViewModel(
 
     init {
         loadUserData()
-        viewModelScope.launch { checkInternetConnection() }
         // Периодическая проверка обнуления каждые 5 минут
         startPeriodicReset()
 
@@ -390,11 +413,7 @@ class CalorieTrackerViewModel(
 
     // Проверка подключения к интернету
     suspend fun checkInternetConnection(): Boolean {
-        val currentOnline = withContext(Dispatchers.IO) {
-            NetworkUtils.isInternetAvailable(context)
-        }
-        isOnline = currentOnline
-        return currentOnline
+        return isOnline
     }
 
     fun updateUserProfile(newProfile: UserProfile) {

@@ -84,6 +84,12 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Restaurant
 import com.example.calorietracker.FoodItem
+import com.example.calorietracker.managers.AppMode
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.CloudOff
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,7 +98,6 @@ fun AnimatedMainScreen(
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
     onManualClick: () -> Unit,
-    onDescribeClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onCalendarClick: () -> Unit,
     onNavigateToSubscription: () -> Unit,
@@ -104,6 +109,7 @@ fun AnimatedMainScreen(
     val systemUiController = rememberSystemUiController()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val appMode by viewModel.appMode.collectAsState()
 
     LaunchedEffect(Unit) {
         systemUiController.setSystemBarsColor(color = Color.White, darkIcons = true)
@@ -170,7 +176,6 @@ fun AnimatedMainScreen(
                 onMenuToggle = { menuExpanded = it },
                 onCameraClick = onCameraClick,
                 onGalleryClick = onGalleryClick,
-                onDescribeClick = onDescribeClick,
                 onManualClick = onManualClick,
                 isRecordMode = isRecordMode,
                 onRecordModeToggle = { isRecordMode = it }
@@ -188,6 +193,7 @@ fun AnimatedMainScreen(
                 // Заголовок с кнопкой статистики
                 AnimatedHeader(
                     viewModel = viewModel,
+                    appMode = appMode,
                     onMenuClick = { isDrawerOpen = true },
                     onShowStatistics = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -319,6 +325,7 @@ fun AnimatedMainScreen(
 @Composable
 private fun AnimatedHeader(
     viewModel: CalorieTrackerViewModel,
+    appMode: AppMode,
     onMenuClick: () -> Unit,
     onShowStatistics: () -> Unit,
     onNavigateToSubscription: () -> Unit
@@ -360,7 +367,7 @@ private fun AnimatedHeader(
             )
         }
 
-        // Центральная часть - Дата со стрелкой
+        // Центральная часть - Дата со стрелкой и индикатор сети
         Row(
             modifier = Modifier.align(Alignment.Center),
             verticalAlignment = Alignment.CenterVertically,
@@ -412,6 +419,47 @@ private fun AnimatedHeader(
                         contentDescription = null,
                         tint = Color.Black
                     )
+                }
+            }
+            
+            // Индикатор сети
+            AnimatedVisibility(
+                visible = appMode != AppMode.ONLINE,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(32.dp)
+                        .background(
+                            color = when (appMode) {
+                                AppMode.LOADING -> Color(0xFFFFA726)
+                                AppMode.OFFLINE -> Color(0xFFE91E63)
+                                else -> Color.Transparent
+                            },
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (appMode) {
+                        AppMode.LOADING -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        AppMode.OFFLINE -> {
+                            Icon(
+                                Icons.Default.CloudOff,
+                                contentDescription = "Офлайн-режим",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        else -> {}
+                    }
                 }
             }
         }
@@ -683,7 +731,6 @@ private fun AnimatedBottomBar(
     onMenuToggle: (Boolean) -> Unit,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
-    onDescribeClick: () -> Unit,
     onManualClick: () -> Unit,
     isRecordMode: Boolean,
     onRecordModeToggle: (Boolean) -> Unit
@@ -692,6 +739,8 @@ private fun AnimatedBottomBar(
     val isAnalysisMode = viewModel.isDailyAnalysisEnabled
     val isRecipeMode = viewModel.isRecipeMode
     val coroutineScope = rememberCoroutineScope()
+    val appMode by viewModel.appMode.collectAsState()
+    val isOffline = appMode == AppMode.OFFLINE
 
     Column(
         modifier = Modifier
@@ -802,17 +851,20 @@ private fun AnimatedBottomBar(
                 // Кнопка записи
                 AnimatedRecordToggle(
                     isEnabled = viewModel.isRecordMode,
+                    enabled = !isOffline,
                     onClick = {
-                        // Если включаем режим записи, отключаем режим анализа
-                        if (!viewModel.isRecordMode && isAnalysisMode) {
-                            // Сначала убираем префикс анализа из сообщения
-                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
-                            viewModel.inputMessage = currentText
-                            viewModel.toggleDailyAnalysis()
-                            // Включаем режим записи сразу, чтобы placeholder сменился без задержки
-                            viewModel.toggleRecordMode()
-                        } else {
-                            viewModel.toggleRecordMode()
+                        if (!isOffline) {
+                            // Если включаем режим записи, отключаем режим анализа
+                            if (!viewModel.isRecordMode && isAnalysisMode) {
+                                // Сначала убираем префикс анализа из сообщения
+                                val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
+                                viewModel.inputMessage = currentText
+                                viewModel.toggleDailyAnalysis()
+                                // Включаем режим записи сразу, чтобы placeholder сменился без задержки
+                                viewModel.toggleRecordMode()
+                            } else {
+                                viewModel.toggleRecordMode()
+                            }
                         }
                     }
                 )
@@ -820,13 +872,16 @@ private fun AnimatedBottomBar(
                 // Кнопка рецептов
                 AnimatedRecipeToggle(
                     isEnabled = isRecipeMode,
+                    enabled = !isOffline,
                     onClick = {
-                        if (!isRecipeMode && isAnalysisMode) {
-                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
-                            viewModel.inputMessage = currentText
-                            viewModel.toggleDailyAnalysis()
+                        if (!isOffline) {
+                            if (!isRecipeMode && isAnalysisMode) {
+                                val currentText = viewModel.inputMessage.removePrefix("[АНАЛИз] ")
+                                viewModel.inputMessage = currentText
+                                viewModel.toggleDailyAnalysis()
+                            }
+                            viewModel.toggleRecipeMode()
                         }
-                        viewModel.toggleRecipeMode()
                     }
                 )
             }
@@ -859,12 +914,11 @@ private fun AnimatedBottomBar(
                     }
                 }
 
-                EnhancedPlusDropdownMenu(
+                PlusDropdownMenu(
                     expanded = menuExpanded && !isAnalysisMode,
                     onDismissRequest = { onMenuToggle(false) },
                     onCameraClick = onCameraClick,
                     onGalleryClick = onGalleryClick,
-                    onDescribeClick = onDescribeClick,
                     onManualClick = onManualClick
                 )
             }

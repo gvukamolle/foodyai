@@ -59,7 +59,6 @@ fun PlusDropdownMenuV2(
     onDismissRequest: () -> Unit,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
-    onDescribeClick: () -> Unit,
     onManualClick: () -> Unit,
     context: Context
 ) {
@@ -182,10 +181,10 @@ fun PlusDropdownMenuV2(
                     // Если есть последнее действие, показываем его первым
                     lastAction?.let { action ->
                         val (text, subtitle, icon, color) = when (action) {
-                            "camera" -> listOf("Сфоткать", "Использовано недавно", Icons.Default.PhotoCamera, Color(0xFF4CAF50))
-                            "gallery" -> listOf("Выбрать фото", "Использовано недавно", Icons.Default.Image, Color(0xFF2196F3))
-                            "describe" -> listOf("Расскажите", "Использовано недавно", Icons.Default.AutoAwesome, Color(0xFFFF9800))
-                            "manual" -> listOf("Ввести данные", "Использовано недавно", Icons.Default.Keyboard, Color(0xFF9C27B0))
+                            "camera" -> listOf("Сфоткать", "Использовано недавно", Icons.Default.PhotoCamera, Color(0xFF757575))
+                            "gallery" -> listOf("Выбрать фото", "Использовано недавно", Icons.Default.Image, Color(0xFF757575))
+                            "manual" -> listOf("Ввести вручную", "Использовано недавно", Icons.Default.Keyboard, Color(0xFF757575))
+                            // Игнорируем старые действия "describe"
                             else -> return@let
                         }
 
@@ -215,12 +214,11 @@ fun PlusDropdownMenuV2(
                         )
                     }
 
-                    // Остальные пункты меню
+                    // Остальные пункты меню (фиксированный порядок без кнопки "Рассказать")
                     val menuItems = listOf(
-                        MenuItemData("camera", "Сфоткать", "Быстрый снимок", Icons.Default.PhotoCamera, Color(0xFF4CAF50), onCameraClick),
-                        MenuItemData("gallery", "Выбрать фото", "Из вашей галереи", Icons.Default.Image, Color(0xFF2196F3), onGalleryClick),
-                        MenuItemData("describe", "Расскажите", "А мы поймем", Icons.Default.AutoAwesome, Color(0xFFFF9800), onDescribeClick),
-                        MenuItemData("manual", "Ввести данные", "Полный контроль", Icons.Default.Keyboard, Color(0xFF9C27B0), onManualClick)
+                        MenuItemData("camera", "Сфоткать", "Быстрый снимок", Icons.Default.PhotoCamera, Color(0xFF757575), onCameraClick),
+                        MenuItemData("gallery", "Выбрать фото", "Из вашей галереи", Icons.Default.Image, Color(0xFF757575), onGalleryClick),
+                        MenuItemData("manual", "Ввести вручную", "Полный контроль", Icons.Default.Keyboard, Color(0xFF757575), onManualClick)
                     )
 
                     menuItems.forEachIndexed { index, item ->
@@ -404,7 +402,6 @@ fun PlusDropdownMenu(
     onDismissRequest: () -> Unit,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
-    onDescribeClick: () -> Unit,
     onManualClick: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -414,7 +411,6 @@ fun PlusDropdownMenu(
         onDismissRequest = onDismissRequest,
         onCameraClick = onCameraClick,
         onGalleryClick = onGalleryClick,
-        onDescribeClick = onDescribeClick,
         onManualClick = onManualClick,
         context = context
     )

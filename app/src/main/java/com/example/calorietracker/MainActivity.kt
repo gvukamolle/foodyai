@@ -133,6 +133,7 @@ fun CalorieTrackerApp(
     val coroutineScope = rememberCoroutineScope()
     val authState by authManager.authState.collectAsState()
     val currentUser by authManager.currentUser.collectAsState()
+    val appMode by viewModel.appMode.collectAsState()
     var showCalendarScreen by remember { mutableStateOf(false) }
     var currentScreen by remember { mutableStateOf<Screen?>(null) }
     var showProfileScreen by remember { mutableStateOf(false) }
@@ -246,6 +247,18 @@ fun CalorieTrackerApp(
                 showCalendarScreen = false
                 currentScreen = Screen.Main
             }
+        }
+    }
+
+    // Запускаем загрузку с таймаутом при старте
+    LaunchedEffect(Unit) {
+        viewModel.startLoadingWithTimeout {
+            // Callback при переходе в офлайн после таймаута
+            Toast.makeText(
+                context,
+                "Загрузка заняла слишком много времени. Включен офлайн-режим.",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -416,9 +429,6 @@ fun CalorieTrackerApp(
                             onManualClick = {
                                 viewModel.prefillFood = null
                                 viewModel.showManualInputDialog = true
-                            },
-                            onDescribeClick = {
-                                viewModel.showDescriptionDialog = true
                             },
                             onSettingsClick = { showAppSettingsScreen = true },
                             onCalendarClick = {
