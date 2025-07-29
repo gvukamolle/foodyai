@@ -56,7 +56,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.core.FastOutSlowInEasing
-// SimpleChatTypingIndicator больше не используется
 import com.example.calorietracker.ui.animations.AnimatedMessageWithBlur
 import com.example.calorietracker.components.chat.FoodConfirmationCard
 import androidx.compose.foundation.lazy.items
@@ -72,7 +71,6 @@ import coil.compose.AsyncImage
 import java.io.File
 import androidx.compose.material.icons.filled.Menu
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -84,10 +82,8 @@ import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Restaurant
 import com.example.calorietracker.FoodItem
-import com.example.calorietracker.pages.FoodDetailScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -624,7 +620,6 @@ private fun AnimatedChatMessageCard(
                                 val method = when {
                                     message.inputMethod != null -> message.inputMethod
                                     message.content.startsWith("[АНАЛИЗ]") -> "analysis"
-                                    message.content.startsWith("[ПОИСК]") -> "search"
                                     message.content.startsWith("[РЕЦЕПТ]") -> "recipe"
                                     else -> "chat"
                                 }
@@ -695,7 +690,6 @@ private fun AnimatedBottomBar(
 ) {
     val hasTodayMeals = viewModel.meals.isNotEmpty()
     val isAnalysisMode = viewModel.isDailyAnalysisEnabled
-    val isSearchMode = viewModel.isSearchMode
     val isRecipeMode = viewModel.isRecipeMode
     val coroutineScope = rememberCoroutineScope()
 
@@ -751,7 +745,6 @@ private fun AnimatedBottomBar(
                     isOnline = viewModel.isOnline,
                     placeholder = when {
                         viewModel.isRecordMode -> "Опишите ваш прием пищи..."
-                        isSearchMode -> "Что найти?"
                         isRecipeMode -> "Опишите блюдо..."
                         isAnalysisMode -> "Задайте вопрос о питании..."
                         else -> "Сообщение..."
@@ -803,20 +796,6 @@ private fun AnimatedBottomBar(
                                 }
                             }
                         }
-                    }
-                )
-
-
-                // Кнопка поиска
-                AnimatedSearchToggle(
-                    isEnabled = isSearchMode,
-                    onClick = {
-                        if (!isSearchMode && isAnalysisMode) {
-                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
-                            viewModel.inputMessage = currentText
-                            viewModel.toggleDailyAnalysis()
-                        }
-                        viewModel.toggleSearchMode()
                     }
                 )
 
@@ -874,14 +853,14 @@ private fun AnimatedBottomBar(
                     } else {
                         AnimatedPlusButton(
                             expanded = menuExpanded,
-                            onClick = { if (!isAnalysisMode && !isSearchMode) onMenuToggle(true) },
-                            enabled = !isAnalysisMode && !isSearchMode
+                            onClick = { if (!isAnalysisMode) onMenuToggle(true) },
+                            enabled = !isAnalysisMode
                         )
                     }
                 }
 
                 EnhancedPlusDropdownMenu(
-                    expanded = menuExpanded && !isAnalysisMode && !isSearchMode,
+                    expanded = menuExpanded && !isAnalysisMode,
                     onDismissRequest = { onMenuToggle(false) },
                     onCameraClick = onCameraClick,
                     onGalleryClick = onGalleryClick,
@@ -1293,101 +1272,6 @@ private fun AnimatedRecordToggle(
 }
 
 @Composable
-private fun AnimatedSearchToggle(
-    isEnabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val haptic = LocalHapticFeedback.current
-    val interactionSource = remember { MutableInteractionSource() }
-
-    val animatedWidth by animateDpAsState(
-        targetValue = if (isEnabled) 90.dp else 40.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "search_toggle_width"
-    )
-
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isEnabled) Color(0xFF2196F3) else Color.White,
-        animationSpec = tween(300),
-        label = "search_toggle_bg"
-    )
-
-    val borderColor by animateColorAsState(
-        targetValue = if (isEnabled) Color(0xFF1976D2) else Color(0xFFE0E0E0),
-        animationSpec = tween(300),
-        label = "search_toggle_border"
-    )
-
-    val contentColor by animateColorAsState(
-        targetValue = if (isEnabled) Color.White else Color(0xFF757575),
-        animationSpec = tween(300),
-        label = "search_toggle_content"
-    )
-
-    val textAlpha by animateFloatAsState(
-        targetValue = if (isEnabled) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = if (isEnabled) 300 else 150,
-            delayMillis = if (isEnabled) 100 else 0
-        ),
-        label = "search_toggle_text_alpha"
-    )
-
-    Box(
-        modifier = modifier
-            .height(40.dp)
-            .width(animatedWidth)
-            .clip(RoundedCornerShape(20.dp))
-            .background(backgroundColor)
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(20.dp))
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onClick()
-            }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Public,
-                contentDescription = if (isEnabled) "Отключить поиск" else "Включить поиск",
-                tint = contentColor,
-                modifier = Modifier.size(20.dp)
-            )
-
-            AnimatedVisibility(
-                visible = isEnabled,
-                enter = fadeIn(animationSpec = tween(200, delayMillis = 100)) +
-                        expandHorizontally(animationSpec = tween(200)),
-                exit = shrinkHorizontally(animationSpec = tween(150)) +
-                        fadeOut(animationSpec = tween(150))
-            ) {
-                Row {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Найти",
-                        color = contentColor.copy(alpha = textAlpha),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun AnimatedRecipeToggle(
     isEnabled: Boolean,
     onClick: () -> Unit,
@@ -1532,9 +1416,9 @@ fun AnimatedAiChip(
         color = Color(0xFFDFEBF4),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.AutoAwesome,

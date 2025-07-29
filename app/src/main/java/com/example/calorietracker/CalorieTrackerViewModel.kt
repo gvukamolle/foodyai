@@ -207,8 +207,6 @@ class CalorieTrackerViewModel(
         private set
     var isRecordMode by mutableStateOf(false)
         private set
-    var isSearchMode by mutableStateOf(false)
-        private set
     var isRecipeMode by mutableStateOf(false)
         private set
 
@@ -218,9 +216,6 @@ class CalorieTrackerViewModel(
         // Если включаем режим анализа, отключаем режим записи
         if (isDailyAnalysisEnabled && isRecordMode) {
             isRecordMode = false
-        }
-        if (isDailyAnalysisEnabled && isSearchMode) {
-            isSearchMode = false
         }
         if (isDailyAnalysisEnabled && isRecipeMode) {
             isRecipeMode = false
@@ -237,21 +232,8 @@ class CalorieTrackerViewModel(
         if (isRecordMode && isDailyAnalysisEnabled) {
             isDailyAnalysisEnabled = false
         }
-        if (isRecordMode && isSearchMode) {
-            isSearchMode = false
-        }
         if (isRecordMode && isRecipeMode) {
             isRecipeMode = false
-        }
-    }
-
-    fun toggleSearchMode() {
-        isSearchMode = !isSearchMode
-        if (isSearchMode) {
-            if (isDailyAnalysisEnabled) isDailyAnalysisEnabled = false
-            if (isRecordMode) isRecordMode = false
-            if (isRecipeMode) isRecipeMode = false
-            removeAttachedPhoto()
         }
     }
 
@@ -260,7 +242,6 @@ class CalorieTrackerViewModel(
         if (isRecipeMode) {
             if (isDailyAnalysisEnabled) isDailyAnalysisEnabled = false
             if (isRecordMode) isRecordMode = false
-            if (isSearchMode) isSearchMode = false
         }
     }
 
@@ -314,11 +295,24 @@ class CalorieTrackerViewModel(
                 val answer = sendWatchMyFoodRequest(request)
                 if (userQuery.isNotBlank()) {
                     messages = messages.filter { !it.isProcessing }
-                    messages = messages + ChatMessage(
-                        type = MessageType.AI,
-                        content = answer ?: "Ошибка сервера: не удалось получить ответ",
-                        animate = true
-                    )
+                    if (answer != null) {
+                        messages = messages + ChatMessage(
+                            type = MessageType.AI,
+                            content = answer,
+                            animate = true
+                        )
+                    } else {
+                        val errorMsg = ChatMessage(
+                            type = MessageType.AI,
+                            content = "Ошибка сервера: не удалось получить ответ",
+                            animate = true
+                        )
+                        messages = messages + errorMsg
+                        viewModelScope.launch {
+                            delay(5000)
+                            removeMessageWithAnimation(errorMsg.id)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("CalorieTracker", "Ошибка формирования watch_myfood", e)
@@ -623,10 +617,15 @@ class CalorieTrackerViewModel(
         // Проверяем интернет
         if (!checkInternetConnection()) {
             // showAILoadingScreen = false  // Отключено
-            messages = messages + ChatMessage(
+            val errorMsg = ChatMessage(
                 type = MessageType.AI,
                 content = "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
             )
+            messages = messages + errorMsg
+            viewModelScope.launch {
+                delay(5000)
+                removeMessageWithAnimation(errorMsg.id)
+            }
             isAnalyzing = false
             showManualInputDialog = true
             return
@@ -644,6 +643,14 @@ class CalorieTrackerViewModel(
             return
         }
 
+        // Сразу добавляем сообщение пользователя с фото
+        messages = messages + ChatMessage(
+            type = MessageType.USER,
+            content = caption.ifEmpty { "Фото для анализа" },
+            imagePath = lastPhotoPath,
+            animate = true
+        )
+        
         // Сообщение с анимацией ожидания
         val loadingMessage = ChatMessage(
             type = MessageType.AI,
@@ -697,12 +704,14 @@ class CalorieTrackerViewModel(
 
             // 4. Обрабатываем ответ
             if (!response.isSuccess) {
+                removeMessageWithAnimation(loadingMessage.id)
                 handleError("Ошибка соединения")
                 return
             }
 
             val result = response.getOrNull()
             if (result?.answer == null) {
+                removeMessageWithAnimation(loadingMessage.id)
                 handleError("Сервер не вернул данные")
                 return
             }
@@ -717,6 +726,8 @@ class CalorieTrackerViewModel(
                 when (foodData.food.trim().lowercase()) {
                     "нет", "no" -> {
                         // Еда не найдена
+                        // Удаляем сообщение обработки
+                        removeMessageWithAnimation(loadingMessage.id)
                         messages = messages + ChatMessage(
                             type = MessageType.AI,
                             content = "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
@@ -743,16 +754,8 @@ class CalorieTrackerViewModel(
 
                         Log.d("CalorieTracker", "Создан FoodItem с AI мнением: $foodItem")
                         
-                        // Удаляем сообщения обработки
-                        messages = messages.filter { !it.isProcessing }
-                        
-                        // Добавляем сообщение пользователя с фото
-                        messages = messages + ChatMessage(
-                            type = MessageType.USER,
-                            content = caption.ifEmpty { "Фото для анализа" },
-                            imagePath = lastPhotoPath,
-                            animate = true
-                        )
+                        // Удаляем только текущее сообщение обработки
+                        removeMessageWithAnimation(loadingMessage.id)
                         
                         // Добавляем карточку подтверждения еды
                         messages = messages + ChatMessage(
@@ -768,17 +771,20 @@ class CalorieTrackerViewModel(
 
                     else -> {
                         // Неизвестный ответ
+                        removeMessageWithAnimation(loadingMessage.id)
                         handleError("Не удалось определить тип продукта")
                     }
                 }
             } catch (e: Exception) {
                 Log.e("CalorieTracker", "Ошибка парсинга ответа", e)
+                removeMessageWithAnimation(loadingMessage.id)
                 handleError("Неверный формат ответа от сервера")
             }
         } catch (e: Exception) {
-            // showAILoadingScreen = false  // Отключено
+        // showAILoadingScreen = false  // Отключено
+        removeMessageWithAnimation(loadingMessage.id)
             handleError("Ошибка анализа изображения: ${e.message}")
-        } finally {
+            } finally {
             // showAILoadingScreen = false  // Отключено
             isAnalyzing = false
         }
@@ -808,8 +814,18 @@ class CalorieTrackerViewModel(
             // Запоминаем метод ввода для анимации
             inputMethod = "text"
 
+            // Сообщение с анимацией ожидания
+            val loadingMessage = ChatMessage(
+                type = MessageType.AI,
+                content = "",
+                isProcessing = true,
+                inputMethod = "text"
+            )
+            messages = messages + loadingMessage
+
             if (!checkInternetConnection()) {
                 // showAILoadingScreen = false  // Отключено
+                removeMessageWithAnimation(loadingMessage.id)
                 handleError("Нет подключения к интернету")
                 isAnalyzing = false
                 return@launch
@@ -825,15 +841,6 @@ class CalorieTrackerViewModel(
                 isAnalyzing = false
                 return@launch
             }
-
-            // Сообщение с анимацией ожидания
-            val loadingMessage = ChatMessage(
-                type = MessageType.AI,
-                content = "",
-                isProcessing = true,
-                inputMethod = "text"
-            )
-            messages = messages + loadingMessage
 
             try {
                 val isFirstOfDay = repository.isFirstMessageOfDay()
@@ -858,12 +865,14 @@ class CalorieTrackerViewModel(
                     // showAILoadingScreen = false // Отключено
 
                     if (!response.isSuccess) {
+                    removeMessageWithAnimation(loadingMessage.id)
                     handleError("Ошибка соединения")
                     return@launch
                 }
 
                 val answer = response.getOrNull()?.answer
                 if (answer == null) {
+                    removeMessageWithAnimation(loadingMessage.id)
                     handleError("Сервер не вернул данные")
                     return@launch
                 }
@@ -882,8 +891,8 @@ class CalorieTrackerViewModel(
                     aiOpinion = foodData.opinion
                 )
                 
-                // Удаляем сообщения обработки
-                messages = messages.filter { !it.isProcessing }
+                // Удаляем текущее сообщение обработки
+                removeMessageWithAnimation(loadingMessage.id)
 
                 // Всегда добавляем карточку подтверждения еды
                 messages = messages + ChatMessage(
@@ -906,7 +915,7 @@ class CalorieTrackerViewModel(
                 handleError("Не удалось проанализировать")
             } finally {
                 // showAILoadingScreen = false  // Отключено
-                messages = messages.filter { !it.isProcessing }
+                removeMessageWithAnimation(loadingMessage.id)
                 isAnalyzing = false
             }
         }
@@ -920,11 +929,18 @@ class CalorieTrackerViewModel(
 
     // Вспомогательная функция для обработки ошибок
     private fun handleError(errorMessage: String) {
-        messages = messages + ChatMessage(
+        val errorMsg = ChatMessage(
             type = MessageType.AI,
             content = "$errorMessage. Введите данные вручную."
         )
+        messages = messages + errorMsg
         showManualInputDialog = true
+        
+        // Удаляем сообщение об ошибке через 5 секунд
+        viewModelScope.launch {
+            delay(5000)
+            removeMessageWithAnimation(errorMsg.id)
+        }
     }
 
     // Data class для парсинга ответа (должен быть в файле с моделями)
@@ -973,13 +989,14 @@ class CalorieTrackerViewModel(
 
         selectedMeal = getAutoMealType()
         
-        // Если это редактирование из карточки подтверждения, удаляем старую
-        messages = messages.filter { it.type != MessageType.FOOD_CONFIRMATION }
+        // Проверяем, есть ли уже карточка подтверждения
+        val hasConfirmationCard = messages.any { it.type == MessageType.FOOD_CONFIRMATION }
         
-        // Если есть inputMethod, значит это первичный ввод, иначе - редактирование
-        val isEditing = inputMethod == null
-        
-        if (!isEditing) {
+        // Если есть карточка, это редактирование
+        if (hasConfirmationCard) {
+            // Просто удаляем старую карточку
+            messages = messages.filter { it.type != MessageType.FOOD_CONFIRMATION }
+        } else if (inputMethod != null) {
             // Первичный ввод - добавляем сообщение пользователя
             when (inputMethod) {
                 "text" -> {
@@ -1201,14 +1218,8 @@ class CalorieTrackerViewModel(
     }
 
     private fun sendChatMessage(userMessage: String) {
-        val isFirstOfDay = if (!isSearchMode) {
-            repository.isFirstMessageOfDay()
-        } else {
-            false
-        }
-        if (!isSearchMode) {
-            repository.recordLastUserMessageTime()
-        }
+        val isFirstOfDay = repository.isFirstMessageOfDay()
+        repository.recordLastUserMessageTime()
 
         viewModelScope.launch {
             if (isOnline) {
@@ -1223,11 +1234,7 @@ class CalorieTrackerViewModel(
                 }
 
                 // Определяем метод ввода для анимации
-                val method = when {
-                    isSearchMode -> "search"
-                    isRecipeMode -> "recipe"
-                    else -> "chat"
-                }
+                val method = if (isRecipeMode) "recipe" else "chat"
                 val tempMessage = ChatMessage(
                     type = MessageType.AI,
                     content = "",
@@ -1238,11 +1245,7 @@ class CalorieTrackerViewModel(
 
                 try {
                     val profileData = userProfile.toNetworkProfile()
-                    val type = when {
-                        isSearchMode -> "search"
-                        isRecipeMode -> "recipe"
-                        else -> "chat"
-                    }
+                    val type = if (isRecipeMode) "recipe" else "chat"
                     val response = safeApiCall {
                         NetworkModule.makeService.askAiDietitian(
                             webhookId = MakeService.WEBHOOK_ID,
@@ -1269,17 +1272,29 @@ class CalorieTrackerViewModel(
                             authManager.updateUserData(updatedUserData)
                         }
                     } else {
-                        messages = messages + ChatMessage(
+                        val errorMsg = ChatMessage(
                             type = MessageType.AI,
                             content = "Ошибка сервера: не удалось получить ответ от AI."
                         )
+                        messages = messages + errorMsg
+                        // Удаляем через 5 секунд
+                        viewModelScope.launch {
+                            delay(5000)
+                            removeMessageWithAnimation(errorMsg.id)
+                        }
                     }
                 } catch (e: Exception) {
                     removeMessageWithAnimation(tempMessage.id)
-                    messages = messages + ChatMessage(
+                    val errorMsg = ChatMessage(
                         type = MessageType.AI,
                         content = "Произошла ошибка при обращении к AI: ${e.message}"
                     )
+                    messages = messages + errorMsg
+                    // Удаляем через 5 секунд
+                    viewModelScope.launch {
+                        delay(5000)
+                        removeMessageWithAnimation(errorMsg.id)
+                    }
                 }
             } else {
                 val offlineResponse = getOfflineResponse(userMessage)
@@ -1293,21 +1308,20 @@ class CalorieTrackerViewModel(
 
     private suspend fun sendPhotoChatMessage(photo: Bitmap, caption: String) {
         if (!checkInternetConnection()) {
-            messages = messages + ChatMessage(
+            val errorMsg = ChatMessage(
                 type = MessageType.AI,
                 content = "Нет подключения к интернету"
             )
+            messages = messages + errorMsg
+            viewModelScope.launch {
+                delay(5000)
+                removeMessageWithAnimation(errorMsg.id)
+            }
             return
         }
 
-        val isFirstOfDay = if (!isSearchMode) {
-            repository.isFirstMessageOfDay()
-        } else {
-            false
-        }
-        if (!isSearchMode) {
-            repository.recordLastUserMessageTime()
-        }
+        val isFirstOfDay = repository.isFirstMessageOfDay()
+        repository.recordLastUserMessageTime()
 
         val currentUser = authManager.currentUser.value
         if (currentUser != null && !AIUsageManager.canUseAI(currentUser)) {
@@ -1319,11 +1333,7 @@ class CalorieTrackerViewModel(
         }
 
         // Определяем метод ввода для анимации
-        val method = when {
-            isSearchMode -> "search"
-            isRecipeMode -> "recipe"
-            else -> "chat"
-        }
+        val method = if (isRecipeMode) "recipe" else "chat"
         val loadingMessage = ChatMessage(
             type = MessageType.AI,
             content = "",
@@ -1376,17 +1386,27 @@ class CalorieTrackerViewModel(
                     authManager.updateUserData(updatedUserData)
                 }
             } else {
-                messages = messages + ChatMessage(
+                val errorMsg = ChatMessage(
                     type = MessageType.AI,
                     content = "Ошибка сервера: не удалось получить ответ от AI."
                 )
+                messages = messages + errorMsg
+                viewModelScope.launch {
+                    delay(5000)
+                    removeMessageWithAnimation(errorMsg.id)
+                }
             }
         } catch (e: Exception) {
             removeMessageWithAnimation(loadingMessage.id)
-            messages = messages + ChatMessage(
+            val errorMsg = ChatMessage(
                 type = MessageType.AI,
                 content = "Произошла ошибка при обращении к AI: ${e.message}"
             )
+            messages = messages + errorMsg
+            viewModelScope.launch {
+                delay(5000)
+                removeMessageWithAnimation(errorMsg.id)
+            }
         }
     }
 
@@ -1625,27 +1645,28 @@ class CalorieTrackerViewModel(
         if (query.isBlank()) return
 
         viewModelScope.launch {
+            // Добавляем сообщение пользователя с меткой анализа
+            val userMessage = ChatMessage(
+                type = MessageType.USER,
+                content = "📊 Анализ: $query",
+                animate = true
+            )
+            messages = messages + userMessage
+
+            // Очищаем поле ввода
+            inputMessage = ""
+
+            // Показываем индикатор обработки
+            val processingMessage = ChatMessage(
+                type = MessageType.AI,
+                content = "",
+                isProcessing = true,
+                inputMethod = "analysis",
+                animate = true
+            )
+            messages = messages + processingMessage
+            
             try {
-                // Добавляем сообщение пользователя с меткой анализа
-                val userMessage = ChatMessage(
-                    type = MessageType.USER,
-                    content = "📊 Анализ: $query",
-                    animate = true
-                )
-                messages = messages + userMessage
-
-                // Очищаем поле ввода
-                inputMessage = ""
-
-                // Показываем индикатор обработки
-                val processingMessage = ChatMessage(
-                    type = MessageType.AI,
-                    content = "",
-                    isProcessing = true,
-                    inputMethod = "analysis",
-                    animate = true
-                )
-                messages = messages + processingMessage
 
                 // Собираем данные за сегодня для анализа
                 val todayMeals = meals.toList()
@@ -1728,8 +1749,8 @@ class CalorieTrackerViewModel(
                     )
                 }
 
-                // Удаляем сообщение обработки
-                messages = messages.filter { !it.isProcessing }
+                // Удаляем текущее сообщение обработки
+                removeMessageWithAnimation(processingMessage.id)
 
                 // Добавляем ответ AI
                 response.onSuccess { analysisResponse ->
@@ -1740,24 +1761,32 @@ class CalorieTrackerViewModel(
                     )
                     messages = messages + aiMessage
                 }.onFailure { error ->
-                    val errorMessage = ChatMessage(
+                    val errorMsg = ChatMessage(
                         type = MessageType.AI,
                         content = "Извините, не удалось выполнить анализ. Попробуйте позже.",
                         animate = true
                     )
-                    messages = messages + errorMessage
+                    messages = messages + errorMsg
+                    viewModelScope.launch {
+                        delay(5000)
+                        removeMessageWithAnimation(errorMsg.id)
+                    }
                 }
 
             } catch (e: Exception) {
                 // Удаляем сообщение обработки в случае ошибки
                 messages = messages.filter { !it.isProcessing }
 
-                val errorMessage = ChatMessage(
+                val errorMsg = ChatMessage(
                     type = MessageType.AI,
                     content = "Произошла ошибка при анализе. Попробуйте еще раз.",
                     animate = true
                 )
-                messages = messages + errorMessage
+                messages = messages + errorMsg
+                viewModelScope.launch {
+                    delay(5000)
+                    removeMessageWithAnimation(errorMsg.id)
+                }
             }
         }
     }
