@@ -109,7 +109,7 @@ fun PlusDropdownMenu(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.05f))
+                            .background(Color.White.copy(alpha = 0.05f))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null

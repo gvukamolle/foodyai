@@ -863,7 +863,7 @@ private fun AnimatedBottomBar(
                     }
                 }
 
-                PlusDropdownMenu(
+                EnhancedPlusDropdownMenu(
                     expanded = menuExpanded && !isAnalysisMode,
                     onDismissRequest = { onMenuToggle(false) },
                     onCameraClick = onCameraClick,

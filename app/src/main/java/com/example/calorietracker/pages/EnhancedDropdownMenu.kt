@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -47,7 +49,6 @@ fun EnhancedPlusDropdownMenu(
     onDismissRequest: () -> Unit,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
-    onDescribeClick: () -> Unit,
     onManualClick: () -> Unit,
     context: Context = LocalContext.current
 ) {
@@ -156,19 +157,12 @@ fun EnhancedPlusDropdownMenu(
                             contextualHint = contextualHint,
                             lastAction = lastAction,
                             onCameraClick = {
-                                saveLastAction(context, "camera")
                                 animatedDismiss { onCameraClick() }
                             },
                             onGalleryClick = {
-                                saveLastAction(context, "gallery")
                                 animatedDismiss { onGalleryClick() }
                             },
-                            onDescribeClick = {
-                                saveLastAction(context, "describe")
-                                animatedDismiss { onDescribeClick() }
-                            },
                             onManualClick = {
-                                saveLastAction(context, "manual")
                                 animatedDismiss { onManualClick() }
                             }
                         )
@@ -185,7 +179,6 @@ private fun EnhancedMenuContent(
     lastAction: String?,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
-    onDescribeClick: () -> Unit,
     onManualClick: () -> Unit
 ) {
     Card(
@@ -231,7 +224,6 @@ private fun EnhancedMenuContent(
                             when (action) {
                                 "camera" -> onCameraClick()
                                 "gallery" -> onGalleryClick()
-                                "describe" -> onDescribeClick()
                                 "manual" -> onManualClick()
                             }
                         }
@@ -243,7 +235,6 @@ private fun EnhancedMenuContent(
                     lastAction = lastAction,
                     onCameraClick = onCameraClick,
                     onGalleryClick = onGalleryClick,
-                    onDescribeClick = onDescribeClick,
                     onManualClick = onManualClick
                 )
                 menuItems.forEach { item ->
@@ -254,7 +245,6 @@ private fun EnhancedMenuContent(
     }
 }
 
-// ... остальной код без изменений ...
 @Composable
 private fun AnimatedHintCard(hint: String) {
     Surface(
@@ -484,7 +474,6 @@ private fun getActionDetails(action: String): Triple<String, ImageVector, Color>
     return when (action) {
         "camera" -> Triple("Сфоткать", Icons.Default.PhotoCamera, Color(0xFF4CAF50))
         "gallery" -> Triple("Выбрать фото", Icons.Default.Image, Color(0xFF2196F3))
-        "describe" -> Triple("Расскажите", Icons.Default.AutoAwesome, Color(0xFFFF9800))
         "manual" -> Triple("Вручную", Icons.Default.Keyboard, Color(0xFF9C27B0))
         else -> Triple("", Icons.Default.Add, Color.Black)
     }
@@ -494,14 +483,12 @@ private fun getMenuItems(
     lastAction: String?,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
-    onDescribeClick: () -> Unit,
     onManualClick: () -> Unit
 ): List<MenuItemData> {
 
     val allItems = listOf(
         MenuItemData("camera",   "Сфоткать",      "Быстрый снимок",  Icons.Default.PhotoCamera, Color(0xFF4CAF50), onCameraClick),
         MenuItemData("gallery",  "Выбрать фото",  "Из вашей галереи",Icons.Default.Image,       Color(0xFF2196F3), onGalleryClick),
-        MenuItemData("describe", "Рассказать",    "А мы поймём",     Icons.Default.AutoAwesome, Color(0xFFFF9800), onDescribeClick),
         MenuItemData("manual",   "Вручную", "Полный контроль", Icons.Default.Keyboard,    Color(0xFF9C27B0), onManualClick)
     )
 
@@ -509,9 +496,12 @@ private fun getMenuItems(
     else allItems.filter { it.id != lastAction }
 }
 
-private fun saveLastAction(context: Context, action: String) {
-    context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        .edit()
-        .putString("last_food_action", action)
-        .apply()
-}
+// Модель данных одного пункта меню
+data class MenuItemData(
+    val id: String,
+    val text: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val color: Color,
+    val onClick: () -> Unit
+)
