@@ -1,6 +1,5 @@
 package com.example.calorietracker.pages
 
-import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -25,12 +24,9 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -50,10 +46,7 @@ fun EnhancedPlusDropdownMenu(
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
     onManualClick: () -> Unit,
-    context: Context = LocalContext.current
 ) {
-    val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-    val lastAction = prefs.getString("last_food_action", null)
     val contextualHint = getContextualHint()
 
     val coroutineScope = rememberCoroutineScope()
@@ -155,7 +148,6 @@ fun EnhancedPlusDropdownMenu(
                     Box(modifier = Modifier.padding(16.dp)) {
                         EnhancedMenuContent(
                             contextualHint = contextualHint,
-                            lastAction = lastAction,
                             onCameraClick = {
                                 animatedDismiss { onCameraClick() }
                             },
@@ -176,7 +168,6 @@ fun EnhancedPlusDropdownMenu(
 @Composable
 private fun EnhancedMenuContent(
     contextualHint: String,
-    lastAction: String?,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
     onManualClick: () -> Unit
@@ -216,23 +207,7 @@ private fun EnhancedMenuContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 AnimatedHintCard(hint = contextualHint)
-
-                lastAction?.let { action ->
-                    AnimatedRecentAction(
-                        action = action,
-                        onClick = {
-                            when (action) {
-                                "camera" -> onCameraClick()
-                                "gallery" -> onGalleryClick()
-                                "manual" -> onManualClick()
-                            }
-                        }
-                    )
-                    AnimatedDivider()
-                }
-
                 val menuItems = getMenuItems(
-                    lastAction = lastAction,
                     onCameraClick = onCameraClick,
                     onGalleryClick = onGalleryClick,
                     onManualClick = onManualClick
@@ -263,104 +238,6 @@ private fun AnimatedHintCard(hint: String) {
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF1976D2)
             )
-        }
-    }
-}
-
-@Composable
-private fun AnimatedRecentAction(
-    action: String,
-    onClick: () -> Unit
-) {
-    val (text, icon, color) = getActionDetails(action)
-    val haptic = LocalHapticFeedback.current
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = color)
-            ) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onClick()
-            },
-        shape = RoundedCornerShape(16.dp),
-        color = color.copy(alpha = 0.15f)
-    ) {
-        Box {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                color.copy(alpha = 0.05f)
-                            )
-                        )
-                    )
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    color.copy(alpha = 0.3f),
-                                    color.copy(alpha = 0.1f)
-                                )
-                            ),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        tint = color,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1A1A)
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = color.copy(alpha = 0.2f)
-                        ) {
-                            Text(
-                                "Недавнее",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                fontSize = 11.sp,
-                                color = color,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(
-                    Icons.Default.Schedule,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
         }
     }
 }
@@ -439,26 +316,6 @@ private fun EnhancedMenuItem(
     }
 }
 
-@Composable
-private fun AnimatedDivider() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .padding(vertical = 4.dp)
-            .background(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color(0xFFE0E0E0),
-                        Color(0xFFE0E0E0),
-                        Color.Transparent
-                    )
-                )
-            )
-    )
-}
-
 private fun getContextualHint(): String {
     val hour = LocalTime.now().hour
     return when (hour) {
@@ -470,17 +327,7 @@ private fun getContextualHint(): String {
     }
 }
 
-private fun getActionDetails(action: String): Triple<String, ImageVector, Color> {
-    return when (action) {
-        "camera" -> Triple("Сфоткать", Icons.Default.PhotoCamera, Color(0xFF4CAF50))
-        "gallery" -> Triple("Выбрать фото", Icons.Default.Image, Color(0xFF2196F3))
-        "manual" -> Triple("Вручную", Icons.Default.Keyboard, Color(0xFF9C27B0))
-        else -> Triple("", Icons.Default.Add, Color.Black)
-    }
-}
-
 private fun getMenuItems(
-    lastAction: String?,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
     onManualClick: () -> Unit
@@ -491,9 +338,7 @@ private fun getMenuItems(
         MenuItemData("gallery",  "Выбрать фото",  "Из вашей галереи",Icons.Default.Image,       Color(0xFF2196F3), onGalleryClick),
         MenuItemData("manual",   "Вручную", "Полный контроль", Icons.Default.Keyboard,    Color(0xFF9C27B0), onManualClick)
     )
-
-    return if (lastAction == null) allItems
-    else allItems.filter { it.id != lastAction }
+    return allItems
 }
 
 // Модель данных одного пункта меню

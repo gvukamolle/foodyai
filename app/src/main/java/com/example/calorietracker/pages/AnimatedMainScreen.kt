@@ -1094,8 +1094,8 @@ private fun AnimatedAnalysisToggle(
     val animatedWidth by animateDpAsState(
         targetValue = if (isEnabled) 115.dp else 40.dp,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            dampingRatio = 0.60f, // Между LowBouncy (0.75) и NoBouncy (1.0)
+            stiffness = 600f // Между MediumLow (200) и Medium (400)
         ),
         label = "toggle_width"
     )
@@ -1192,8 +1192,8 @@ private fun AnimatedRecordToggle(
     val animatedWidth by animateDpAsState(
         targetValue = if (isEnabled) 110.dp else 40.dp,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            dampingRatio = 0.60f, // Между LowBouncy (0.75) и NoBouncy (1.0)
+            stiffness = 600f // Между MediumLow (200) и Medium (400)
         ),
         label = "record_toggle_width"
     )
@@ -1291,8 +1291,8 @@ private fun AnimatedRecipeToggle(
     val animatedWidth by animateDpAsState(
         targetValue = if (isEnabled) 135.dp else 40.dp,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            dampingRatio = 0.60f, // Между LowBouncy (0.75) и NoBouncy (1.0)
+            stiffness = 600f // Между MediumLow (200) и Medium (400)
         ),
         label = "recipe_toggle_width"
     )
