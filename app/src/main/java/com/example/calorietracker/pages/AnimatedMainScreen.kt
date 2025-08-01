@@ -826,7 +826,7 @@ private fun AnimatedBottomBar(
                     isEnabled = isRecipeMode,
                     onClick = {
                         if (!isRecipeMode && isAnalysisMode) {
-                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИз] ")
+                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
                             viewModel.inputMessage = currentText
                             viewModel.toggleDailyAnalysis()
                         }
