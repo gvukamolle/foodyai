@@ -50,7 +50,7 @@ import java.util.UUID
 import java.time.LocalTime
 import kotlinx.coroutines.delay
 
-// Обновленная структура сообщения с датой
+// Обновленная структура сообщения с поддержкой ошибок и повторной отправки
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val type: MessageType,
@@ -64,7 +64,12 @@ data class ChatMessage(
     val isProcessing: Boolean = false, // Новое поле для индикации обработки
     val inputMethod: String? = null, // Метод ввода для загрузочных сообщений
     val isVisible: Boolean = true, // Для анимации удаления сообщений
-    val isFoodConfirmation: Boolean = false // Новый флаг для карточки подтверждения еды
+    val isFoodConfirmation: Boolean = false, // Новый флаг для карточки подтверждения еды
+    // Новые поля для обработки ошибок
+    val isError: Boolean = false,  // Флаг, что это сообщение об ошибке
+    val retryAction: (() -> Unit)? = null,  // Функция для повторной отправки запроса
+    val retryCount: Int = 0,  // Счетчик попыток
+    val maxRetries: Int = 3    // Максимум попыток
 )
 
 enum class MessageType {
@@ -209,6 +214,9 @@ class CalorieTrackerViewModel(
     // Новые поля для прикреплённых фото
     var attachedPhoto by mutableStateOf<Bitmap?>(null)
     var attachedPhotoPath by mutableStateOf<String?>(null)
+    
+    // Поле для сохранения последнего API запроса для повторной отправки
+    private var lastApiCall: (() -> Unit)? = null
 
     // AI и сетевые состояния
     val isOnline: Boolean
@@ -638,13 +646,15 @@ class CalorieTrackerViewModel(
             // showAILoadingScreen = false  // Отключено
             val errorMsg = ChatMessage(
                 type = MessageType.AI,
-                content = "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную."
+                content = "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную.",
+                isError = true,
+                retryAction = {
+                    viewModelScope.launch {
+                        analyzePhotoWithAI(bitmap, caption)
+                    }
+                }
             )
             messages = messages + errorMsg
-            viewModelScope.launch {
-                delay(5000)
-                removeMessageWithAnimation(errorMsg.id)
-            }
             isAnalyzing = false
             showManualInputDialog = true
             return
@@ -681,6 +691,13 @@ class CalorieTrackerViewModel(
 
         // Больше не нужно временное сообщение - у нас есть полноэкранная загрузка
         // val tempMessage = ChatMessage(...) - УДАЛЕНО
+
+        // Сохраняем функцию для повторной отправки
+        lastApiCall = {
+            viewModelScope.launch {
+                analyzePhotoWithAI(bitmap, caption)
+            }
+        }
 
         try {
             // 1. Подготавливаем данные для отправки
@@ -724,14 +741,14 @@ class CalorieTrackerViewModel(
             // 4. Обрабатываем ответ
             if (!response.isSuccess) {
                 removeMessageWithAnimation(loadingMessage.id)
-                handleError("Ошибка соединения")
+                handleError("Ошибка соединения", lastApiCall)
                 return
             }
 
             val result = response.getOrNull()
             if (result?.answer == null) {
                 removeMessageWithAnimation(loadingMessage.id)
-                handleError("Сервер не вернул данные")
+                handleError("Сервер не вернул данные", lastApiCall)
                 return
             }
 
@@ -791,21 +808,25 @@ class CalorieTrackerViewModel(
                     else -> {
                         // Неизвестный ответ
                         removeMessageWithAnimation(loadingMessage.id)
-                        handleError("Не удалось определить тип продукта")
+                        handleError("Не удалось определить тип продукта", lastApiCall)
                     }
                 }
             } catch (e: Exception) {
                 Log.e("CalorieTracker", "Ошибка парсинга ответа", e)
                 removeMessageWithAnimation(loadingMessage.id)
-                handleError("Неверный формат ответа от сервера")
+                handleError("Неверный формат ответа от сервера", lastApiCall)
             }
         } catch (e: Exception) {
         // showAILoadingScreen = false  // Отключено
         removeMessageWithAnimation(loadingMessage.id)
-            handleError("Ошибка анализа изображения: ${e.message}")
+            handleError("Ошибка анализа изображения: ${e.message}", lastApiCall)
             } finally {
             // showAILoadingScreen = false  // Отключено
             isAnalyzing = false
+            // Очищаем последний запрос при успехе
+            if (!messages.any { it.isError }) {
+                lastApiCall = null
+            }
         }
     }
 
@@ -833,6 +854,12 @@ class CalorieTrackerViewModel(
             // Запоминаем метод ввода для анимации
             inputMethod = "text"
 
+            // Сохраняем функцию для повторной отправки
+            lastApiCall = {
+                pendingDescription = textToAnalyze
+                analyzeDescription()
+            }
+
             // Сообщение с анимацией ожидания
             val loadingMessage = ChatMessage(
                 type = MessageType.AI,
@@ -845,7 +872,10 @@ class CalorieTrackerViewModel(
             if (!checkInternetConnection()) {
                 // showAILoadingScreen = false  // Отключено
                 removeMessageWithAnimation(loadingMessage.id)
-                handleError("Нет подключения к интернету")
+                handleError("Нет подключения к интернету", {
+                    pendingDescription = textToAnalyze
+                    analyzeDescription()
+                })
                 isAnalyzing = false
                 return@launch
             }
@@ -885,14 +915,14 @@ class CalorieTrackerViewModel(
 
                     if (!response.isSuccess) {
                     removeMessageWithAnimation(loadingMessage.id)
-                    handleError("Ошибка соединения")
+                    handleError("Ошибка соединения", lastApiCall)
                     return@launch
                 }
 
                 val answer = response.getOrNull()?.answer
                 if (answer == null) {
                     removeMessageWithAnimation(loadingMessage.id)
-                    handleError("Сервер не вернул данные")
+                    handleError("Сервер не вернул данные", lastApiCall)
                     return@launch
                 }
 
@@ -931,11 +961,15 @@ class CalorieTrackerViewModel(
             } catch (e: Exception) {
                 // showAILoadingScreen = false  // Отключено
                 Log.e("CalorieTracker", "Ошибка анализа описания", e)
-                handleError("Не удалось проанализировать")
+                removeMessageWithAnimation(loadingMessage.id)
+                handleError("Не удалось проанализировать", lastApiCall)
             } finally {
                 // showAILoadingScreen = false  // Отключено
-                removeMessageWithAnimation(loadingMessage.id)
                 isAnalyzing = false
+                // Очищаем последний запрос при успехе
+                if (!messages.any { it.isError }) {
+                    lastApiCall = null
+                }
             }
         }
     }
@@ -946,19 +980,23 @@ class CalorieTrackerViewModel(
         // Можно добавить отмену корутин если используете Job
     }
 
-    // Вспомогательная функция для обработки ошибок
-    private fun handleError(errorMessage: String) {
+    // Обновленная функция для обработки ошибок с поддержкой повторной отправки
+    private fun handleError(errorMessage: String, retryAction: (() -> Unit)? = null) {
         val errorMsg = ChatMessage(
             type = MessageType.AI,
-            content = "$errorMessage. Введите данные вручную."
+            content = "$errorMessage. Введите данные вручную.",
+            isError = true,
+            retryAction = retryAction ?: lastApiCall
         )
         messages = messages + errorMsg
         showManualInputDialog = true
         
-        // Удаляем сообщение об ошибке через 5 секунд
-        viewModelScope.launch {
-            delay(5000)
-            removeMessageWithAnimation(errorMsg.id)
+        // НЕ удаляем сообщение об ошибке автоматически, если есть возможность повтора
+        if (retryAction == null && lastApiCall == null) {
+            viewModelScope.launch {
+                delay(5000)
+                removeMessageWithAnimation(errorMsg.id)
+            }
         }
     }
 
@@ -1262,59 +1300,14 @@ class CalorieTrackerViewModel(
                 )
                 messages = messages + tempMessage
 
-                try {
-                    val profileData = userProfile.toNetworkProfile()
-                    val type = if (isRecipeMode) "recipe" else "chat"
-                    val response = safeApiCall {
-                        NetworkModule.makeService.askAiDietitian(
-                            webhookId = MakeService.WEBHOOK_ID,
-                            request = AiChatRequest(
-                                message = userMessage,
-                                userProfile = profileData,
-                                userId = userId,
-                                isFirstMessageOfDay = isFirstOfDay,
-                                messageType = type
-                            )
-                        )
-                    }
-
-                    removeMessageWithAnimation(tempMessage.id)
-
-                    if (response.isSuccess) {
-                        val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
-                        messages = messages + ChatMessage(
-                            type = MessageType.AI,
-                            content = answer
-                        )
-                        if (currentUser != null) {
-                            val updatedUserData = AIUsageManager.incrementUsage(currentUser)
-                            authManager.updateUserData(updatedUserData)
-                        }
-                    } else {
-                        val errorMsg = ChatMessage(
-                            type = MessageType.AI,
-                            content = "Ошибка сервера: не удалось получить ответ от AI."
-                        )
-                        messages = messages + errorMsg
-                        // Удаляем через 5 секунд
-                        viewModelScope.launch {
-                            delay(5000)
-                            removeMessageWithAnimation(errorMsg.id)
-                        }
-                    }
-                } catch (e: Exception) {
-                    removeMessageWithAnimation(tempMessage.id)
-                    val errorMsg = ChatMessage(
-                        type = MessageType.AI,
-                        content = "Произошла ошибка при обращении к AI: ${e.message}"
-                    )
-                    messages = messages + errorMsg
-                    // Удаляем через 5 секунд
+                // Сохраняем функцию для повторной отправки
+                lastApiCall = {
                     viewModelScope.launch {
-                        delay(5000)
-                        removeMessageWithAnimation(errorMsg.id)
+                        sendChatMessageInternal(userMessage, isFirstOfDay, method, tempMessage.id)
                     }
                 }
+
+                sendChatMessageInternal(userMessage, isFirstOfDay, method, tempMessage.id)
             } else {
                 val offlineResponse = getOfflineResponse(userMessage)
                 messages = messages + ChatMessage(
@@ -1325,17 +1318,75 @@ class CalorieTrackerViewModel(
         }
     }
 
+    // Новый внутренний метод для отправки сообщения
+    private suspend fun sendChatMessageInternal(
+        userMessage: String, 
+        isFirstOfDay: Boolean, 
+        method: String,
+        loadingMessageId: String
+    ) {
+        try {
+            val profileData = userProfile.toNetworkProfile()
+            val type = if (isRecipeMode) "recipe" else "chat"
+            val response = safeApiCall {
+                NetworkModule.makeService.askAiDietitian(
+                    webhookId = MakeService.WEBHOOK_ID,
+                    request = AiChatRequest(
+                        message = userMessage,
+                        userProfile = profileData,
+                        userId = userId,
+                        isFirstMessageOfDay = isFirstOfDay,
+                        messageType = type
+                    )
+                )
+            }
+
+            removeMessageWithAnimation(loadingMessageId)
+
+            if (response.isSuccess) {
+                val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
+                messages = messages + ChatMessage(
+                    type = MessageType.AI,
+                    content = answer
+                )
+                if (authManager.currentUser.value != null) {
+                    val updatedUserData = AIUsageManager.incrementUsage(authManager.currentUser.value!!)
+                    authManager.updateUserData(updatedUserData)
+                }
+                // Очищаем последний запрос при успехе
+                lastApiCall = null
+            } else {
+                val errorMsg = ChatMessage(
+                    type = MessageType.AI,
+                    content = "Ошибка сервера: не удалось получить ответ от AI.",
+                    isError = true,
+                    retryAction = lastApiCall
+                )
+                messages = messages + errorMsg
+            }
+        } catch (e: Exception) {
+            removeMessageWithAnimation(loadingMessageId)
+            val errorMsg = ChatMessage(
+                type = MessageType.AI,
+                content = "Произошла ошибка при обращении к AI: ${e.message}",
+                isError = true,
+                retryAction = lastApiCall
+            )
+            messages = messages + errorMsg
+        }
+    }
+
     private suspend fun sendPhotoChatMessage(photo: Bitmap, caption: String) {
         if (!checkInternetConnection()) {
             val errorMsg = ChatMessage(
                 type = MessageType.AI,
-                content = "Нет подключения к интернету"
+                content = "Нет подключения к интернету",
+                isError = true,
+                retryAction = {
+                    viewModelScope.launch { sendPhotoChatMessage(photo, caption) }
+                }
             )
             messages = messages + errorMsg
-            viewModelScope.launch {
-                delay(5000)
-                removeMessageWithAnimation(errorMsg.id)
-            }
             return
         }
 
@@ -1404,28 +1455,30 @@ class CalorieTrackerViewModel(
                     val updatedUserData = AIUsageManager.incrementUsage(currentUser)
                     authManager.updateUserData(updatedUserData)
                 }
+                // Очищаем последний запрос при успехе
+                lastApiCall = null
             } else {
                 val errorMsg = ChatMessage(
                     type = MessageType.AI,
-                    content = "Ошибка сервера: не удалось получить ответ от AI."
+                    content = "Ошибка сервера: не удалось получить ответ от AI.",
+                    isError = true,
+                    retryAction = {
+                        viewModelScope.launch { sendPhotoChatMessage(photo, caption) }
+                    }
                 )
                 messages = messages + errorMsg
-                viewModelScope.launch {
-                    delay(5000)
-                    removeMessageWithAnimation(errorMsg.id)
-                }
             }
         } catch (e: Exception) {
             removeMessageWithAnimation(loadingMessage.id)
             val errorMsg = ChatMessage(
                 type = MessageType.AI,
-                content = "Произошла ошибка при обращении к AI: ${e.message}"
+                content = "Произошла ошибка при обращении к AI: ${e.message}",
+                isError = true,
+                retryAction = {
+                    viewModelScope.launch { sendPhotoChatMessage(photo, caption) }
+                }
             )
             messages = messages + errorMsg
-            viewModelScope.launch {
-                delay(5000)
-                removeMessageWithAnimation(errorMsg.id)
-            }
         }
     }
 
@@ -1783,13 +1836,13 @@ class CalorieTrackerViewModel(
                     val errorMsg = ChatMessage(
                         type = MessageType.AI,
                         content = "Извините, не удалось выполнить анализ. Попробуйте позже.",
-                        animate = true
+                        animate = true,
+                        isError = true,
+                        retryAction = {
+                            sendAnalysisRequest(query)
+                        }
                     )
                     messages = messages + errorMsg
-                    viewModelScope.launch {
-                        delay(5000)
-                        removeMessageWithAnimation(errorMsg.id)
-                    }
                 }
 
             } catch (e: Exception) {
@@ -1799,13 +1852,13 @@ class CalorieTrackerViewModel(
                 val errorMsg = ChatMessage(
                     type = MessageType.AI,
                     content = "Произошла ошибка при анализе. Попробуйте еще раз.",
-                    animate = true
+                    animate = true,
+                    isError = true,
+                    retryAction = {
+                        sendAnalysisRequest(query)
+                    }
                 )
                 messages = messages + errorMsg
-                viewModelScope.launch {
-                    delay(5000)
-                    removeMessageWithAnimation(errorMsg.id)
-                }
             }
         }
     }
