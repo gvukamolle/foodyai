@@ -644,11 +644,14 @@ class CalorieTrackerViewModel(
         // Проверяем интернет
         if (!checkInternetConnection()) {
             // showAILoadingScreen = false  // Отключено
+            val errorMsgId = UUID.randomUUID().toString()
             val errorMsg = ChatMessage(
+                id = errorMsgId,
                 type = MessageType.AI,
                 content = "Нет подключения к интернету. Пожалуйста, введите данные о продукте вручную.",
                 isError = true,
                 retryAction = {
+                    removeMessageWithAnimation(errorMsgId)
                     viewModelScope.launch {
                         analyzePhotoWithAI(bitmap, caption)
                     }
@@ -982,11 +985,20 @@ class CalorieTrackerViewModel(
 
     // Обновленная функция для обработки ошибок с поддержкой повторной отправки
     private fun handleError(errorMessage: String, retryAction: (() -> Unit)? = null) {
+        val errorMsgId = UUID.randomUUID().toString()
         val errorMsg = ChatMessage(
+            id = errorMsgId,
             type = MessageType.AI,
             content = "$errorMessage. Введите данные вручную.",
             isError = true,
-            retryAction = retryAction ?: lastApiCall
+            retryAction = if (retryAction != null || lastApiCall != null) {
+                {
+                    // Удаляем сообщение об ошибке
+                    removeMessageWithAnimation(errorMsgId)
+                    // Вызываем повторную отправку
+                    (retryAction ?: lastApiCall)?.invoke()
+                }
+            } else null
         )
         messages = messages + errorMsg
         showManualInputDialog = true
@@ -995,7 +1007,7 @@ class CalorieTrackerViewModel(
         if (retryAction == null && lastApiCall == null) {
             viewModelScope.launch {
                 delay(5000)
-                removeMessageWithAnimation(errorMsg.id)
+                removeMessageWithAnimation(errorMsgId)
             }
         }
     }
@@ -1356,21 +1368,31 @@ class CalorieTrackerViewModel(
                 // Очищаем последний запрос при успехе
                 lastApiCall = null
             } else {
+                val errorMsgId = UUID.randomUUID().toString()
                 val errorMsg = ChatMessage(
+                    id = errorMsgId,
                     type = MessageType.AI,
                     content = "Ошибка сервера: не удалось получить ответ от AI.",
                     isError = true,
-                    retryAction = lastApiCall
+                    retryAction = {
+                        removeMessageWithAnimation(errorMsgId)
+                        lastApiCall?.invoke()
+                    }
                 )
                 messages = messages + errorMsg
             }
         } catch (e: Exception) {
             removeMessageWithAnimation(loadingMessageId)
+            val errorMsgId = UUID.randomUUID().toString()
             val errorMsg = ChatMessage(
+                id = errorMsgId,
                 type = MessageType.AI,
                 content = "Произошла ошибка при обращении к AI: ${e.message}",
                 isError = true,
-                retryAction = lastApiCall
+                retryAction = {
+                    removeMessageWithAnimation(errorMsgId)
+                    lastApiCall?.invoke()
+                }
             )
             messages = messages + errorMsg
         }
@@ -1378,11 +1400,14 @@ class CalorieTrackerViewModel(
 
     private suspend fun sendPhotoChatMessage(photo: Bitmap, caption: String) {
         if (!checkInternetConnection()) {
+            val errorMsgId = UUID.randomUUID().toString()
             val errorMsg = ChatMessage(
+                id = errorMsgId,
                 type = MessageType.AI,
                 content = "Нет подключения к интернету",
                 isError = true,
                 retryAction = {
+                    removeMessageWithAnimation(errorMsgId)
                     viewModelScope.launch { sendPhotoChatMessage(photo, caption) }
                 }
             )
@@ -1458,11 +1483,14 @@ class CalorieTrackerViewModel(
                 // Очищаем последний запрос при успехе
                 lastApiCall = null
             } else {
+                val errorMsgId = UUID.randomUUID().toString()
                 val errorMsg = ChatMessage(
+                    id = errorMsgId,
                     type = MessageType.AI,
                     content = "Ошибка сервера: не удалось получить ответ от AI.",
                     isError = true,
                     retryAction = {
+                        removeMessageWithAnimation(errorMsgId)
                         viewModelScope.launch { sendPhotoChatMessage(photo, caption) }
                     }
                 )
@@ -1470,11 +1498,14 @@ class CalorieTrackerViewModel(
             }
         } catch (e: Exception) {
             removeMessageWithAnimation(loadingMessage.id)
+            val errorMsgId = UUID.randomUUID().toString()
             val errorMsg = ChatMessage(
+                id = errorMsgId,
                 type = MessageType.AI,
                 content = "Произошла ошибка при обращении к AI: ${e.message}",
                 isError = true,
                 retryAction = {
+                    removeMessageWithAnimation(errorMsgId)
                     viewModelScope.launch { sendPhotoChatMessage(photo, caption) }
                 }
             )
@@ -1833,12 +1864,15 @@ class CalorieTrackerViewModel(
                     )
                     messages = messages + aiMessage
                 }.onFailure { error ->
+                    val errorMsgId = UUID.randomUUID().toString()
                     val errorMsg = ChatMessage(
+                        id = errorMsgId,
                         type = MessageType.AI,
                         content = "Извините, не удалось выполнить анализ. Попробуйте позже.",
                         animate = true,
                         isError = true,
                         retryAction = {
+                            removeMessageWithAnimation(errorMsgId)
                             sendAnalysisRequest(query)
                         }
                     )
@@ -1849,12 +1883,15 @@ class CalorieTrackerViewModel(
                 // Удаляем сообщение обработки в случае ошибки
                 messages = messages.filter { !it.isProcessing }
 
+                val errorMsgId = UUID.randomUUID().toString()
                 val errorMsg = ChatMessage(
+                    id = errorMsgId,
                     type = MessageType.AI,
                     content = "Произошла ошибка при анализе. Попробуйте еще раз.",
                     animate = true,
                     isError = true,
                     retryAction = {
+                        removeMessageWithAnimation(errorMsgId)
                         sendAnalysisRequest(query)
                     }
                 )

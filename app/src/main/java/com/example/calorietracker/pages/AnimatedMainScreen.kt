@@ -58,6 +58,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.core.FastOutSlowInEasing
 import com.example.calorietracker.ui.animations.AnimatedMessageWithBlur
 import com.example.calorietracker.components.chat.FoodConfirmationCard
+import com.example.calorietracker.components.chat.AnimatedRetryChip
 import androidx.compose.foundation.lazy.items
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -524,18 +525,35 @@ private fun AnimatedChatContent(
                     }
                 ) {
                     AnimatedChatMessageCard(
-                    message = message,
+                        message = message,
                         onAiOpinionClick = onAiOpinionClick,
                         onFoodEdit = { food ->
-                    viewModel.prefillFood = food
-                    viewModel.showManualInputDialog = true
-                    },
-                    onFoodConfirm = { food ->
-                    viewModel.pendingFood = food
-                    viewModel.confirmFood()
-                    }
+                            viewModel.prefillFood = food
+                            viewModel.showManualInputDialog = true
+                        },
+                        onFoodConfirm = { food ->
+                            viewModel.pendingFood = food
+                            viewModel.confirmFood()
+                        }
                     )
                 }
+            }
+        }
+        
+        // Показываем кнопку "Повторить" для сообщений об ошибке
+        if (message.isError && message.retryAction != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = if (message.type == MessageType.USER) {
+                    Arrangement.End
+                } else {
+                    Arrangement.Start
+                }
+            ) {
+                AnimatedRetryChip(
+                    onClick = { message.retryAction.invoke() }
+                )
             }
         }
     }
@@ -649,7 +667,6 @@ private fun AnimatedChatMessageCard(
                                     color = Color.Black
                                 )
                             }
-
                         }
                     }
                 }
@@ -673,6 +690,23 @@ private fun AnimatedChatMessageCard(
                         )
                     }
                 }
+            }
+        }
+        
+        // Показываем кнопку "Повторить" для сообщений об ошибке
+        if (message.isError && message.retryAction != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = if (message.type == MessageType.USER) {
+                    Arrangement.End
+                } else {
+                    Arrangement.Start
+                }
+            ) {
+                AnimatedRetryChip(
+                    onClick = { message.retryAction.invoke() }
+                )
             }
         }
     }
