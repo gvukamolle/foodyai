@@ -540,22 +540,7 @@ private fun AnimatedChatContent(
             }
         }
         
-        // Показываем кнопку "Повторить" для сообщений об ошибке
-        if (message.isError && message.retryAction != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = if (message.type == MessageType.USER) {
-                    Arrangement.End
-                } else {
-                    Arrangement.Start
-                }
-            ) {
-                AnimatedRetryChip(
-                    onClick = { message.retryAction.invoke() }
-                )
-            }
-        }
+
     }
 }
 

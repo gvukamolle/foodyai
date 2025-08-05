@@ -1315,8 +1315,14 @@ class CalorieTrackerViewModel(
                 // Сохраняем функцию для повторной отправки
                 lastApiCall = {
                     viewModelScope.launch {
-                        sendChatMessageInternal(userMessage, isFirstOfDay, method, tempMessage.id)
-                    }
+                        val retryMessage = ChatMessage(
+                            type = MessageType.AI,
+                            content = "",
+                            isProcessing = true,
+                            inputMethod = method
+                        )
+                        messages = messages + retryMessage
+                        sendChatMessageInternal(userMessage, isFirstOfDay, method, retryMessage.id)                    }
                 }
 
                 sendChatMessageInternal(userMessage, isFirstOfDay, method, tempMessage.id)
