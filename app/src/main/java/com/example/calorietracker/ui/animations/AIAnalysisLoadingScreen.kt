@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -27,6 +28,8 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import kotlinx.coroutines.delay
 import kotlin.random.Random
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.graphics.CompositingStrategy
 
 /**
  * Универсальный контейнер, который реализует эффект размытия фона в новом окне.
@@ -267,6 +270,10 @@ fun AnimatedPhrases(
     // Индекс текущей фразы и список показанных
     var currentPhraseIndex by remember { mutableStateOf(0) }
     var shownIndices by remember { mutableStateOf(setOf<Int>()) }
+    var isAnimating by remember { mutableStateOf(false) }
+    var currentPhrase by remember { mutableStateOf("") }
+    var showPhrase by remember { mutableStateOf(true) }
+    var phraseBlur by remember { mutableStateOf(0.dp) }
 
     // Получаем следующую случайную фразу
     fun getNextRandomIndex(): Int {
@@ -276,90 +283,101 @@ fun AnimatedPhrases(
         }
 
         // Находим индекс, который еще не показывали
-        var nextIndex: Int
         val availableIndices = phrases.indices.filter { !shownIndices.contains(it) }
         
         return if (availableIndices.isNotEmpty()) {
             availableIndices.random()
         } else {
-            // Если все показаны (не должно происходить из-за проверки выше), берем случайный
             Random.nextInt(phrases.size)
         }
     }
 
+    // Инициализация первой фразы
     LaunchedEffect(Unit) {
-        // Начинаем со случайной фразы
         currentPhraseIndex = getNextRandomIndex()
         shownIndices = shownIndices + currentPhraseIndex
+        currentPhrase = phrases.getOrElse(currentPhraseIndex) { phrases.firstOrNull() ?: "" }
+    }
 
+    // Запуск анимации переключения через 5 секунд
+    LaunchedEffect(Unit) {
+        delay(5000) // Ждем 5 секунд перед началом переключения
+        
         while (true) {
-            delay(2500) // Показываем каждую фразу 2.5 секунды (стандарт)
-            val nextIndex = getNextRandomIndex()
-            shownIndices = shownIndices + nextIndex
-            currentPhraseIndex = nextIndex
+            if (!isAnimating) {
+                isAnimating = true
+                
+                // Анимация исчезновения с размытием
+                phraseBlur = 8.dp
+                delay(200)
+                showPhrase = false
+                
+                delay(300) // Пауза между фразами
+                
+                // Меняем фразу
+                val nextIndex = getNextRandomIndex()
+                shownIndices = shownIndices + nextIndex
+                currentPhraseIndex = nextIndex
+                currentPhrase = phrases.getOrElse(currentPhraseIndex) { phrases.firstOrNull() ?: "" }
+                
+                // Анимация появления с размытием
+                showPhrase = true
+                phraseBlur = 0.dp
+                
+                isAnimating = false
+            }
+            
+            delay(3000) // Показываем каждую фразу 3 секунды
         }
     }
 
-    // Анимация смены фраз с эффектом растворения
+    // Анимации для эффекта размытия
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (showPhrase) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (showPhrase) 400 else 300,
+            easing = FastOutSlowInEasing
+        ),
+        label = "phrase_alpha"
+    )
+
+    val animatedBlur by animateDpAsState(
+        targetValue = phraseBlur,
+        animationSpec = tween(
+            durationMillis = if (phraseBlur == 0.dp) 400 else 300,
+            easing = FastOutSlowInEasing
+        ),
+        label = "phrase_blur"
+    )
+
+    // Отображение фразы с эффектом размытия
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AnimatedContent(
-            targetState = currentPhraseIndex,
-            transitionSpec = {
-                // Плавное растворение и появление
-                (fadeIn(
-                    animationSpec = tween(
-                        durationMillis = 600,
-                        easing = FastOutSlowInEasing
-                    )
-                ) + scaleIn(
-                    initialScale = 0.92f,
-                    animationSpec = tween(
-                        durationMillis = 600,
-                        easing = FastOutSlowInEasing
-                    )
-                )) with (fadeOut(
-                    animationSpec = tween(
-                        durationMillis = 400,
-                        easing = FastOutSlowInEasing
-                    )
-                ) + scaleOut(
-                    targetScale = 1.08f,
-                    animationSpec = tween(
-                        durationMillis = 400,
-                        easing = FastOutSlowInEasing
-                    )
-                ))
-            },
-            label = "phrase_animation"
-        ) { index ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = phrases.getOrElse(index) { phrases.firstOrNull() ?: "" },
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 16.sp * 1.05f,
-                        lineHeight = 24.sp * 1.1f,
-                        fontWeight = FontWeight.Normal
-                    ),
-                    color = Color.Black
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    // Групповая альфа и эффекты считаются в offscreen-буфере
+                    alpha = animatedAlpha
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
+                // Размытие без обрезки по краям
+                .blur(
+                    radius = animatedBlur,
+                    edgeTreatment = BlurredEdgeTreatment.Unbounded
                 )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                // Минималистичные точки для индикации загрузки
-                AnimatedTypingDots(
-                    dotSize = 5.dp,
-                    dotSpacing = 2.dp,
-                    primaryColor = Color.Black.copy(alpha = 0.5f),
-                    secondaryColor = Color.Black.copy(alpha = 0.25f),
-                    animationDuration = 600
-                )
-            }
+        ) {
+            Text(
+                text = currentPhrase,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 15.sp * 1.05f,
+                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.1f,
+                    fontWeight = FontWeight.Normal
+                ),
+                color = Color.Black
+            )
         }
     }
 }

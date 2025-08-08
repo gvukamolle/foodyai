@@ -63,7 +63,7 @@ import com.example.calorietracker.components.chat.AnimatedRetryChip
 import androidx.compose.foundation.lazy.items
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
+
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -128,11 +128,32 @@ fun AnimatedMainScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
-    // Автопрокрутка к новым сообщениям
-    LaunchedEffect(viewModel.messages.size) {
+    // Автопрокрутка к новым сообщениям с улучшенной логикой
+    LaunchedEffect(viewModel.messages) {
         if (viewModel.messages.isNotEmpty()) {
-            coroutineScope.launch {
-                listState.animateScrollToItem(viewModel.messages.size - 1)
+            // Фильтруем сообщения без учета приветственного
+            val messagesToDisplay = if (viewModel.messages.firstOrNull()?.isWelcome == true) {
+                viewModel.messages.drop(1)
+            } else {
+                viewModel.messages
+            }
+            
+            if (messagesToDisplay.isNotEmpty()) {
+                // Ждем завершения анимации появления сообщения
+                delay(500) // Увеличенная задержка для завершения анимации
+                
+                // Плавная прокрутка только если есть что прокручивать
+                val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                val totalItems = messagesToDisplay.size - 1
+                
+                // Прокручиваем только если последний элемент не полностью видим
+                if (lastVisibleItemIndex < totalItems || 
+                    (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.offset ?: 0) > 0) {
+                    listState.animateScrollToItem(
+                        index = totalItems,
+                        scrollOffset = 0
+                    )
+                }
             }
         }
     }
@@ -485,7 +506,6 @@ private fun AnimatedContentDivider() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AnimatedChatContent(
     viewModel: CalorieTrackerViewModel,
@@ -512,15 +532,12 @@ private fun AnimatedChatContent(
                 items = messagesToDisplay,
                 key = { msg -> msg.id }
             ) { message ->
-                // Используем AnimatedMessageRemoval для плавного исчезновения
+                // Анимация появления сообщения без animateItemPlacement
                 AnimatedMessageWithBlur(
                     id = message.id,
                     isVisible = message.isVisible,
                     playAnimation = message.animate,
                     startDelay = if (message.animate && message.type == MessageType.AI) 750L else 0L,
-                    modifier = Modifier.animateItemPlacement(
-                        animationSpec = tween(300)
-                    ),
                     onAnimationStart = {
                         viewModel.markMessageAnimated(message)
                     }
@@ -1074,7 +1091,7 @@ fun MarkdownText(
     Text(
         text = annotatedString,
         style = style.copy(
-            fontSize = style.fontSize * 1.05f,
+            fontSize = 15.sp * 1.05f,
             lineHeight = style.lineHeight * 1.1f,
             fontWeight = FontWeight.Normal
         ),

@@ -28,27 +28,16 @@ fun FoodConfirmationCard(
 ) {
     val haptic = LocalHapticFeedback.current
     
-    // Анимация появления
-    var isVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        isVisible = true
-    }
-    
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
-        exit = fadeOut() + slideOutVertically()
+    Column(
+        modifier = modifier
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            ),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Column(
-            modifier = modifier
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                ),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
             // Основная карточка с данными
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -182,7 +171,7 @@ fun FoodConfirmationCard(
             }
         }
     }
-}
+
 
 @Composable
 private fun NutrientItem(
