@@ -29,6 +29,7 @@ import androidx.compose.ui.window.PopupProperties
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.CompositingStrategy
 
 /**
@@ -299,9 +300,9 @@ fun AnimatedPhrases(
         currentPhrase = phrases.getOrElse(currentPhraseIndex) { phrases.firstOrNull() ?: "" }
     }
 
-    // Запуск анимации переключения через 5 секунд
+    // Запуск анимации переключения через 3 секунды
     LaunchedEffect(Unit) {
-        delay(5000) // Ждем 5 секунд перед началом переключения
+        delay(3000) // Ждем 3 секунды перед началом переключения
         
         while (true) {
             if (!isAnimating) {
@@ -350,35 +351,32 @@ fun AnimatedPhrases(
         label = "phrase_blur"
     )
 
-    // Отображение фразы с эффектом размытия
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
+    // Фиксированный контейнер большего размера для размытия
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp) // Отступ сверху как у остальных сообщений
+            .graphicsLayer {
+                // Альфа для всего контейнера
+                alpha = animatedAlpha
+            }
+            .blur(
+                radius = animatedBlur,
+                edgeTreatment = BlurredEdgeTreatment.Unbounded // Позволяем размытию выходить за границы для мягкости
+            ),
+        contentAlignment = Alignment.CenterStart // Выравнивание по левому краю
     ) {
-        Box(
-            modifier = Modifier
-                .graphicsLayer {
-                    // Групповая альфа и эффекты считаются в offscreen-буфере
-                    alpha = animatedAlpha
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
-                // Размытие без обрезки по краям
-                .blur(
-                    radius = animatedBlur,
-                    edgeTreatment = BlurredEdgeTreatment.Unbounded
-                )
-        ) {
-            Text(
-                text = currentPhrase,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 15.sp * 1.05f,
-                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.1f,
-                    fontWeight = FontWeight.Normal
-                ),
-                color = Color.Black
-            )
-        }
+        Text(
+            text = currentPhrase,
+            modifier = Modifier.padding(start = 4.dp, end = 2.dp), // Отступы от краев чтобы размытие не резало глаза
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 15.sp * 1.05f,
+                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.1f,
+                fontWeight = FontWeight.Normal
+            ),
+            color = Color.Black,
+            textAlign = TextAlign.Start // Текст по левому краю как у обычных сообщений
+        )
     }
 }
 
