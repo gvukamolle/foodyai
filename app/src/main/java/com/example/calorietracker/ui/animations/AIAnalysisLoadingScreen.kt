@@ -142,7 +142,10 @@ private fun AILoadingRing() {
  */
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun AnimatedPhrases(inputMethod: String? = null) {
+fun AnimatedPhrases(
+    inputMethod: String? = null,
+    modifier: Modifier = Modifier
+) {
     // Базовые фразы для анализа еды
     val baseFoodPhrases = listOf(
         "Дайте подумать... 🤔",
@@ -298,46 +301,66 @@ fun AnimatedPhrases(inputMethod: String? = null) {
     }
 
     // Анимация смены фраз с эффектом растворения
-    AnimatedContent(
-        targetState = currentPhraseIndex,
-        transitionSpec = {
-            // Плавное растворение и появление
-            (fadeIn(
-                animationSpec = tween(
-                    durationMillis = 600,
-                    easing = FastOutSlowInEasing
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AnimatedContent(
+            targetState = currentPhraseIndex,
+            transitionSpec = {
+                // Плавное растворение и появление
+                (fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 600,
+                        easing = FastOutSlowInEasing
+                    )
+                ) + scaleIn(
+                    initialScale = 0.92f,
+                    animationSpec = tween(
+                        durationMillis = 600,
+                        easing = FastOutSlowInEasing
+                    )
+                )) with (fadeOut(
+                    animationSpec = tween(
+                        durationMillis = 400,
+                        easing = FastOutSlowInEasing
+                    )
+                ) + scaleOut(
+                    targetScale = 1.08f,
+                    animationSpec = tween(
+                        durationMillis = 400,
+                        easing = FastOutSlowInEasing
+                    )
+                ))
+            },
+            label = "phrase_animation"
+        ) { index ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = phrases.getOrElse(index) { phrases.firstOrNull() ?: "" },
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 16.sp * 1.05f,
+                        lineHeight = 24.sp * 1.1f,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    color = Color.Black
                 )
-            ) + scaleIn(
-                initialScale = 0.92f,
-                animationSpec = tween(
-                    durationMillis = 600,
-                    easing = FastOutSlowInEasing
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // Минималистичные точки для индикации загрузки
+                AnimatedTypingDots(
+                    dotSize = 5.dp,
+                    dotSpacing = 2.dp,
+                    primaryColor = Color.Black.copy(alpha = 0.5f),
+                    secondaryColor = Color.Black.copy(alpha = 0.25f),
+                    animationDuration = 600
                 )
-            )) with (fadeOut(
-                animationSpec = tween(
-                    durationMillis = 400,
-                    easing = FastOutSlowInEasing
-                )
-            ) + scaleOut(
-                targetScale = 1.08f,
-                animationSpec = tween(
-                    durationMillis = 400,
-                    easing = FastOutSlowInEasing
-                )
-            ))
-        },
-        label = "phrase_animation"
-    ) { index ->
-        Text(
-            text = phrases.getOrElse(index) { phrases.firstOrNull() ?: "" },
-            modifier = Modifier.padding(horizontal = 18.dp),
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            ),
-            textAlign = TextAlign.Center,
-            color = Color.Black.copy(alpha = 0.8f)
-        )
+            }
+        }
     }
 }
 

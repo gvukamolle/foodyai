@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.MessageType
 import com.example.calorietracker.ui.animations.*
+import com.example.calorietracker.ui.animations.AnimatedPhrases
 import com.example.calorietracker.utils.DailyResetUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -575,104 +576,130 @@ private fun AnimatedChatMessageCard(
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Основное сообщение
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = if (message.type == MessageType.USER) {
-                Arrangement.End
-            } else {
-                Arrangement.Start
-            }
-        ) {
-            val configuration = LocalConfiguration.current
-            val maxMessageWidth = (configuration.screenWidthDp * 2 / 3).dp
-
-            val showCard = !(
-                    (message.isProcessing && message.inputMethod == null) ||
-                            (message.content.isEmpty() && message.isExpandable && message.foodItem != null)
-                    )
-
-            if (showCard) {
-                Card(
-                    modifier = Modifier
-                        .widthIn(max = maxMessageWidth)
-                        .wrapContentWidth()
-                        .animateContentSize(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = when {
-                            message.type == MessageType.USER -> Color(0xFFDADADA)
-                            else -> Color(0xFFF3F4F6)
-                        }
-                    ),
-                    shape = RoundedCornerShape(
-                        topStart = 20.dp,
-                        topEnd = 20.dp,
-                        bottomStart = if (message.type == MessageType.USER) 20.dp else 6.dp,
-                        bottomEnd = if (message.type == MessageType.USER) 6.dp else 20.dp
-                    )
+        // Проверяем, нужно ли показывать сообщение без фона (текстовые ответы AI, ошибки и индикаторы загрузки)
+        val isPlainAIMessage = message.type == MessageType.AI && 
+            !(message.content.isEmpty() && message.isExpandable && message.foodItem != null) &&
+            message.foodItem == null // Исключаем сообщения с продуктами
+        
+        if (isPlainAIMessage) {
+            // Проверяем, является ли это индикатором загрузки
+            if (message.isProcessing) {
+                // Индикатор загрузки без фона на всю ширину
+                Column(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Проверяем, нужно ли показывать анимированные точки
-                    Column(
-                        modifier = Modifier.padding(12.dp)
-                    ) {
-                        // Проверяем, нужно ли показывать анимированные точки
-                        if (message.isProcessing) {
-                            Box(
-                                modifier = Modifier.padding(
-                                    horizontal = 12.dp,
-                                    vertical = 6.dp
-                                )
-                            ) {
-                                // Определяем метод ввода для AnimatedPhrases
-                                val method = when {
-                                    message.inputMethod != null -> message.inputMethod
-                                    message.content.startsWith("[АНАЛИЗ]") -> "analysis"
-                                    message.content.startsWith("[РЕЦЕПТ]") -> "recipe"
-                                    else -> "chat"
-                                }
-                                AnimatedPhrases(inputMethod = method)
-                            }
-                        } else {
-                            if (message.imagePath != null) {
-                                AsyncImage(
-                                    model = File(message.imagePath),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.FillWidth
-                                )
-                                if (message.content.isNotEmpty()) {
-                                    Spacer(Modifier.height(8.dp))
-                                }
-                            }
-                            if (message.content.isNotEmpty()) {
-                                MarkdownText(
-                                    text = message.content,
-                                    color = Color.Black
-                                )
-                            }
-                        }
+                    val method = when {
+                        message.inputMethod != null -> message.inputMethod
+                        message.content.startsWith("[АНАЛИЗ]") -> "analysis"
+                        message.content.startsWith("[РЕЦЕПТ]") -> "recipe"
+                        else -> "chat"
                     }
+                    AnimatedPhrases(inputMethod = method)
                 }
             } else {
-                // Отображаем индикатор загрузки или кнопку без карточки
-                if (message.isProcessing) {
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        SimpleChatTypingIndicator()
+                // Текстовые ответы AI без фона на всю ширину
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (message.content.isNotEmpty()) {
+                        MarkdownText(
+                            text = message.content,
+                            color = Color.Black,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
-                } else if (message.content.isEmpty() && message.isExpandable && message.foodItem != null) {
-                    if (message.foodItem.aiOpinion != null) {
-                        AnimatedAiChip(
-                            onClick = { onAiOpinionClick(message.foodItem!!) }
+                }
+            }
+        } else {
+            // Основное сообщение в bubble для сообщений пользователя и специальных AI сообщений
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = if (message.type == MessageType.USER) {
+                    Arrangement.End
+                } else {
+                    Arrangement.Start
+                }
+            ) {
+                val configuration = LocalConfiguration.current
+                val maxMessageWidth = (configuration.screenWidthDp * 2 / 3).dp
+
+                val showCard = !(
+                        (message.isProcessing && message.inputMethod == null) ||
+                                (message.content.isEmpty() && message.isExpandable && message.foodItem != null)
                         )
-                    } else {
-                        AnimatedMoreChip(
-                            onClick = { onAiOpinionClick(message.foodItem!!) }
+
+                if (showCard) {
+                    Card(
+                        modifier = Modifier
+                            .widthIn(max = maxMessageWidth)
+                            .wrapContentWidth()
+                            .animateContentSize(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFF3F4F6) // Единый светло-серый цвет для всех bubble
+                        ),
+                        shape = RoundedCornerShape(
+                            topStart = 20.dp,
+                            topEnd = 20.dp,
+                            bottomStart = if (message.type == MessageType.USER) 20.dp else 6.dp,
+                            bottomEnd = if (message.type == MessageType.USER) 6.dp else 20.dp
                         )
+                    ) {
+                        // Проверяем, нужно ли показывать анимированные точки
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            // Проверяем, нужно ли показывать анимированные точки
+                            if (message.isProcessing) {
+                                Box(
+                                    modifier = Modifier.padding(
+                                        horizontal = 12.dp,
+                                        vertical = 6.dp
+                                    )
+                                ) {
+                                    // Определяем метод ввода для AnimatedPhrases
+                                    val method = when {
+                                        message.inputMethod != null -> message.inputMethod
+                                        message.content.startsWith("[АНАЛИЗ]") -> "analysis"
+                                        message.content.startsWith("[РЕЦЕПТ]") -> "recipe"
+                                        else -> "chat"
+                                    }
+                                    AnimatedPhrases(inputMethod = method)
+                                }
+                            } else {
+                                if (message.imagePath != null) {
+                                    AsyncImage(
+                                        model = File(message.imagePath),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.FillWidth
+                                    )
+                                    if (message.content.isNotEmpty()) {
+                                        Spacer(Modifier.height(8.dp))
+                                    }
+                                }
+                                if (message.content.isNotEmpty()) {
+                                    MarkdownText(
+                                        text = message.content,
+                                        color = Color.Black
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Отображаем кнопки без карточки
+                    if (message.content.isEmpty() && message.isExpandable && message.foodItem != null) {
+                        if (message.foodItem.aiOpinion != null) {
+                            AnimatedAiChip(
+                                onClick = { onAiOpinionClick(message.foodItem!!) }
+                            )
+                        } else {
+                            AnimatedMoreChip(
+                                onClick = { onAiOpinionClick(message.foodItem!!) }
+                            )
+                        }
                     }
                 }
             }
