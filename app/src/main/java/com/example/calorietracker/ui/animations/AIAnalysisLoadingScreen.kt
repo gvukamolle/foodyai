@@ -351,93 +351,25 @@ fun AnimatedPhrases(
         label = "phrase_blur"
     )
 
-    // Фиксированный контейнер большего размера для размытия
-    Box(
+    // Отображение фразы БЕЗ ЕБАНОГО КОНТЕЙНЕРА - как в остальных системных сообщениях
+    Text(
+        text = currentPhrase,
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 8.dp) // Отступ сверху как у остальных сообщений
             .graphicsLayer {
-                // Альфа для всего контейнера
                 alpha = animatedAlpha
             }
             .blur(
                 radius = animatedBlur,
-                edgeTreatment = BlurredEdgeTreatment.Unbounded // Позволяем размытию выходить за границы для мягкости
+                edgeTreatment = BlurredEdgeTreatment.Unbounded
             ),
-        contentAlignment = Alignment.CenterStart // Выравнивание по левому краю
-    ) {
-        Text(
-            text = currentPhrase,
-            modifier = Modifier.padding(start = 4.dp, end = 2.dp), // Отступы от краев чтобы размытие не резало глаза
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 15.sp * 1.05f,
-                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.1f,
-                fontWeight = FontWeight.Normal
-            ),
-            color = Color.Black,
-            textAlign = TextAlign.Start // Текст по левому краю как у обычных сообщений
-        )
-    }
+        style = MaterialTheme.typography.bodyMedium.copy(
+            fontSize = 15.sp * 1.05f,
+            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.1f,
+            fontWeight = FontWeight.Normal
+        ),
+        color = Color.Black
+    )
 }
 
-@Composable
-fun AIAnalysisLoadingScreen(
-    modifier: Modifier = Modifier,
-    onDismiss: () -> Unit = {},
-    showDismissButton: Boolean = false,
-    inputMethod: String? = null // Новый параметр
-) {
-    FullscreenEffectContainer(onDismiss = onDismiss) {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(bottom = 16.dp, top = 24.dp, start = 24.dp, end = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Spacer(modifier = Modifier.weight(1f))
-
-            AILoadingRing()
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Bottom
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AnimatedPhrases(inputMethod = inputMethod)
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                if (showDismissButton) {
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(28.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Black,
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text(
-                            text = "Отменить",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-}

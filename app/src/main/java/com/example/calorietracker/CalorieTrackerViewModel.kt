@@ -48,7 +48,8 @@ import kotlin.math.roundToInt
 import com.example.calorietracker.utils.AIUsageManager
 import java.util.UUID
 import java.time.LocalTime
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 
 // Обновленная структура сообщения с поддержкой ошибок и повторной отправки
 data class ChatMessage(
@@ -235,6 +236,8 @@ class CalorieTrackerViewModel(
     var showAILoadingScreen by mutableStateOf(false)
         private set
 
+    private var loadingJob: Job? = null
+
     var isDailyAnalysisEnabled by mutableStateOf(false)
         private set
     var isRecordMode by mutableStateOf(false)
@@ -286,13 +289,7 @@ class CalorieTrackerViewModel(
                         content = userQuery,
                         animate = true
                     )
-                    messages = messages + ChatMessage(
-                        type = MessageType.AI,
-                        content = "",
-                        isProcessing = true,
-                        inputMethod = "analysis",
-                        animate = true
-                    )
+                    startLoadingPhrases("analysis")
                 }
                 val mealsData = meals.flatMap { meal ->
                     meal.foods.map { food ->
@@ -326,7 +323,7 @@ class CalorieTrackerViewModel(
 
                 val answer = sendWatchMyFoodRequest(request)
                 if (userQuery.isNotBlank()) {
-                    messages = messages.filter { !it.isProcessing }
+                    stopLoadingPhrases()
                     if (answer != null) {
                         messages = messages + ChatMessage(
                             type = MessageType.AI,
@@ -684,13 +681,7 @@ class CalorieTrackerViewModel(
         )
         
         // Сообщение с анимацией ожидания
-        val loadingMessage = ChatMessage(
-            type = MessageType.AI,
-            content = "",
-            isProcessing = true,
-            inputMethod = "photo"
-        )
-        messages = messages + loadingMessage
+        startLoadingPhrases("photo")
 
         // Больше не нужно временное сообщение - у нас есть полноэкранная загрузка
         // val tempMessage = ChatMessage(...) - УДАЛЕНО
@@ -743,14 +734,14 @@ class CalorieTrackerViewModel(
 
             // 4. Обрабатываем ответ
             if (!response.isSuccess) {
-                removeMessageWithAnimation(loadingMessage.id)
+                stopLoadingPhrases()
                 handleError("Ошибка соединения", lastApiCall)
                 return
             }
 
             val result = response.getOrNull()
             if (result?.answer == null) {
-                removeMessageWithAnimation(loadingMessage.id)
+                stopLoadingPhrases()
                 handleError("Сервер не вернул данные", lastApiCall)
                 return
             }
@@ -766,7 +757,7 @@ class CalorieTrackerViewModel(
                     "нет", "no" -> {
                         // Еда не найдена
                         // Удаляем сообщение обработки
-                        removeMessageWithAnimation(loadingMessage.id)
+                        stopLoadingPhrases()
                         messages = messages + ChatMessage(
                             type = MessageType.AI,
                             content = "❌ На фото не обнаружено еды. Попробуйте сделать другое фото или введите данные вручную."
@@ -794,7 +785,7 @@ class CalorieTrackerViewModel(
                         Log.d("CalorieTracker", "Создан FoodItem с AI мнением: $foodItem")
                         
                         // Удаляем только текущее сообщение обработки
-                        removeMessageWithAnimation(loadingMessage.id)
+                        stopLoadingPhrases()
                         
                         // Добавляем карточку подтверждения еды
                         messages = messages + ChatMessage(
@@ -810,18 +801,18 @@ class CalorieTrackerViewModel(
 
                     else -> {
                         // Неизвестный ответ
-                        removeMessageWithAnimation(loadingMessage.id)
+                        stopLoadingPhrases()
                         handleError("Не удалось определить тип продукта", lastApiCall)
                     }
                 }
             } catch (e: Exception) {
                 Log.e("CalorieTracker", "Ошибка парсинга ответа", e)
-                removeMessageWithAnimation(loadingMessage.id)
+                stopLoadingPhrases()
                 handleError("Неверный формат ответа от сервера", lastApiCall)
             }
         } catch (e: Exception) {
         // showAILoadingScreen = false  // Отключено
-        removeMessageWithAnimation(loadingMessage.id)
+            stopLoadingPhrases()
             handleError("Ошибка анализа изображения: ${e.message}", lastApiCall)
             } finally {
             // showAILoadingScreen = false  // Отключено
@@ -864,17 +855,11 @@ class CalorieTrackerViewModel(
             }
 
             // Сообщение с анимацией ожидания
-            val loadingMessage = ChatMessage(
-                type = MessageType.AI,
-                content = "",
-                isProcessing = true,
-                inputMethod = "text"
-            )
-            messages = messages + loadingMessage
+            startLoadingPhrases("text")
 
             if (!checkInternetConnection()) {
                 // showAILoadingScreen = false  // Отключено
-                removeMessageWithAnimation(loadingMessage.id)
+                stopLoadingPhrases()
                 handleError("Нет подключения к интернету", {
                     pendingDescription = textToAnalyze
                     analyzeDescription()
@@ -913,18 +898,18 @@ class CalorieTrackerViewModel(
                     )
                     }
 
-                    // Скрываем экран загрузки после получения ответа
-                    // showAILoadingScreen = false // Отключено
+                // Скрываем экран загрузки после получения ответа
+                // showAILoadingScreen = false // Отключено
 
-                    if (!response.isSuccess) {
-                    removeMessageWithAnimation(loadingMessage.id)
+                if (!response.isSuccess) {
+                    stopLoadingPhrases()
                     handleError("Ошибка соединения", lastApiCall)
                     return@launch
                 }
 
                 val answer = response.getOrNull()?.answer
                 if (answer == null) {
-                    removeMessageWithAnimation(loadingMessage.id)
+                    stopLoadingPhrases()
                     handleError("Сервер не вернул данные", lastApiCall)
                     return@launch
                 }
@@ -944,7 +929,7 @@ class CalorieTrackerViewModel(
                 )
                 
                 // Удаляем текущее сообщение обработки
-                removeMessageWithAnimation(loadingMessage.id)
+                stopLoadingPhrases()
 
                 // Всегда добавляем карточку подтверждения еды
                 messages = messages + ChatMessage(
@@ -964,7 +949,7 @@ class CalorieTrackerViewModel(
             } catch (e: Exception) {
                 // showAILoadingScreen = false  // Отключено
                 Log.e("CalorieTracker", "Ошибка анализа описания", e)
-                removeMessageWithAnimation(loadingMessage.id)
+                stopLoadingPhrases()
                 handleError("Не удалось проанализировать", lastApiCall)
             } finally {
                 // showAILoadingScreen = false  // Отключено
@@ -1304,28 +1289,17 @@ class CalorieTrackerViewModel(
 
                 // Определяем метод ввода для анимации
                 val method = if (isRecipeMode) "recipe" else "chat"
-                val tempMessage = ChatMessage(
-                    type = MessageType.AI,
-                    content = "",
-                    isProcessing = true,
-                    inputMethod = method
-                )
-                messages = messages + tempMessage
+                startLoadingPhrases(method)
 
                 // Сохраняем функцию для повторной отправки
                 lastApiCall = {
                     viewModelScope.launch {
-                        val retryMessage = ChatMessage(
-                            type = MessageType.AI,
-                            content = "",
-                            isProcessing = true,
-                            inputMethod = method
-                        )
-                        messages = messages + retryMessage
-                        sendChatMessageInternal(userMessage, isFirstOfDay, method, retryMessage.id)                    }
+                        startLoadingPhrases(method)
+                        sendChatMessageInternal(userMessage, isFirstOfDay)
+                    }
                 }
 
-                sendChatMessageInternal(userMessage, isFirstOfDay, method, tempMessage.id)
+                sendChatMessageInternal(userMessage, isFirstOfDay)
             } else {
                 val offlineResponse = getOfflineResponse(userMessage)
                 messages = messages + ChatMessage(
@@ -1338,10 +1312,8 @@ class CalorieTrackerViewModel(
 
     // Новый внутренний метод для отправки сообщения
     private suspend fun sendChatMessageInternal(
-        userMessage: String, 
-        isFirstOfDay: Boolean, 
-        method: String,
-        loadingMessageId: String
+        userMessage: String,
+        isFirstOfDay: Boolean
     ) {
         try {
             val profileData = userProfile.toNetworkProfile()
@@ -1359,7 +1331,7 @@ class CalorieTrackerViewModel(
                 )
             }
 
-            removeMessageWithAnimation(loadingMessageId)
+            stopLoadingPhrases()
 
             if (response.isSuccess) {
                 val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
@@ -1388,7 +1360,7 @@ class CalorieTrackerViewModel(
                 messages = messages + errorMsg
             }
         } catch (e: Exception) {
-            removeMessageWithAnimation(loadingMessageId)
+            stopLoadingPhrases()
             val errorMsgId = UUID.randomUUID().toString()
             val errorMsg = ChatMessage(
                 id = errorMsgId,
@@ -1435,13 +1407,7 @@ class CalorieTrackerViewModel(
 
         // Определяем метод ввода для анимации
         val method = if (isRecipeMode) "recipe" else "chat"
-        val loadingMessage = ChatMessage(
-            type = MessageType.AI,
-            content = "",
-            isProcessing = true,
-            inputMethod = method
-        )
-        messages = messages + loadingMessage
+        startLoadingPhrases(method)
 
         try {
             val tempFile = File.createTempFile("chat_photo", ".jpg", context.cacheDir)
@@ -1474,7 +1440,7 @@ class CalorieTrackerViewModel(
                 )
             }
 
-            removeMessageWithAnimation(loadingMessage.id)
+            stopLoadingPhrases()
 
             if (response.isSuccess) {
                 val answer = response.getOrNull()?.answer ?: "Ответ от AI не получен."
@@ -1503,7 +1469,7 @@ class CalorieTrackerViewModel(
                 messages = messages + errorMsg
             }
         } catch (e: Exception) {
-            removeMessageWithAnimation(loadingMessage.id)
+            stopLoadingPhrases()
             val errorMsgId = UUID.randomUUID().toString()
             val errorMsg = ChatMessage(
                 id = errorMsgId,
@@ -1704,6 +1670,140 @@ class CalorieTrackerViewModel(
         messages = messages.filterNot { it.foodItem == food }
     }
 
+    private fun getLoadingPhrases(inputMethod: String?): List<String> {
+        val baseFoodPhrases = listOf(
+            "Дайте подумать... 🤔",
+            "Так, это похоже на еду... 🍽️",
+            "Мне кажется это съедобно... 🧐",
+            "Активирую нейросети... 🧠",
+            "Анализирую молекулярный состав... 🔬",
+            "Проверяю базу данных вкусняшек... 📚",
+            "Хм, выглядит аппетитно... 😋",
+            "Применяю магию подсчета КБЖУ... ✨",
+            "Почти готово, еще чуть-чуть... ⏳",
+            "AI в замешательстве... 🤖"
+        )
+
+        val photoPhrases = listOf(
+            "Считаю калории по пикселям... 📸",
+            "Сканирую изображение... 🖼️",
+            "Рассматриваю под микроскопом... 🔍",
+            "Это точно не торт? 🎂",
+            "Определяю продукт по фото... 📷",
+            "Анализирую цвета и текстуры... 🎨"
+        )
+
+        val textFoodPhrases = listOf(
+            "Читаю ваше описание... 📖",
+            "Разбираю текст по буквам... 📝",
+            "Понимаю, о чем вы говорите... 💬",
+            "Ищу в базе по описанию... 🔎",
+            "Обрабатываю ваши слова... 💭",
+            "Перевожу текст в калории... 📊"
+        )
+
+        val macrosPhrases = listOf(
+            "Сканирую на предмет белков... 🥩",
+            "Ищу спрятанные углеводы... 🍞",
+            "Жиры, покажитесь! 🧈",
+            "Подсчитываю БЖУ... 🧮"
+        )
+
+        val chatPhrases = listOf(
+            "Размышляю над ответом... 💭",
+            "Формулирую мысли... 🤔",
+            "Подбираю нужные слова... 📝",
+            "Обдумываю ваш вопрос... 🧠",
+            "Готовлю ответ... ⏳",
+            "Консультируюсь с базой знаний... 📚",
+            "Анализирую контекст... 🔍",
+            "Почти готов ответить... 🎯",
+            "Обрабатываю информацию... 💡",
+            "Секундочку, думаю... ⚡"
+        )
+
+        val analysisPhrases = listOf(
+            "Изучаю ваш рацион... 📊",
+            "Анализирую статистику дня... 📈",
+            "Считаю общее КБЖУ... 🧮",
+            "Проверяю баланс нутриентов... ⚖️",
+            "Оцениваю полезность питания... 🥗",
+            "Сравниваю с вашими целями... 🎯",
+            "Ищу паттерны в питании... 🔍",
+            "Готовлю персональные советы... 💡",
+            "Анализирую калорийность... 🔥",
+            "Формирую рекомендации... 📋"
+        )
+
+        val recipePhrases = listOf(
+            "Придумываю рецепт... 👨‍🍳",
+            "Подбираю ингредиенты... 🥕",
+            "Рассчитываю пропорции... ⚖️",
+            "Вспоминаю кулинарные секреты... 🔐",
+            "Колдую на кухне... ✨",
+            "Составляю список продуктов... 📝",
+            "Определяю время готовки... ⏲️",
+            "Продумываю этапы приготовления... 📋",
+            "Адаптирую под ваши предпочтения... 🎯",
+            "Создаю кулинарный шедевр... 🍳"
+        )
+
+        val phrases = mutableListOf<String>()
+        when (inputMethod) {
+            "photo" -> {
+                phrases.addAll(baseFoodPhrases)
+                phrases.addAll(photoPhrases)
+                phrases.addAll(macrosPhrases)
+            }
+            "text" -> {
+                phrases.addAll(baseFoodPhrases)
+                phrases.addAll(textFoodPhrases)
+                phrases.addAll(macrosPhrases)
+            }
+            "analysis" -> phrases.addAll(analysisPhrases)
+            "recipe" -> phrases.addAll(recipePhrases)
+            else -> phrases.addAll(chatPhrases)
+        }
+        return phrases
+    }
+
+    private fun startLoadingPhrases(inputMethod: String?) {
+        loadingJob?.cancel()
+        loadingJob = viewModelScope.launch {
+            val phrases = getLoadingPhrases(inputMethod).shuffled()
+            var index = 0
+            var previousId: String? = null
+            while (isActive) {
+                val phrase = phrases[index % phrases.size]
+                index++
+                val msg = ChatMessage(
+                    type = MessageType.AI,
+                    content = phrase,
+                    isProcessing = true,
+                    inputMethod = inputMethod,
+                    animate = true
+                )
+                messages = messages + msg
+                previousId?.let { removeMessageWithAnimation(it) }
+                previousId = msg.id
+
+                var elapsed = 0
+                while (elapsed < 3000 && isActive) {
+                    delay(100)
+                    elapsed += 100
+                }
+                if (!isActive) break
+            }
+        }
+    }
+
+    private fun stopLoadingPhrases() {
+        loadingJob?.cancel()
+        loadingJob = null
+        val ids = messages.filter { it.isProcessing }.map { it.id }
+        ids.forEach { removeMessageWithAnimation(it) }
+    }
+
     // Методы для экрана аналитики
     fun getTodayData(): com.example.calorietracker.data.DayData? {
         val today = LocalDate.now()
@@ -1766,14 +1866,7 @@ class CalorieTrackerViewModel(
             inputMessage = ""
 
             // Показываем индикатор обработки
-            val processingMessage = ChatMessage(
-                type = MessageType.AI,
-                content = "",
-                isProcessing = true,
-                inputMethod = "analysis",
-                animate = true
-            )
-            messages = messages + processingMessage
+            startLoadingPhrases("analysis")
             
             try {
 
@@ -1859,7 +1952,7 @@ class CalorieTrackerViewModel(
                 }
 
                 // Удаляем текущее сообщение обработки
-                removeMessageWithAnimation(processingMessage.id)
+                stopLoadingPhrases()
 
                 // Добавляем ответ AI
                 response.onSuccess { analysisResponse ->
@@ -1887,7 +1980,7 @@ class CalorieTrackerViewModel(
 
             } catch (e: Exception) {
                 // Удаляем сообщение обработки в случае ошибки
-                messages = messages.filter { !it.isProcessing }
+                stopLoadingPhrases()
 
                 val errorMsgId = UUID.randomUUID().toString()
                 val errorMsg = ChatMessage(

@@ -159,7 +159,7 @@ fun AnimatedMessageWithBlur(
     val animatedAlpha by animateFloatAsState(
         targetValue = if (show && isVisible) 1f else 0f,
         animationSpec = tween(
-            durationMillis = if (isVisible) 400 else 300,
+            durationMillis = 400,
             easing = FastOutSlowInEasing
         ),
         label = "alpha"
@@ -168,7 +168,7 @@ fun AnimatedMessageWithBlur(
     val animatedBlur by animateDpAsState(
         targetValue = blur,
         animationSpec = tween(
-            durationMillis = if (isVisible) 400 else 300,
+            durationMillis = 400,
             easing = FastOutSlowInEasing
         ),
         label = "blur"

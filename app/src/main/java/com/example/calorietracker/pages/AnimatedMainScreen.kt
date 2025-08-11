@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -36,20 +35,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calorietracker.CalorieTrackerViewModel
 import com.example.calorietracker.MessageType
-import com.example.calorietracker.ui.animations.*
-import com.example.calorietracker.ui.animations.AnimatedPhrases
 import com.example.calorietracker.utils.DailyResetUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.util.Locale
 import com.example.calorietracker.pages.subscription.AILimitDialog
 import com.example.calorietracker.auth.UserData
 import com.example.calorietracker.ui.components.AIUsageToolbarIndicator
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.WindowInsets
@@ -63,7 +58,6 @@ import com.example.calorietracker.components.chat.AnimatedRetryChip
 import androidx.compose.foundation.lazy.items
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -89,6 +83,8 @@ import com.example.calorietracker.FoodItem
 import com.example.calorietracker.managers.AppMode
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.example.calorietracker.ui.animations.AnimatedMessage
+import androidx.compose.ui.draw.alpha
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -537,7 +533,7 @@ private fun AnimatedChatContent(
                     id = message.id,
                     isVisible = message.isVisible,
                     playAnimation = message.animate,
-                    startDelay = if (message.animate && message.type == MessageType.AI) 750L else 0L,
+                    startDelay = if (message.animate && message.type == MessageType.AI && !message.isProcessing) 750L else 200L,
                     onAnimationStart = {
                         viewModel.markMessageAnimated(message)
                     }
@@ -594,37 +590,21 @@ private fun AnimatedChatMessageCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         // Проверяем, нужно ли показывать сообщение без фона (текстовые ответы AI, ошибки и индикаторы загрузки)
-        val isPlainAIMessage = message.type == MessageType.AI && 
+        val isPlainAIMessage = message.type == MessageType.AI &&
             !(message.content.isEmpty() && message.isExpandable && message.foodItem != null) &&
             message.foodItem == null // Исключаем сообщения с продуктами
         
         if (isPlainAIMessage) {
-            // Проверяем, является ли это индикатором загрузки
-            if (message.isProcessing) {
-                // Индикатор загрузки без фона на всю ширину
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val method = when {
-                        message.inputMethod != null -> message.inputMethod
-                        message.content.startsWith("[АНАЛИЗ]") -> "analysis"
-                        message.content.startsWith("[РЕЦЕПТ]") -> "recipe"
-                        else -> "chat"
-                    }
-                    AnimatedPhrases(inputMethod = method)
-                }
-            } else {
-                // Текстовые ответы AI без фона на всю ширину
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (message.content.isNotEmpty()) {
-                        MarkdownText(
-                            text = message.content,
-                            color = Color.Black,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+            // Текстовые ответы AI и загрузочные сообщения без фона
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (message.content.isNotEmpty()) {
+                    MarkdownText(
+                        text = message.content,
+                        color = Color.Black,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         } else {
@@ -667,20 +647,11 @@ private fun AnimatedChatMessageCard(
                         ) {
                             // Проверяем, нужно ли показывать анимированные точки
                             if (message.isProcessing) {
-                                Box(
-                                    modifier = Modifier.padding(
-                                        horizontal = 12.dp,
-                                        vertical = 6.dp
+                                if (message.content.isNotEmpty()) {
+                                    MarkdownText(
+                                        text = message.content,
+                                        color = Color.Black
                                     )
-                                ) {
-                                    // Определяем метод ввода для AnimatedPhrases
-                                    val method = when {
-                                        message.inputMethod != null -> message.inputMethod
-                                        message.content.startsWith("[АНАЛИЗ]") -> "analysis"
-                                        message.content.startsWith("[РЕЦЕПТ]") -> "recipe"
-                                        else -> "chat"
-                                    }
-                                    AnimatedPhrases(inputMethod = method)
                                 }
                             } else {
                                 if (message.imagePath != null) {
