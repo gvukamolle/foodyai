@@ -27,18 +27,19 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.auth.SubscriptionPlan
-import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.pages.*
 import com.example.calorietracker.pages.settings.*
 import com.example.calorietracker.pages.subscription.SubscriptionPlansScreen
 import com.example.calorietracker.ui.theme.CalorieTrackerTheme
 import com.example.calorietracker.workers.CleanupWorker
-import kotlinx.coroutines.launch
-import com.example.calorietracker.pages.subscription.SubscriptionPlansScreen
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 import androidx.core.view.WindowCompat
 
 
@@ -86,7 +87,9 @@ private fun decodeBitmapWithOrientation(context: Context, uri: Uri): Bitmap? {
     }
 }
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var authManager: AuthManager
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkGooglePlayServices()
@@ -95,11 +98,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            val repository = remember { DataRepository(this@MainActivity) }
-            val authManager = remember { AuthManager(this@MainActivity) }
-            val viewModel: CalorieTrackerViewModel = remember {
-                CalorieTrackerViewModel(repository, this@MainActivity, authManager)
-            }
+            val viewModel: CalorieTrackerViewModel = hiltViewModel()
 
             CalorieTrackerTheme {
                 CalorieTrackerApp(authManager, viewModel, this@MainActivity)

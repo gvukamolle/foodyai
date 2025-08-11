@@ -3,53 +3,49 @@ package com.example.calorietracker
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.calorietracker.data.DataRepository
-import com.example.calorietracker.data.UserProfile
-import com.example.calorietracker.network.*
-import com.example.calorietracker.utils.NetworkUtils
-import com.example.calorietracker.network.safeApiCall
-import com.example.calorietracker.utils.calculateAge
-import com.example.calorietracker.utils.getOrCreateUserId
-import com.example.calorietracker.managers.NetworkManager
-import com.example.calorietracker.managers.OfflineManager
-import com.example.calorietracker.managers.AppMode
-import com.google.gson.Gson
-import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import java.io.File
-import java.io.FileOutputStream
-import kotlin.math.round
-import okhttp3.RequestBody.Companion.toRequestBody
-import android.widget.Toast
-import androidx.compose.ui.graphics.Color
 import com.example.calorietracker.auth.AuthManager
 import com.example.calorietracker.auth.UserData
 import com.example.calorietracker.data.DailyIntake
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import com.example.calorietracker.data.DailyNutritionSummary
+import com.example.calorietracker.data.DataRepository
+import com.example.calorietracker.data.UserProfile
+import com.example.calorietracker.managers.AppMode
+import com.example.calorietracker.managers.NetworkManager
+import com.example.calorietracker.managers.OfflineManager
+import com.example.calorietracker.network.*
 import com.example.calorietracker.network.LogFoodRequest
-import com.example.calorietracker.network.FoodItemData
-import com.example.calorietracker.utils.DailyResetUtils
+import com.example.calorietracker.utils.*
+import com.google.gson.Gson
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.example.calorietracker.data.DailyNutritionSummary
-import com.example.calorietracker.utils.NutritionFormatter
-import kotlin.math.roundToInt
-import com.example.calorietracker.utils.AIUsageManager
-import java.util.UUID
-import java.time.LocalTime
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
+import java.io.FileOutputStream
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.UUID
+import kotlin.math.round
+import kotlin.math.roundToInt
 
 // Обновленная структура сообщения с поддержкой ошибок и повторной отправки
 data class ChatMessage(
@@ -114,15 +110,16 @@ data class FoodHistoryItem(
     val timestamp: LocalDateTime
 )
 
-class CalorieTrackerViewModel(
+@HiltViewModel
+class CalorieTrackerViewModel @Inject constructor(
     internal val repository: DataRepository,
-    private val context: Context,
-    private val authManager: AuthManager
+    @ApplicationContext private val context: Context,
+    private val authManager: AuthManager,
+    private val networkManager: NetworkManager
 ) : ViewModel() {
     val userId = getOrCreateUserId(context)
     
     // Менеджеры для офлайн-режима
-    private val networkManager = NetworkManager(context)
     private val offlineManager = OfflineManager(networkManager, viewModelScope)
     
     // Публичный доступ к состоянию приложения

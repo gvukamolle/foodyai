@@ -1,15 +1,17 @@
 package com.example.calorietracker.auth
 
 import android.content.Context
+import android.util.Log
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CompletableJob
-import com.google.firebase.auth.EmailAuthProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,8 +23,6 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.Date
-import kotlinx.coroutines.tasks.await
-import android.util.Log
 
 // Модель данных пользователя
 data class UserData(
@@ -40,9 +40,12 @@ data class UserData(
     val aiUsageResetDate: Long = 0 // Дата сброса счетчика
 )
 
-class AuthManager(private val context: Context) {
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    private val firestore: FirebaseFirestore = Firebase.firestore
+@Singleton
+class AuthManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore
+) {
 
     // Поток с текущим пользователем (наши данные UserData)
     private val _currentUser = MutableStateFlow<UserData?>(null)

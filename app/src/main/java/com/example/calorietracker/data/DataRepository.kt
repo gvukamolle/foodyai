@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.calorietracker.utils.DailyResetUtils
 import com.google.gson.Gson
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.time.LocalDate
@@ -15,7 +18,8 @@ import java.time.LocalDateTime
  * Все данные хранятся в SharedPreferences.
  * @param context Контекст приложения, необходимый для доступа к SharedPreferences.
  */
-class DataRepository(context: Context) {
+@Singleton
+class DataRepository @Inject constructor(@ApplicationContext context: Context) {
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("calorie_tracker_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
 
