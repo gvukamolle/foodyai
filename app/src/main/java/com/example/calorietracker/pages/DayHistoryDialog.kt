@@ -29,9 +29,9 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.example.calorietracker.data.DailyIntake
 import com.example.calorietracker.data.DailyNutritionSummary
-import com.example.calorietracker.FoodItem
-import com.example.calorietracker.Meal
-import com.example.calorietracker.MealType
+import com.example.calorietracker.data.FoodItem
+import com.example.calorietracker.data.Meal
+import com.example.calorietracker.data.MealType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -361,24 +361,22 @@ fun DayHistoryDialog(
                 return per100.toString()
             }
 
-            EnhancedManualInputDialog(
-                initialData = ManualInputData(
-                    name = food.name,
-                    caloriesPer100g = ((food.calories.toFloat() * 100f / weight).roundToInt()).toString(),
-                    proteinsPer100g = per100(food.protein),
-                    fatsPer100g = per100(food.fat),
-                    carbsPer100g = per100(food.carbs),
-                    weight = food.weight
-                ),
+            com.example.calorietracker.components.ManualFoodInputDialog(
+                initialFoodName = food.name,
+                initialCalories = ((food.calories.toFloat() * 100f / weight).roundToInt()).toString(),
+                initialProteins = per100(food.protein),
+                initialFats = per100(food.fat),
+                initialCarbs = per100(food.carbs),
+                initialWeight = food.weight,
                 onDismiss = { editIndex = null },
-                onConfirm = { data ->
+                onConfirm = { name, calories, proteins, fats, carbs, weight ->
                     val updatedFood = FoodItem(
-                        name = data.name,
-                        calories = data.totalCalories.roundToInt(),
-                        protein = data.totalProteins.toDouble(),
-                        fat = data.totalFats.toDouble(),
-                        carbs = data.totalCarbs.toDouble(),
-                        weight = data.weight,
+                        name = name,
+                        calories = calories.toFloatOrNull()?.roundToInt() ?: 0,
+                        protein = proteins.toDoubleOrNull() ?: 0.0,
+                        fat = fats.toDoubleOrNull() ?: 0.0,
+                        carbs = carbs.toDoubleOrNull() ?: 0.0,
+                        weight = weight,
                         aiOpinion = food.aiOpinion
                     )
                     val updatedMeal = meal.copy(foods = listOf(updatedFood))

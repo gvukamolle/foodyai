@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
 import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.data.DailyIntake
 import com.example.calorietracker.data.DailyNutritionSummary

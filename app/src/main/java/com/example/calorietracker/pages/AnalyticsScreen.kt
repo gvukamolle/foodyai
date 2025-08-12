@@ -43,12 +43,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
 import com.example.calorietracker.data.DayData
 import com.example.calorietracker.extensions.fancyShadow
 import com.example.calorietracker.network.*
 import com.example.calorietracker.utils.NutritionFormatter
 import com.google.gson.Gson
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -175,7 +177,7 @@ fun AnalyticsScreen(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onBack()
                 },
-                onExport = { /* TODO: Экспорт данных */ }
+                onExport = { /* Data export functionality not implemented yet */ }
             )
         },
         containerColor = AnalyticsColors.Background
@@ -685,8 +687,12 @@ private suspend fun performAIAnalysis(
         )
 
         // Отправляем запрос на сервер
+        val tempRetrofit = Retrofit.Builder()
+            .baseUrl(MakeService.BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
         val response = safeApiCall {
-            NetworkModule.makeService.analyzeWeeklyData(
+            tempRetrofit.create(MakeService::class.java).analyzeWeeklyData(
                 webhookId = MakeService.WEBHOOK_ID,
                 request = request
             )
@@ -695,7 +701,8 @@ private suspend fun performAIAnalysis(
         if (response.isSuccess) {
             val answer = response.getOrNull()?.answer
             if (answer != null) {
-                val analysisResponse = Gson().fromJson(answer, AIAnalysisResponse::class.java)
+                val gson = Gson()
+                val analysisResponse = gson.fromJson(answer, AIAnalysisResponse::class.java) as AIAnalysisResponse
                 onResult(analysisResponse)
             } else {
                 onResult(null)
@@ -908,7 +915,7 @@ private fun MonthlyLineChart(
     data: List<Pair<LocalDate, DayData?>>,
     userProfile: com.example.calorietracker.data.UserProfile
 ) {
-    // TODO: Реализовать линейный график для месяца
+    // Monthly linear chart implementation placeholder
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -925,7 +932,7 @@ private fun YearlyHeatMap(
     data: List<Pair<LocalDate, DayData?>>,
     userProfile: com.example.calorietracker.data.UserProfile
 ) {
-    // TODO: Реализовать тепловую карту для года
+    // Yearly heatmap implementation placeholder
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center

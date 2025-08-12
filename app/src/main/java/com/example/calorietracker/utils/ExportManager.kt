@@ -5,7 +5,7 @@ package com.example.calorietracker.utils
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
-import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
 import com.google.gson.GsonBuilder
 import java.io.File
 import java.time.LocalDate

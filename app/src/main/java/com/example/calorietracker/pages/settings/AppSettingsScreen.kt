@@ -56,7 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
 import com.example.calorietracker.utils.CacheManager
 import com.example.calorietracker.utils.ExportManager
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
@@ -224,12 +224,12 @@ fun AppSettingsScreen(
             ) {
                 ClickableSettingItem(
                     title = "Политика конфиденциальности",
-                    onClick = { /* TODO: Open privacy policy */ }
+                    onClick = { /* Privacy policy link not implemented yet */ }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 ClickableSettingItem(
                     title = "Условия использования",
-                    onClick = { /* TODO: Open terms */ }
+                    onClick = { /* Terms of service link not implemented yet */ }
                 )
             }
 

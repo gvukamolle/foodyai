@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import com.example.calorietracker.FoodItem
+import com.example.calorietracker.data.FoodItem
 import com.example.calorietracker.utils.NutritionFormatter
 
 @Composable
@@ -28,16 +28,20 @@ fun FoodDetailScreen(
 ) {
     val haptic = LocalHapticFeedback.current
     
-    AnimatedDialogContainer(
-        onDismiss = onDismiss,
-        accentColor = DialogColors.Photo
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    com.example.calorietracker.components.AnimatedPopup(
+        onDismissRequest = onDismiss
+    ) { animatedDismiss ->
+        Card(
+            modifier = Modifier.widthIn(max = 360.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Название продукта
@@ -123,7 +127,7 @@ fun FoodDetailScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    color = DialogColors.Photo.copy(alpha = 0.1f)
+                    color = Color(0xFF2196F3).copy(alpha = 0.1f)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -135,13 +139,13 @@ fun FoodDetailScreen(
                             Icon(
                                 imageVector = Icons.Default.AutoAwesome,
                                 contentDescription = null,
-                                tint = DialogColors.Photo,
+                                tint = Color(0xFF2196F3),
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
                                 text = "Анализ от Foody AI",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = DialogColors.Photo,
+                                color = Color(0xFF2196F3),
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -207,6 +211,7 @@ fun FoodDetailScreen(
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
+            }
             }
         }
     }

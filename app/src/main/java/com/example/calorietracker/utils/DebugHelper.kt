@@ -1,9 +1,9 @@
 package com.example.calorietracker.utils
 
 import android.util.Log
-import com.example.calorietracker.CalorieTrackerViewModel
-import com.example.calorietracker.FoodItem
-import com.example.calorietracker.MealType
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
+import com.example.calorietracker.data.FoodItem
+import com.example.calorietracker.data.MealType
 import com.example.calorietracker.network.LogFoodRequest
 import com.example.calorietracker.network.FoodItemData
 import java.time.LocalDateTime

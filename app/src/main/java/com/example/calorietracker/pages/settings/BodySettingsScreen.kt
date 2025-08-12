@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
 import com.example.calorietracker.utils.BodyParametersValidator
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.example.calorietracker.components.AppTextField

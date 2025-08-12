@@ -16,7 +16,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.calorietracker.CalorieTrackerViewModel
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.example.calorietracker.data.UserProfile
 import com.google.accompanist.systemuicontroller.rememberSystemUiController

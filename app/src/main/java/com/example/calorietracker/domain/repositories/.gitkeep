@@ -1,0 +1,2 @@
+# Domain Repository Interfaces
+This directory contains the contracts for data access without implementation details.

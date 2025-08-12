@@ -197,7 +197,7 @@ class DataRepository @Inject constructor(@ApplicationContext context: Context) {
         val carbs: Float
     )
 
-    private fun calculateTotals(meals: List<com.example.calorietracker.Meal>): Totals {
+    private fun calculateTotals(meals: List<Meal>): Totals {
         var calories = 0
         var protein = 0f
         var fat = 0f
@@ -225,7 +225,7 @@ class DataRepository @Inject constructor(@ApplicationContext context: Context) {
         )
     }
 
-    fun updateMeal(date: String, index: Int, meal: com.example.calorietracker.Meal) {
+    fun updateMeal(date: String, index: Int, meal: Meal) {
         val intake = getIntakeHistory(date) ?: return
         val meals = intake.meals.toMutableList()
         if (index !in meals.indices) return
@@ -257,5 +257,162 @@ class DataRepository @Inject constructor(@ApplicationContext context: Context) {
         )
         saveDailyIntake(updated, date)
         updateSummary(date, updated)
+    }
+    
+    // ========== New methods for Clean Architecture support ==========
+    
+    /**
+     * Get meals for a specific date
+     */
+    fun getMealsForDate(date: String): List<Meal> {
+        val intake = getIntakeHistory(date)
+        return intake?.meals ?: emptyList()
+    }
+    
+    /**
+     * Save meal to history for a specific date
+     */
+    fun saveMealToHistory(meal: Meal, date: String) {
+        val intake = getIntakeHistory(date) ?: DailyIntake()
+        val updatedMeals = intake.meals + meal
+        val totals = calculateTotals(updatedMeals)
+        
+        val updatedIntake = DailyIntake(
+            calories = totals.calories,
+            protein = totals.protein,
+            carbs = totals.carbs,
+            fat = totals.fat,
+            meals = updatedMeals
+        )
+        
+        saveDailyIntake(updatedIntake, date)
+        updateSummary(date, updatedIntake)
+    }
+    
+    /**
+     * Delete meal from history by index
+     */
+    fun deleteMealFromHistory(date: String, mealIndex: Int) {
+        deleteMeal(date, mealIndex)
+    }
+    
+    /**
+     * Get food history (all food items from all meals)
+     */
+    fun getFoodHistory(): List<FoodItem> {
+        val allFoods = mutableListOf<FoodItem>()
+        val dates = getAvailableDates()
+        
+        for (date in dates) {
+            val intake = getIntakeHistory(date)
+            intake?.meals?.forEach { meal ->
+                allFoods.addAll(meal.foods)
+            }
+        }
+        
+        return allFoods
+    }
+    
+    /**
+     * Save food to history with meal type
+     */
+    fun saveFoodToHistory(food: FoodItem, mealType: String) {
+        val currentDate = DailyResetUtils.getFoodDate()
+        val meal = Meal(
+            type = when (mealType.lowercase()) {
+                "завтрак" -> MealType.BREAKFAST
+                "обед" -> MealType.LUNCH
+                "ужин" -> MealType.DINNER
+                else -> MealType.SUPPER
+            },
+            foods = listOf(food)
+        )
+        saveMealToHistory(meal, currentDate)
+    }
+    
+    /**
+     * Clear all user data
+     */
+    fun clearUserData() {
+        sharedPreferences.edit {
+            remove("user_profile")
+            // Keep other data like daily intake
+        }
+    }
+    
+    /**
+     * Clear data for a specific day
+     */
+    fun clearDayData(date: String) {
+        sharedPreferences.edit {
+            remove("daily_intake_$date")
+            remove("daily_summary_${LocalDate.parse(date).toEpochDay()}")
+        }
+    }
+    
+    /**
+     * Analyze photo with AI (placeholder implementation)
+     */
+    suspend fun analyzePhotoWithAI(photoPath: String, caption: String): String {
+        // TODO: Implement actual AI photo analysis
+        return "AI analysis result for photo: $photoPath with caption: $caption"
+    }
+    
+    /**
+     * Analyze description with AI (placeholder implementation)
+     */
+    suspend fun analyzeDescription(description: String): String {
+        // TODO: Implement actual AI description analysis
+        return "AI analysis result for description: $description"
+    }
+    
+    /**
+     * Get chat history (placeholder implementation)
+     */
+    fun getChatHistory(): List<ChatMessage> {
+        // TODO: Implement actual chat history storage
+        return emptyList()
+    }
+    
+    /**
+     * Save chat message (placeholder implementation)
+     */
+    fun saveChatMessage(message: ChatMessage) {
+        // TODO: Implement actual chat message storage
+    }
+    
+    /**
+     * Delete chat message (placeholder implementation)
+     */
+    fun deleteChatMessage(messageId: String) {
+        // TODO: Implement actual chat message deletion
+    }
+    
+    /**
+     * Send chat message (placeholder implementation)
+     */
+    suspend fun sendChatMessage(content: String): String {
+        // TODO: Implement actual AI chat
+        return "AI response to: $content"
+    }
+    
+    /**
+     * Get AI usage info (placeholder implementation)
+     */
+    fun getAIUsageInfo(): Map<String, Any> {
+        return mapOf(
+            "dailyUsage" to 5,
+            "dailyLimit" to 10,
+            "monthlyUsage" to 50,
+            "monthlyLimit" to 100,
+            "canUseAI" to true
+        )
+    }
+    
+    /**
+     * Record AI usage (placeholder implementation)
+     */
+    fun recordAIUsage(operationType: String) {
+        // TODO: Implement actual AI usage tracking
     }
 }

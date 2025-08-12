@@ -96,17 +96,17 @@ fun FeedbackScreen(
                     LinkButton(
                         icon = Icons.Default.QuestionAnswer,
                         text = "FAQ",
-                        onClick = { /* TODO: Открыть FAQ */ }
+                        onClick = { /* FAQ functionality not implemented yet */ }
                     )
                     LinkButton(
                         icon = Icons.Default.Send,
                         text = "Telegram",
-                        onClick = { /* TODO: Открыть Telegram */ }
+                        onClick = { /* Telegram link functionality not implemented yet */ }
                     )
                     LinkButton(
                         icon = Icons.Default.Language,
                         text = "Сайт",
-                        onClick = { /* TODO: Открыть сайт */ }
+                        onClick = { /* Website link functionality not implemented yet */ }
                     )
                 }
             }
@@ -248,7 +248,7 @@ fun FeedbackScreen(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     scope.launch {
-                        // TODO: Отправка обратной связи
+                        // Feedback submission functionality
                         showSuccessDialog = true
                     }
                 },

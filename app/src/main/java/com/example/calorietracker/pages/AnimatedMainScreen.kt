@@ -33,8 +33,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.calorietracker.CalorieTrackerViewModel
-import com.example.calorietracker.MessageType
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
+import com.example.calorietracker.data.MessageType
+import com.example.calorietracker.data.FoodItem
+import com.example.calorietracker.data.ChatMessage
 import com.example.calorietracker.utils.DailyResetUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -79,7 +81,6 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Restaurant
-import com.example.calorietracker.FoodItem
 import com.example.calorietracker.managers.AppMode
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -159,12 +160,43 @@ fun AnimatedMainScreen(
                 viewModel.messages.first().isWelcome &&
                 !viewModel.isAnalyzing
 
-    // Все диалоги
-    AnimatedDialogs(
-        viewModel = viewModel,
-        onCameraClick = onCameraClick,
-        onGalleryClick = onGalleryClick
-    )
+    // Диалоги
+    if (viewModel.showPhotoDialog) {
+        com.example.calorietracker.components.PhotoUploadDialog(
+            onDismiss = { viewModel.showPhotoDialog = false },
+            onCameraClick = {
+                viewModel.showPhotoDialog = false
+                onCameraClick()
+            },
+            onGalleryClick = {
+                viewModel.showPhotoDialog = false
+                onGalleryClick()
+            }
+        )
+    }
+
+    if (viewModel.showManualInputDialog) {
+        com.example.calorietracker.components.ManualFoodInputDialog(
+            onDismiss = { viewModel.showManualInputDialog = false },
+            onConfirm = { name, calories, proteins, fats, carbs, weight ->
+                viewModel.handleManualInput(name, calories, proteins, fats, carbs, weight)
+                viewModel.showManualInputDialog = false
+            }
+        )
+    }
+
+    if (viewModel.showDescriptionDialog) {
+        com.example.calorietracker.components.DescribeFoodDialog(
+            text = viewModel.inputMessage,
+            onTextChange = { viewModel.inputMessage = it },
+            onDismiss = { viewModel.showDescriptionDialog = false },
+            onSend = {
+                viewModel.analyzeDescription()
+                viewModel.showDescriptionDialog = false
+            },
+            isLoading = viewModel.isAnalyzing
+        )
+    }
 
     var menuExpanded by remember { mutableStateOf(false) }
     var isDrawerOpen by remember { mutableStateOf(false) } // Состояние для выдвижного меню
@@ -562,7 +594,7 @@ private fun AnimatedChatContent(
 
 @Composable
 private fun AnimatedChatMessageCard(
-    message: com.example.calorietracker.ChatMessage,
+    message: ChatMessage,
     onAiOpinionClick: (FoodItem) -> Unit,
     onFoodEdit: (FoodItem) -> Unit = {},
     onFoodConfirm: (FoodItem) -> Unit = {}

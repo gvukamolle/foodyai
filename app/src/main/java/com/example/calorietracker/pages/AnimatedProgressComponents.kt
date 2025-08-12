@@ -20,9 +20,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.calorietracker.CalorieTrackerViewModel
-import com.example.calorietracker.FoodItem
-import com.example.calorietracker.MealType
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
+import com.example.calorietracker.data.FoodItem
+import com.example.calorietracker.data.MealType
 import com.example.calorietracker.ui.animations.StaggeredAnimatedList
 import com.example.calorietracker.ui.animations.TypewriterText
 import kotlinx.coroutines.delay

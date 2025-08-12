@@ -18,7 +18,8 @@ data class FoodAnalysisRequest(
 
 data class ImageAnalysisRequest(
     val imageBase64: String,
-    val userProfile: UserProfileData
+    val userProfile: UserProfileData,
+    val caption: String = ""
 )
 
 // Запрос при отправке ссылки на изображение
@@ -130,7 +131,8 @@ data class FoodDataFromAnswer(
     val protein: Double,
     val fat: Double,
     val carbs: Double,
-    val weight: String
+    val weight: String,
+    val opinion: String? = null
 )
 
 data class EnhancedFoodData(
