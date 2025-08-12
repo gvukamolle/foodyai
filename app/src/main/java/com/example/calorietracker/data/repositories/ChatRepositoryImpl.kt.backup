@@ -10,19 +10,14 @@ import com.example.calorietracker.domain.exceptions.DomainException
 import com.example.calorietracker.domain.repositories.AIOperationType
 import com.example.calorietracker.domain.repositories.AIUsageInfo
 import com.example.calorietracker.domain.repositories.ChatRepository
-import com.example.calorietracker.network.*
-import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Implementation of ChatRepository with Make.com integration
- * FIXED: Добавлена интеграция с реальным API вместо заглушек
+ * Implementation of ChatRepository that handles chat and AI operations
  */
 @Singleton
 class ChatRepositoryImpl @Inject constructor(
@@ -30,63 +25,17 @@ class ChatRepositoryImpl @Inject constructor(
     private val chatMapper: ChatMapper
 ) : ChatRepository {
     
-    private val gson = Gson()
-    
-    // Создаем MakeService прямо здесь, чтобы не ломать DI
-    private val makeService: MakeService by lazy {
-        Retrofit.Builder()
-            .baseUrl(MakeService.BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(MakeService::class.java)
-    }
-    
     override suspend fun sendMessage(message: ChatMessage): Result<ChatMessage> {
         return withContext(Dispatchers.IO) {
             try {
-                // Check if this is the first message of the day
-                val isFirstMessageOfDay = dataRepository.isFirstMessageOfDay()
+                // Convert to data message
+                val dataMessage = chatMapper.mapDomainToData(message)
                 
-                // Record message time
-                dataRepository.recordLastUserMessageTime()
-                
-                // Get user profile from DataRepository
-                val userProfile = getUserProfileForAI()
-                
-                // Determine message type based on content
-                val messageType = determineMessageType(message.content)
-                
-                // Generate userId
-                val userId = "user_${System.currentTimeMillis()}"
-                
-                // Send message to Make.com
-                val request = AiChatRequest(
-                    message = message.content,
-                    userProfile = userProfile,
-                    userId = userId,
-                    isFirstMessageOfDay = isFirstMessageOfDay,
-                    messageType = messageType
-                )
-                
-                val response = try {
-                    makeService.askAiDietitian(MakeService.WEBHOOK_ID, request)
-                } catch (e: Exception) {
-                    // Fallback на старый метод если Make.com не доступен
-                    AiChatResponse(
-                        status = "error",
-                        answer = dataRepository.sendChatMessage(message.content)
-                    )
-                }
+                // Send message using DataRepository (this would call AI service)
+                val response = dataRepository.sendChatMessage(dataMessage.content)
                 
                 // Create AI response message
-                val aiResponse = chatMapper.createAIResponse(response.answer)
-                
-                // Save both messages to history
-                val dataMessage = chatMapper.mapDomainToData(message)
-                dataRepository.saveChatMessage(dataMessage)
-                
-                val aiDataMessage = chatMapper.mapDomainToData(aiResponse)
-                dataRepository.saveChatMessage(aiDataMessage)
+                val aiResponse = chatMapper.createAIResponse(response)
                 
                 Result.success(aiResponse)
             } catch (e: Exception) {
@@ -98,73 +47,6 @@ class ChatRepositoryImpl @Inject constructor(
                 )
             }
         }
-    }
-    
-    /**
-     * Determine message type based on content
-     */
-    private fun determineMessageType(content: String): String {
-        val lowerContent = content.lowercase()
-        
-        return when {
-            // Food analysis keywords
-            lowerContent.contains("калори") ||
-            lowerContent.contains("кбжу") ||
-            lowerContent.contains("съел") ||
-            lowerContent.contains("скушал") ||
-            (lowerContent.contains("это") && lowerContent.contains("грамм")) -> "analysis"
-            
-            // Watch my food keywords
-            lowerContent.contains("что я ел") ||
-            lowerContent.contains("мой рацион") ||
-            lowerContent.contains("сколько я съел") ||
-            lowerContent.contains("анализ дня") -> "watch_myfood"
-            
-            // Recipe keywords
-            lowerContent.contains("рецепт") ||
-            lowerContent.contains("приготовить") ||
-            lowerContent.contains("как готовить") -> "recipe"
-            
-            // Default to chat
-            else -> "chat"
-        }
-    }
-    
-    /**
-     * Get user profile data for AI requests
-     */
-    private fun getUserProfileForAI(): UserProfileData {
-        return try {
-            val profile = dataRepository.getUserProfile()
-            if (profile != null) {
-                UserProfileData(
-                    age = profile.age ?: 25,
-                    weight = profile.weight,
-                    height = profile.height,
-                    gender = profile.gender?.lowercase() ?: "other",
-                    activityLevel = profile.activityLevel?.lowercase() ?: "moderately_active",
-                    goal = profile.goal?.lowercase() ?: "maintain_weight"
-                )
-            } else {
-                getDefaultUserProfile()
-            }
-        } catch (e: Exception) {
-            getDefaultUserProfile()
-        }
-    }
-    
-    /**
-     * Get default user profile
-     */
-    private fun getDefaultUserProfile(): UserProfileData {
-        return UserProfileData(
-            age = 25,
-            weight = 70,
-            height = 170,
-            gender = "other",
-            activityLevel = "moderately_active",
-            goal = "maintain_weight"
-        )
     }
     
     override suspend fun getChatHistory(dateRange: DateRange): Result<List<ChatMessage>> {
@@ -261,17 +143,17 @@ class ChatRepositoryImpl @Inject constructor(
     override suspend fun processAIFoodAnalysis(response: String): Result<Food> {
         return withContext(Dispatchers.IO) {
             try {
-                val jsonObject = org.json.JSONObject(response)
-                
+                // TODO: Implement proper AI response parsing
+                // For now, create a placeholder Food object
                 val food = Food(
-                    name = jsonObject.optString("name", "Неизвестный продукт"),
-                    calories = jsonObject.optInt("calories", 0),
-                    protein = jsonObject.optDouble("protein", 0.0),
-                    fat = jsonObject.optDouble("fat", 0.0),
-                    carbs = jsonObject.optDouble("carbs", 0.0),
-                    weight = jsonObject.optString("weight", "100г"),
+                    name = "Parsed Food",
+                    calories = 150,
+                    protein = 8.0,
+                    fat = 5.0,
+                    carbs = 20.0,
+                    weight = "100г",
                     source = com.example.calorietracker.domain.entities.common.FoodSource.AI_TEXT_ANALYSIS,
-                    aiOpinion = jsonObject.optString("opinion", "")
+                    aiOpinion = response
                 )
                 
                 Result.success(food)
