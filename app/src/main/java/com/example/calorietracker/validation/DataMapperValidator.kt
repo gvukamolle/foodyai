@@ -16,7 +16,7 @@ import com.example.calorietracker.domain.entities.common.Gender
 import com.example.calorietracker.domain.entities.common.ActivityLevel
 import com.example.calorietracker.domain.entities.common.NutritionGoal
 import com.example.calorietracker.domain.entities.common.NutritionTargets
-import com.example.calorietracker.validation.ValidationResult
+import com.example.calorietracker.validation.ValidationResults
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -381,7 +381,7 @@ class DataMapperValidator @Inject constructor(
             fat = 5.0,
             carbs = 15.0,
             weight = "100г",
-            source = FoodSource.AI_ANALYSIS,
+            source = FoodSource.AI_TEXT_ANALYSIS,
             aiOpinion = "Test AI opinion"
         )
     }
@@ -403,7 +403,7 @@ class DataMapperValidator @Inject constructor(
     
     private fun createTestNutritionIntake(): NutritionIntake {
         val testFood = createTestFood()
-        val testMeal = com.example.calorietracker.domain.entities.Meal.create(
+        val testMeal = com.example.calorietracker.domain.entities.Meal(
             type = com.example.calorietracker.domain.entities.common.MealType.BREAKFAST,
             foods = listOf(testFood)
         )

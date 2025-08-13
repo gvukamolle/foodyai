@@ -50,3 +50,32 @@ enum class ViolationType {
     SCOPE_VIOLATION
 }
 
+/**
+ * Container for validation results with detailed issues
+ */
+data class ValidationResults(
+    val validatorName: String,
+    val issues: List<ValidationIssue>,
+    val summary: String
+) {
+    /**
+     * Individual validation issue
+     */
+    data class ValidationIssue(
+        val type: String,
+        val severity: Severity,
+        val message: String,
+        val details: String,
+        val location: String
+    )
+    
+    /**
+     * Severity levels for validation issues
+     */
+    enum class Severity {
+        ERROR,
+        WARNING,
+        INFO
+    }
+}
+

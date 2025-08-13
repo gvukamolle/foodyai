@@ -14,7 +14,7 @@ import com.example.calorietracker.domain.entities.common.NutritionTargets
 import com.example.calorietracker.domain.entities.common.MealType
 import com.example.calorietracker.domain.entities.common.DateRange
 import com.example.calorietracker.domain.common.Result
-import com.example.calorietracker.validation.models.ValidationResults
+import com.example.calorietracker.validation.ValidationResults
 import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
 import java.time.YearMonth
@@ -444,7 +444,7 @@ class RepositoryValidator @Inject constructor(
     
     private fun createTestNutritionIntake(): NutritionIntake {
         val testFood = createTestFood()
-        val testMeal = com.example.calorietracker.domain.entities.Meal.create(
+        val testMeal = com.example.calorietracker.domain.entities.Meal(
             type = MealType.BREAKFAST,
             foods = listOf(testFood)
         )
