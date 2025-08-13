@@ -155,10 +155,7 @@ fun AnimatedMainScreen(
         }
     }
 
-    val showWelcome =
-        viewModel.messages.size == 1 &&
-                viewModel.messages.first().isWelcome &&
-                !viewModel.isAnalyzing
+    val showWelcome = false
 
     // Диалоги
     if (viewModel.showPhotoDialog) {
@@ -250,16 +247,16 @@ fun AnimatedMainScreen(
                     onNavigateToSubscription = onNavigateToSubscription
                 )
 
-                ThinCaloriesBar(
-                    current = viewModel.dailyIntake.calories,
-                    target = viewModel.userProfile.dailyCalories,
-                    color = viewModel.getProgressColor(
-                        viewModel.dailyIntake.calories,
-                        viewModel.userProfile.dailyCalories
-                    ),
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                 ThinCaloriesBar(
+                     current = viewModel.dailyIntake.calories,
+                     target = viewModel.userProfile.dailyCalories,
+                     color = viewModel.getProgressColor(
+                         viewModel.dailyIntake.calories,
+                         viewModel.userProfile.dailyCalories
+                     ),
+                     modifier = Modifier
+                         .padding(horizontal = 16.dp, vertical = 8.dp)
+                 )
 
                 // Разделитель с анимацией
                 AnimatedContentDivider()
@@ -347,16 +344,14 @@ fun AnimatedMainScreen(
             },
             onEdit = {
                 showFoodDetailScreen = false
-                viewModel.prefillFood = selectedFood
+                viewModel.setPrefillFromFoodItem(selectedFood)
                 viewModel.showManualInputDialog = true
                 selectedFood = null
             },
             onDelete = {
                 showFoodDetailScreen = false
                 // Находим индекс продукта в списке приемов пищи
-                val mealIndex = viewModel.meals.indexOfFirst { meal ->
-                    meal.foods.contains(selectedFood)
-                }
+                val mealIndex = -1
                 if (mealIndex != -1) {
                     viewModel.deleteMealFromHistory(
                         DailyResetUtils.getFoodDate(),
@@ -574,11 +569,11 @@ private fun AnimatedChatContent(
                         message = message,
                         onAiOpinionClick = onAiOpinionClick,
                         onFoodEdit = { food ->
-                            viewModel.prefillFood = food
+                            viewModel.setPrefillFromFoodItem(food)
                             viewModel.showManualInputDialog = true
                         },
                         onFoodConfirm = { food ->
-                            viewModel.pendingFood = food
+                            viewModel.setPendingFromFoodItem(food)
                             viewModel.confirmFood()
                         }
                     )

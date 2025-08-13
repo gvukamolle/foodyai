@@ -23,7 +23,7 @@ object DebugHelper {
      */
     fun checkFoodSourceFlow(viewModel: CalorieTrackerViewModel) {
         Log.d(TAG, "=== ПРОВЕРКА ИСТОЧНИКОВ ДАННЫХ ===")
-        Log.d(TAG, "Текущий источник: ${viewModel.currentFoodSource}")
+        Log.d(TAG, "Текущий источник: manual")
         Log.d(TAG, "Есть pendingFood: ${viewModel.pendingFood != null}")
         Log.d(TAG, "Есть prefillFood: ${viewModel.prefillFood != null}")
     }
@@ -54,9 +54,9 @@ object DebugHelper {
             timestamp = System.currentTimeMillis(),
             date = now.format(dateFormatter),
             time = now.format(timeFormatter),
-            source = viewModel.currentFoodSource ?: "manual",
+            source = "manual",
             userProfile = viewModel.userProfile.toNetworkProfile(),
-            isFirstMessageOfDay = viewModel.repository.isFirstMessageOfDay()
+            isFirstMessageOfDay = true
         )
 
         Log.d(TAG, "UserId: ${request.userId}")

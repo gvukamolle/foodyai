@@ -41,11 +41,12 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.core.view.WindowCompat
+import com.example.calorietracker.presentation.viewmodels.CalorieTrackerViewModel
 
 
 // Убираем Screen.Auth, теперь это решается состоянием
 enum class Screen {
-    Setup, Main, Calendar, Profile, BodySettings, AppSettings, Subscription, Feedback, Analytics
+    Main, Calendar, Profile, BodySettings, AppSettings, Subscription, Analytics
 }
 
 private fun decodeBitmapWithOrientation(file: java.io.File): Bitmap {
@@ -82,6 +83,19 @@ private fun decodeBitmapWithOrientation(context: Context, uri: Uri): Bitmap? {
             tempFile.delete()
             bitmap
         }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun saveBitmapToCache(context: Context, bitmap: Bitmap): String? {
+    return try {
+        val photoDir = java.io.File(context.cacheDir, "images").apply { mkdirs() }
+        val photoFile = java.io.File.createTempFile("attached_", ".jpg", photoDir)
+        photoFile.outputStream().use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+        }
+        photoFile.absolutePath
     } catch (_: Exception) {
         null
     }
@@ -139,29 +153,14 @@ fun CalorieTrackerApp(
     var showBodySettingsScreen by remember { mutableStateOf(false) }
     var showAppSettingsScreen by remember { mutableStateOf(false) }
     var showSubscriptionScreen by remember { mutableStateOf(false) }
-    var showFeedbackScreen by remember { mutableStateOf(false) }
     var showAnalyticsScreen by remember { mutableStateOf(false) }
 
     // Убираем LaunchedEffect для authState - он вызывает проблемы
     // Оставляем только LaunchedEffect для currentUser, который правильно синхронизирует данные
     LaunchedEffect(currentUser) {
         if (authState == AuthManager.AuthState.AUTHENTICATED) {
-            currentUser?.let { user ->
-                // Сначала синхронизируем данные
-                viewModel.syncWithUserData(user)
-                
-                // Проверяем isSetupComplete из Firebase
-                if (user.isSetupComplete) {
-                    // Если в Firebase setup завершен, но локально нет - обновляем локальные данные
-                    if (!viewModel.userProfile.isSetupComplete) {
-                        val updatedProfile = viewModel.userProfile.copy(isSetupComplete = true)
-                        viewModel.updateUserProfile(updatedProfile)
-                    }
-                    currentScreen = Screen.Main
-                } else {
-                    // Если в Firebase setup не завершен
-                    currentScreen = Screen.Setup
-                }
+            currentUser?.let { _ ->
+                currentScreen = Screen.Main
             }
         }
     }
@@ -174,10 +173,16 @@ fun CalorieTrackerApp(
         if (success) {
             cameraFile.value?.let { file ->
                 val bitmap = decodeBitmapWithOrientation(file)
-                viewModel.onPhotoSelected(bitmap)
+                viewModel.attachedPhoto = bitmap
+                saveBitmapToCache(context, bitmap)?.let { path ->
+                    viewModel.attachedPhotoPath = path
+                }
             } ?: cameraUri.value?.let { uri ->
                 decodeBitmapWithOrientation(context, uri)?.let { bitmap ->
-                    viewModel.onPhotoSelected(bitmap)
+                    viewModel.attachedPhoto = bitmap
+                    saveBitmapToCache(context, bitmap)?.let { path ->
+                        viewModel.attachedPhotoPath = path
+                    }
                 }
             }
         }
@@ -186,7 +191,10 @@ fun CalorieTrackerApp(
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             decodeBitmapWithOrientation(context, it)?.let { bmp ->
-                viewModel.onPhotoSelected(bmp)
+                viewModel.attachedPhoto = bmp
+                saveBitmapToCache(context, bmp)?.let { path ->
+                    viewModel.attachedPhotoPath = path
+                }
             }
         }
     }
@@ -216,7 +224,7 @@ fun CalorieTrackerApp(
         }
     }
 
-    BackHandler(enabled = showCalendarScreen || showProfileScreen || showBodySettingsScreen || showAppSettingsScreen || showFeedbackScreen || showAnalyticsScreen || showSubscriptionScreen) {
+    BackHandler(enabled = showCalendarScreen || showProfileScreen || showBodySettingsScreen || showAppSettingsScreen || showAnalyticsScreen || showSubscriptionScreen) {
         when {
             showProfileScreen -> {
                 showProfileScreen = false
@@ -224,10 +232,6 @@ fun CalorieTrackerApp(
             }
             showSubscriptionScreen -> {
                 showSubscriptionScreen = false
-                currentScreen = Screen.Main
-            }
-            showFeedbackScreen -> {
-                showFeedbackScreen = false
                 currentScreen = Screen.Main
             }
             showBodySettingsScreen -> {
@@ -263,11 +267,7 @@ fun CalorieTrackerApp(
 
         AuthManager.AuthState.UNAUTHENTICATED -> {
             AuthScreen(authManager = authManager, onAuthSuccess = {
-                currentScreen = if (viewModel.userProfile.isSetupComplete) {
-                    Screen.Main
-                } else {
-                    Screen.Setup
-                }
+                currentScreen = Screen.Main
             })
         }
 
@@ -277,7 +277,6 @@ fun CalorieTrackerApp(
                 showBodySettingsScreen -> Screen.BodySettings
                 showAppSettingsScreen -> Screen.AppSettings
                 showSubscriptionScreen -> Screen.Subscription
-                showFeedbackScreen -> Screen.Feedback
                 showAnalyticsScreen -> Screen.Analytics
                 else -> currentScreen
             }
@@ -304,27 +303,6 @@ fun CalorieTrackerApp(
                             onBack = {
                                 showAnalyticsScreen = false
                                 currentScreen = Screen.Main
-                            }
-                        )
-                    }
-
-                    Screen.Setup -> {
-                        SetupScreen(
-                            viewModel = viewModel,
-                            onFinish = { finishedProfile ->
-                                coroutineScope.launch {
-                                    viewModel.updateUserProfile(finishedProfile)
-                                    val result = authManager.updateUserSetupComplete(true)
-                                    if (result.isSuccess) {
-                                        currentScreen = Screen.Main
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "Не удалось сохранить настройки. Попробуйте снова.",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }
                             }
                         )
                     }
@@ -366,15 +344,6 @@ fun CalorieTrackerApp(
                         )
                     }
 
-                    Screen.Feedback -> {
-                        FeedbackScreen(
-                            onBack = {
-                                showFeedbackScreen = false
-                                currentScreen = Screen.Main
-                            }
-                        )
-                    }
-
                     Screen.BodySettings -> {
                         BodySettingsScreen(
                             viewModel = viewModel,
@@ -394,7 +363,6 @@ fun CalorieTrackerApp(
                                 currentScreen = Screen.Main
                             },
                             onSignOut = { 
-                                viewModel.clearLocalData()
                                 authManager.signOut() 
                             }
                         )
@@ -436,9 +404,6 @@ fun CalorieTrackerApp(
                             onAnalyticsClick = {
                                 currentScreen = Screen.Analytics
                                 showAnalyticsScreen = true
-                            },
-                            onFeedbackClick = {
-                                showFeedbackScreen = true
                             },
                             modifier = Modifier.fillMaxSize()
                         )

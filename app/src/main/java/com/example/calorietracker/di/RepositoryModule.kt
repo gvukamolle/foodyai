@@ -57,8 +57,9 @@ object RepositoryModule {
     @Singleton
     fun provideChatRepositoryImpl(
         dataRepository: DataRepository,
-        chatMapper: ChatMapper
+        chatMapper: ChatMapper,
+        makeService: MakeService
     ): ChatRepositoryImpl {
-        return ChatRepositoryImpl(dataRepository, chatMapper)
+        return ChatRepositoryImpl(dataRepository, chatMapper, makeService)
     }
 }

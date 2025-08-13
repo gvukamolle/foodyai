@@ -10,12 +10,13 @@ import com.example.calorietracker.domain.exceptions.DomainException
 import com.example.calorietracker.domain.repositories.AIOperationType
 import com.example.calorietracker.domain.repositories.AIUsageInfo
 import com.example.calorietracker.domain.repositories.ChatRepository
-import com.example.calorietracker.network.*
+import com.example.calorietracker.network.AiChatRequest
+import com.example.calorietracker.network.AiChatResponse
+import com.example.calorietracker.network.MakeService
+import com.example.calorietracker.network.UserProfileData
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,19 +28,11 @@ import javax.inject.Singleton
 @Singleton
 class ChatRepositoryImpl @Inject constructor(
     private val dataRepository: DataRepository,
-    private val chatMapper: ChatMapper
+    private val chatMapper: ChatMapper,
+    private val makeService: MakeService
 ) : ChatRepository {
     
     private val gson = Gson()
-    
-    // Создаем MakeService прямо здесь, чтобы не ломать DI
-    private val makeService: MakeService by lazy {
-        Retrofit.Builder()
-            .baseUrl(MakeService.BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(MakeService::class.java)
-    }
     
     override suspend fun sendMessage(message: ChatMessage): Result<ChatMessage> {
         return withContext(Dispatchers.IO) {
@@ -138,12 +131,12 @@ class ChatRepositoryImpl @Inject constructor(
             val profile = dataRepository.getUserProfile()
             if (profile != null) {
                 UserProfileData(
-                    age = profile.age ?: 25,
+                    age = com.example.calorietracker.utils.calculateAge(profile.birthday),
                     weight = profile.weight,
                     height = profile.height,
-                    gender = profile.gender?.lowercase() ?: "other",
-                    activityLevel = profile.activityLevel?.lowercase() ?: "moderately_active",
-                    goal = profile.goal?.lowercase() ?: "maintain_weight"
+                    gender = profile.gender.lowercase(),
+                    activityLevel = profile.condition.lowercase(),
+                    goal = profile.goal.lowercase()
                 )
             } else {
                 getDefaultUserProfile()

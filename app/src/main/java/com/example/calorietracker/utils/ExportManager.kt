@@ -29,7 +29,7 @@ object ExportManager {
 
             while (currentDate <= endDate) {
                 val dateStr = currentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                val intake = viewModel.repository.getIntakeHistory(dateStr)
+                val intake = com.example.calorietracker.data.DataRepository(context).getIntakeHistory(dateStr)
 
                 intake?.meals?.forEach { meal ->
                     meal.foods.forEach { food ->
@@ -67,7 +67,7 @@ object ExportManager {
 
         while (currentDate <= endDate) {
             val dateStr = currentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val intake = viewModel.repository.getIntakeHistory(dateStr)
+            val intake = com.example.calorietracker.data.DataRepository(context).getIntakeHistory(dateStr)
 
             intake?.let {
                 dailyData.add(mapOf(

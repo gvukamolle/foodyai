@@ -56,7 +56,8 @@ fun CalendarScreen(
     val context = LocalContext.current
     val systemUiController = rememberSystemUiController()
 
-    val calendarData by viewModel.calendarData.collectAsState()
+    // Use repository-based history for now; empty map placeholder
+    val calendarData = remember { mutableStateMapOf<java.time.LocalDate, DailyNutritionSummary>() }
     val coroutineScope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
 

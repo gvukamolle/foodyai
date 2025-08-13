@@ -207,7 +207,7 @@ fun AnalyticsScreen(
                     // Карточка общего прогресса
                     OverviewCard(
                         todayData = todayData,
-                        userProfile = viewModel.userProfile,
+            userProfile = viewModel.userProfile,
                         weeklyTrend = weeklyTrend
                     )
 
@@ -698,15 +698,11 @@ private suspend fun performAIAnalysis(
             )
         }
 
-        if (response.isSuccess) {
-            val answer = response.getOrNull()?.answer
-            if (answer != null) {
-                val gson = Gson()
-                val analysisResponse = gson.fromJson(answer, AIAnalysisResponse::class.java) as AIAnalysisResponse
-                onResult(analysisResponse)
-            } else {
-                onResult(null)
-            }
+        val answer = response.getOrNull()?.answer
+        if (answer != null) {
+            val gson = Gson()
+            val analysisResponse = gson.fromJson(answer, AIAnalysisResponse::class.java) as AIAnalysisResponse
+            onResult(analysisResponse)
         } else {
             onResult(null)
         }
