@@ -161,13 +161,10 @@ fun DayHistoryDialog(
                         .clip(RoundedCornerShape(24.dp))
                         .background(Color.White)
                 ) {
-                // Основной контейнер с заголовком и контентом
-                Column(
-                modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.White)
-                ) {
+                    // Основной контейнер с заголовком и контентом
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                 // Заголовок с датой и кнопкой назад - теперь часть общего контейнера
                 Box(
                 modifier = Modifier

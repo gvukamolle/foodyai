@@ -3,6 +3,7 @@ package com.example.calorietracker.presentation.viewmodels
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 
 /**
@@ -201,63 +203,67 @@ import java.time.LocalDate
     fun forceOfflineMode() = offlineManager.forceOfflineMode()
     
     // Photo analysis
-    fun analyzePhotoWithAI(photoPath: String, caption: String = "") {
-        viewModelScope.launch {
-            updateUiState { copy(isLoading = true) }
-            isAnalyzing = true
-            
-            // Check AI usage limits first
-            when (val limitResult = validateAIUsageLimitsUseCase(
-                ValidateAIUsageLimitsUseCase.Params(
-                    com.example.calorietracker.domain.repositories.AIOperationType.PHOTO_ANALYSIS
-                )
-            )) {
-                is Result.Success -> {
-                    if (!limitResult.data.canProceed) {
-                        showAILimitDialog = true
-                        isAnalyzing = false
-                        updateUiState { copy(isLoading = false) }
-                        return@launch
-                    }
-                }
-                is Result.Error -> {
-                    updateUiState { 
-                        copy(
-                            isLoading = false,
-                            error = "Failed to check AI limits: ${limitResult.exception.message}"
-                        )
-                    }
+    suspend fun analyzePhotoWithAI(photoPath: String, caption: String = ""): Result<com.example.calorietracker.domain.entities.Food> {
+        updateUiState { copy(isLoading = true) }
+        isAnalyzing = true
+        
+        // Check AI usage limits first
+        when (val limitResult = validateAIUsageLimitsUseCase(
+            ValidateAIUsageLimitsUseCase.Params(
+                com.example.calorietracker.domain.repositories.AIOperationType.PHOTO_ANALYSIS
+            )
+        )) {
+            is Result.Success -> {
+                if (!limitResult.data.canProceed) {
+                    showAILimitDialog = true
                     isAnalyzing = false
-                    return@launch
-                }
-            }
-            
-            // Analyze photo
-            when (val result = analyzeFoodPhotoUseCase(
-                AnalyzeFoodPhotoUseCase.Params(photoPath, caption)
-            )) {
-                is Result.Success -> {
-                    pendingFood = result.data
                     updateUiState { copy(isLoading = false) }
-                }
-                is Result.Error -> {
-                    updateUiState { 
-                        copy(
-                            isLoading = false,
-                            error = "Failed to analyze photo: ${result.exception.message}"
-                        )
-                    }
+                    return Result.error(com.example.calorietracker.domain.exceptions.DomainException.AIAnalysisException("AI limit exceeded"))
                 }
             }
-            
-            isAnalyzing = false
+            is Result.Error -> {
+                updateUiState { 
+                    copy(
+                        isLoading = false,
+                        error = "Failed to check AI limits: ${limitResult.exception.message}"
+                    )
+                }
+                isAnalyzing = false
+                return limitResult
+            }
         }
+        
+        // Analyze photo
+        val result = analyzeFoodPhotoUseCase(
+            AnalyzeFoodPhotoUseCase.Params(photoPath, caption)
+        )
+        
+        when (result) {
+            is Result.Success -> {
+                updateUiState { copy(isLoading = false) }
+            }
+            is Result.Error -> {
+                updateUiState { 
+                    copy(
+                        isLoading = false,
+                        error = "Failed to analyze photo: ${result.exception.message}"
+                    )
+                }
+            }
+        }
+        
+        isAnalyzing = false
+        return result
     }    
 
     // Description analysis
     fun analyzeDescription() {
+        println("DEBUG: analyzeDescription called, inputMessage='$inputMessage'")
         viewModelScope.launch {
-            if (inputMessage.isBlank()) return@launch
+            if (inputMessage.isBlank()) {
+                println("DEBUG: inputMessage is blank, returning")
+                return@launch
+            }
             
             updateUiState { copy(isLoading = true) }
             isAnalyzing = true
@@ -289,15 +295,18 @@ import java.time.LocalDate
             }
             
             // Analyze description
+            println("DEBUG: Calling analyzeFoodDescriptionUseCase")
             when (val result = analyzeFoodDescriptionUseCase(
                 AnalyzeFoodDescriptionUseCase.Params(inputMessage)
             )) {
                 is Result.Success -> {
+                    println("DEBUG: Analysis successful, clearing inputMessage")
                     pendingFood = result.data
                     inputMessage = ""
                     updateUiState { copy(isLoading = false) }
                 }
                 is Result.Error -> {
+                    println("DEBUG: Analysis failed: ${result.exception.message}")
                     updateUiState { 
                         copy(
                             isLoading = false,
@@ -350,6 +359,20 @@ import java.time.LocalDate
                 SaveFoodIntakeUseCase.Params(food, selectedMeal)
             )) {
                 is Result.Success -> {
+                    // Удаляем сообщение с карточкой подтверждения
+                    _messages.removeAll { it.type == com.example.calorietracker.data.MessageType.FOOD_CONFIRMATION }
+                    
+                    // Добавляем сообщение об успешном сохранении
+                    val successMessage = com.example.calorietracker.data.ChatMessage(
+                        id = java.util.UUID.randomUUID().toString(),
+                        content = "✅ ${food.name} добавлен в дневник питания",
+                        type = com.example.calorietracker.data.MessageType.AI,
+                        timestamp = java.time.LocalDateTime.now(),
+                        isVisible = true,
+                        animate = true
+                    )
+                    _messages.add(successMessage)
+                    
                     pendingFood = null
                     loadDailyIntake() // Refresh daily intake
                     updateUiState { copy(isLoading = false) }
@@ -412,14 +435,261 @@ import java.time.LocalDate
 
     // Simple send handler used by chat input
     fun sendMessage() {
+        println("DEBUG: sendMessage called, inputMessage='$inputMessage', attachedPhotoPath='$attachedPhotoPath'")
         viewModelScope.launch {
-            if (attachedPhotoPath != null) {
-                analyzePhotoWithAI(attachedPhotoPath!!, photoCaption)
-                // reset attachment
-                removeAttachedPhoto()
+            val messageText = inputMessage
+            
+            // Проверяем, что есть что отправить
+            if (messageText.isBlank() && attachedPhotoPath == null) {
+                println("DEBUG: Nothing to send")
                 return@launch
             }
-            analyzeDescription()
+            
+            // Создаём сообщение пользователя
+            val userMessage = com.example.calorietracker.data.ChatMessage(
+                id = java.util.UUID.randomUUID().toString(),
+                content = messageText,
+                type = com.example.calorietracker.data.MessageType.USER,
+                timestamp = java.time.LocalDateTime.now(),
+                isVisible = true,
+                animate = true,
+                imagePath = attachedPhotoPath
+            )
+            
+            // Добавляем сообщение пользователя в список
+            _messages.add(userMessage)
+            
+            // Очищаем поле ввода
+            inputMessage = ""
+            
+            // Если есть фото - анализируем его
+            if (attachedPhotoPath != null) {
+                println("DEBUG: Analyzing photo")
+                val photoPath = attachedPhotoPath!!
+                removeAttachedPhoto()
+                
+                // Добавляем сообщение о загрузке
+                val loadingMessage = com.example.calorietracker.data.ChatMessage(
+                    id = java.util.UUID.randomUUID().toString(),
+                    content = "Анализирую фото...",
+                    type = com.example.calorietracker.data.MessageType.AI,
+                    timestamp = java.time.LocalDateTime.now(),
+                    isVisible = true,
+                    animate = true,
+                    isProcessing = true
+                )
+                _messages.add(loadingMessage)
+                
+                // Анализируем фото и обрабатываем результат
+                when (val result = analyzePhotoWithAI(photoPath, messageText)) {
+                    is Result.Success -> {
+                        _messages.remove(loadingMessage)
+                        
+                        // Создаём сообщение с результатом
+                        val foodItem = foodMapper.mapDomainToData(result.data)
+                        val confirmMessage = com.example.calorietracker.data.ChatMessage(
+                            id = java.util.UUID.randomUUID().toString(),
+                            content = "",
+                            type = com.example.calorietracker.data.MessageType.FOOD_CONFIRMATION,
+                            timestamp = java.time.LocalDateTime.now(),
+                            isVisible = true,
+                            animate = true,
+                            foodItem = foodItem
+                        )
+                        _messages.add(confirmMessage)
+                        pendingFood = result.data
+                    }
+                    is Result.Error -> {
+                        _messages.remove(loadingMessage)
+                        val errorMessage = com.example.calorietracker.data.ChatMessage(
+                            id = java.util.UUID.randomUUID().toString(),
+                            content = "Не удалось проанализировать фото. Попробуйте ещё раз.",
+                            type = com.example.calorietracker.data.MessageType.AI,
+                            timestamp = java.time.LocalDateTime.now(),
+                            isVisible = true,
+                            animate = true
+                        )
+                        _messages.add(errorMessage)
+                    }
+                }
+                return@launch
+            }
+            
+            // Определяем режим работы
+            when {
+                isRecordMode -> {
+                    println("DEBUG: Record mode - analyzing food description")
+                    handleRecordMode(messageText)
+                }
+                isRecipeMode -> {
+                    println("DEBUG: Recipe mode - getting recipe")
+                    handleRecipeMode(messageText) 
+                }
+                isDailyAnalysisEnabled -> {
+                    println("DEBUG: Analysis mode - analyzing daily intake")
+                    handleAnalysisMode(messageText)
+                }
+                else -> {
+                    println("DEBUG: Chat mode - sending to AI")
+                    handleChatMode(messageText)
+                }
+            }
+        }
+    }
+    
+    private suspend fun handleRecordMode(text: String) {
+        // Добавляем сообщение о загрузке
+        val loadingMessage = com.example.calorietracker.data.ChatMessage(
+            id = java.util.UUID.randomUUID().toString(),
+            content = "Анализирую продукт...",
+            type = com.example.calorietracker.data.MessageType.AI,
+            timestamp = java.time.LocalDateTime.now(),
+            isVisible = true,
+            animate = true,
+            isProcessing = true
+        )
+        _messages.add(loadingMessage)
+        
+        // Анализируем описание
+        when (val result = analyzeFoodDescriptionUseCase(
+            AnalyzeFoodDescriptionUseCase.Params(text)
+        )) {
+            is Result.Success -> {
+                _messages.remove(loadingMessage)
+                pendingFood = result.data
+                
+                // Создаём сообщение с результатом
+                val foodItem = foodMapper.mapDomainToData(result.data)
+                val confirmMessage = com.example.calorietracker.data.ChatMessage(
+                    id = java.util.UUID.randomUUID().toString(),
+                    content = "",
+                    type = com.example.calorietracker.data.MessageType.FOOD_CONFIRMATION,
+                    timestamp = java.time.LocalDateTime.now(),
+                    isVisible = true,
+                    animate = true,
+                    foodItem = foodItem
+                )
+                _messages.add(confirmMessage)
+            }
+            is Result.Error -> {
+                _messages.remove(loadingMessage)
+                val errorMessage = com.example.calorietracker.data.ChatMessage(
+                    id = java.util.UUID.randomUUID().toString(),
+                    content = "Не удалось проанализировать продукт. Попробуйте ещё раз.",
+                    type = com.example.calorietracker.data.MessageType.AI,
+                    timestamp = java.time.LocalDateTime.now(),
+                    isVisible = true,
+                    animate = true,
+                    isError = true
+                )
+                _messages.add(errorMessage)
+            }
+        }
+    }
+    
+    private suspend fun handleRecipeMode(text: String) {
+        // Добавляем сообщение о поиске рецепта
+        val loadingMessage = com.example.calorietracker.data.ChatMessage(
+            id = java.util.UUID.randomUUID().toString(),
+            content = "Ищу рецепт...",
+            type = com.example.calorietracker.data.MessageType.AI,
+            timestamp = java.time.LocalDateTime.now(),
+            isVisible = true,
+            animate = true,
+            isProcessing = true
+        )
+        _messages.add(loadingMessage)
+        
+        // TODO: Implement recipe search
+        delay(2000) // Имитация загрузки
+        
+        _messages.remove(loadingMessage)
+        val recipeMessage = com.example.calorietracker.data.ChatMessage(
+            id = java.util.UUID.randomUUID().toString(),
+            content = "Функция поиска рецептов в разработке...",
+            type = com.example.calorietracker.data.MessageType.AI,
+            timestamp = java.time.LocalDateTime.now(),
+            isVisible = true,
+            animate = true
+        )
+        _messages.add(recipeMessage)
+    }
+    
+    private suspend fun handleAnalysisMode(text: String) {
+        // Добавляем сообщение об анализе
+        val loadingMessage = com.example.calorietracker.data.ChatMessage(
+            id = java.util.UUID.randomUUID().toString(),
+            content = "Анализирую ваш рацион...",
+            type = com.example.calorietracker.data.MessageType.AI,
+            timestamp = java.time.LocalDateTime.now(),
+            isVisible = true,
+            animate = true,
+            isProcessing = true
+        )
+        _messages.add(loadingMessage)
+        
+        // TODO: Implement daily analysis
+        delay(2000) // Имитация загрузки
+        
+        _messages.remove(loadingMessage)
+        val analysisMessage = com.example.calorietracker.data.ChatMessage(
+            id = java.util.UUID.randomUUID().toString(),
+            content = "За сегодня вы употребили ${dailyCalories} ккал из ${userProfile.dailyCalories} запланированных.",
+            type = com.example.calorietracker.data.MessageType.AI,
+            timestamp = java.time.LocalDateTime.now(),
+            isVisible = true,
+            animate = true
+        )
+        _messages.add(analysisMessage)
+    }
+    
+    private suspend fun handleChatMode(text: String) {
+        // Добавляем сообщение о загрузке
+        val loadingMessage = com.example.calorietracker.data.ChatMessage(
+            id = java.util.UUID.randomUUID().toString(),
+            content = "Думаю...",
+            type = com.example.calorietracker.data.MessageType.AI,
+            timestamp = java.time.LocalDateTime.now(),
+            isVisible = true,
+            animate = true,
+            isProcessing = true
+        )
+        _messages.add(loadingMessage)
+        
+        // Отправляем через ChatUseCase
+        val chatMessage = com.example.calorietracker.domain.entities.ChatMessage(
+            id = java.util.UUID.randomUUID().toString(),
+            content = text,
+            type = com.example.calorietracker.domain.entities.common.MessageType.USER,
+            timestamp = java.time.LocalDateTime.now()
+        )
+        
+        when (val result = sendChatMessageUseCase(SendChatMessageUseCase.Params(chatMessage))) {
+            is Result.Success -> {
+                _messages.remove(loadingMessage)
+                val aiResponse = com.example.calorietracker.data.ChatMessage(
+                    id = result.data.id,
+                    content = result.data.content,
+                    type = com.example.calorietracker.data.MessageType.AI,
+                    timestamp = java.time.LocalDateTime.now(),
+                    isVisible = true,
+                    animate = true
+                )
+                _messages.add(aiResponse)
+            }
+            is Result.Error -> {
+                _messages.remove(loadingMessage)
+                val errorMessage = com.example.calorietracker.data.ChatMessage(
+                    id = java.util.UUID.randomUUID().toString(),
+                    content = "Не удалось получить ответ. Проверьте подключение к интернету.",
+                    type = com.example.calorietracker.data.MessageType.AI,
+                    timestamp = java.time.LocalDateTime.now(),
+                    isVisible = true,
+                    animate = true,
+                    isError = true
+                )
+                _messages.add(errorMessage)
+            }
         }
     }
     
@@ -428,8 +698,9 @@ import java.time.LocalDate
         // Legacy method - no longer needed with new architecture
     }
     
-    // Get messages (legacy compatibility)
-    val messages: List<com.example.calorietracker.data.ChatMessage> get() = emptyList()
+    // Chat messages state
+    private val _messages = mutableStateListOf<com.example.calorietracker.data.ChatMessage>()
+    val messages: List<com.example.calorietracker.data.ChatMessage> get() = _messages
     
     // Helper function to update UI state
     private fun updateUiState(update: CalorieTrackerUiState.() -> CalorieTrackerUiState) {

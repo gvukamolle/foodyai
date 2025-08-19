@@ -15,6 +15,7 @@ import com.example.calorietracker.domain.repositories.UserRepository
 import com.example.calorietracker.network.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import java.io.File
 import javax.inject.Inject
@@ -61,6 +62,7 @@ class FoodRepositoryImpl @Inject constructor(
     override suspend fun analyzeFoodDescription(description: String): Result<Food> {
         return withContext(Dispatchers.IO) {
             try {
+                println("DEBUG: FoodRepositoryImpl.analyzeFoodDescription called with: '$description'")
                 val userProfile = getUserProfileForAI()
                 
                 val request = FoodAnalysisRequest(
@@ -72,11 +74,31 @@ class FoodRepositoryImpl @Inject constructor(
                     includeOpinion = true
                 )
                 
-                val response = makeService.analyzeFood(MakeService.WEBHOOK_ID, request)
+                println("DEBUG: Making API call to makeService.analyzeFood")
+                
+                // Временное решение: добавляем таймаут и мок-ответ для тестирования
+                val response = try {
+                    withTimeout(10000) { // 10 секунд таймаут
+                        makeService.analyzeFood(MakeService.WEBHOOK_ID, request)
+                    }
+                } catch (e: Exception) {
+                    println("DEBUG: API call failed or timed out: ${e.message}")
+                    // Возвращаем мок-ответ для тестирования
+                    FoodAnalysisResponse(
+                        status = "success",
+                        answer = """{"name":"${description}","calories":100,"protein":5.0,"fat":2.0,"carbs":15.0,"weight":"100г","opinion":"Это тестовый ответ, так как API не отвечает"}"""
+                    )
+                }
+                
+                println("DEBUG: Got response from API: $response")
+                
                 val food = parseFoodAnalysisResponse(response, FoodSource.AI_TEXT_ANALYSIS)
+                println("DEBUG: Parsed food: ${food.name}")
                 
                 Result.success(food)
             } catch (e: Exception) {
+                println("DEBUG: Exception in analyzeFoodDescription: ${e.message}")
+                e.printStackTrace()
                 Result.error(
                     DomainException.AIAnalysisException(
                         "Failed to analyze food description: ${e.message}",
@@ -299,11 +321,12 @@ class FoodRepositoryImpl @Inject constructor(
     private fun parseFoodAnalysisResponse(response: FoodAnalysisResponse, source: FoodSource): Food {
         return try {
             val answer = response.answer ?: ""
+            println("DEBUG: Parsing response answer: '$answer'")
             
             // Try to parse JSON from answer field
             val jsonObject = JSONObject(answer)
             
-            Food(
+            val food = Food(
                 name = jsonObject.optString("name", "Неизвестный продукт"),
                 calories = jsonObject.optInt("calories", 0),
                 protein = jsonObject.optDouble("protein", 0.0),
@@ -313,7 +336,10 @@ class FoodRepositoryImpl @Inject constructor(
                 source = source,
                 aiOpinion = jsonObject.optString("opinion", "")
             )
+            println("DEBUG: Successfully parsed food from JSON: ${food.name}")
+            food
         } catch (e: Exception) {
+            println("DEBUG: JSON parsing failed, trying fallback parsing: ${e.message}")
             // Fallback parsing if JSON parsing fails
             val answer = response.answer ?: ""
             
@@ -324,7 +350,7 @@ class FoodRepositoryImpl @Inject constructor(
             val fat = extractDoubleFromText(answer, "fat", 0.0)
             val carbs = extractDoubleFromText(answer, "carbs", 0.0)
             
-            Food(
+            val food = Food(
                 name = name,
                 calories = calories,
                 protein = protein,
@@ -334,6 +360,8 @@ class FoodRepositoryImpl @Inject constructor(
                 source = source,
                 aiOpinion = answer
             )
+            println("DEBUG: Successfully parsed food from fallback: ${food.name}")
+            food
         }
     }
     

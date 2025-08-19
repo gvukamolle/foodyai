@@ -297,35 +297,35 @@ interface MakeService {
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun analyzeFood(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: FoodAnalysisRequest
     ): FoodAnalysisResponse
 
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun analyzeFoodImage(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: ImageAnalysisRequest
     ): FoodAnalysisResponse
 
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun planMealWeek(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: MealPlanRequest
     ): MealPlanResponse
 
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun analyzeNutrition(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: NutritionRequest
     ): NutritionResponse
 
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun getRecommendations(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: RecommendationRequest
     ): RecommendationResponse
 
@@ -333,7 +333,7 @@ interface MakeService {
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun logFoodToThread(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: LogFoodRequest
     ): LogFoodResponse
 
@@ -341,7 +341,7 @@ interface MakeService {
     @Multipart
     @POST("{webhookId}")
     suspend fun analyzeFoodPhoto(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Part photo: MultipartBody.Part,
         @Part("userProfile") userProfile: RequestBody,
         @Part("userId") userId: RequestBody,
@@ -354,7 +354,7 @@ interface MakeService {
     @Multipart
     @POST("{webhookId}")
     suspend fun askAiDietitianWithPhoto(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Part photo: MultipartBody.Part,
         @Part("userProfile") userProfile: RequestBody,
         @Part("userId") userId: RequestBody,
@@ -367,7 +367,7 @@ interface MakeService {
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun analyzeFoodImageByUrl(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: ImageUrlAnalysisRequest
     ): FoodAnalysisResponse
 
@@ -375,14 +375,14 @@ interface MakeService {
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun askAiDietitian(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: AiChatRequest
     ): AiChatResponse
 
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun checkHealth(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: HealthCheckRequest = HealthCheckRequest()
     ): HealthResponse
     
@@ -390,7 +390,7 @@ interface MakeService {
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun analyzeWeeklyData(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: WeeklyDataForAnalysis
     ): FoodAnalysisResponse
     
@@ -398,7 +398,7 @@ interface MakeService {
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun analyzeDailyIntake(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: DailyAnalysisRequest
     ): FoodAnalysisResponse
 
@@ -407,7 +407,7 @@ interface MakeService {
     @Headers("Content-Type: application/json")
     @POST("{webhookId}")
     suspend fun watchMyFood(
-        @Path("webhookId") webhookId: String,
+        @Path(value = "webhookId", encoded = true) webhookId: String,
         @Body request: WatchMyFoodRequest
     ): FoodAnalysisResponse
 }

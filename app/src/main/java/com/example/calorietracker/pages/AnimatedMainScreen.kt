@@ -198,7 +198,6 @@ fun AnimatedMainScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     var isDrawerOpen by remember { mutableStateOf(false) } // Состояние для выдвижного меню
     var showStatisticsCard by remember { mutableStateOf(false) } // Состояние для карточки статистики
-    var isRecordMode by remember { mutableStateOf(false) } // Состояние для режима записи
     
     // Состояние для FoodDetailScreen
     var showFoodDetailScreen by remember { mutableStateOf(false) }
@@ -221,9 +220,7 @@ fun AnimatedMainScreen(
                 onMenuToggle = { menuExpanded = it },
                 onCameraClick = onCameraClick,
                 onGalleryClick = onGalleryClick,
-                onManualClick = onManualClick,
-                isRecordMode = isRecordMode,
-                onRecordModeToggle = { isRecordMode = it }
+                onManualClick = onManualClick
             )
         }
     ) { paddingValues ->
@@ -648,8 +645,7 @@ private fun AnimatedChatMessageCard(
                 val maxMessageWidth = (configuration.screenWidthDp * 2 / 3).dp
 
                 val showCard = !(
-                        (message.isProcessing && message.inputMethod == null) ||
-                                (message.content.isEmpty() && message.isExpandable && message.foodItem != null)
+                        (message.content.isEmpty() && message.isExpandable && message.foodItem != null)
                         )
 
                 if (showCard) {
@@ -748,9 +744,7 @@ private fun AnimatedBottomBar(
     onMenuToggle: (Boolean) -> Unit,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
-    onManualClick: () -> Unit,
-    isRecordMode: Boolean,
-    onRecordModeToggle: (Boolean) -> Unit
+    onManualClick: () -> Unit
 ) {
     val hasTodayMeals = viewModel.meals.isNotEmpty()
     val isAnalysisMode = viewModel.isDailyAnalysisEnabled
@@ -843,10 +837,14 @@ private fun AnimatedBottomBar(
                                 viewModel.inputMessage
                             }
 
-                            // Если включаем режим анализа, отключаем режим записи
-                            if (!isAnalysisMode && isRecordMode) {
-                                onRecordModeToggle(false)
-                                // Небольшая задержка для плавного перехода
+                            // Если включаем режим анализа, отключаем другие режимы
+                            if (!isAnalysisMode) {
+                                if (viewModel.isRecordMode) {
+                                    viewModel.toggleRecordMode()
+                                }
+                                if (isRecipeMode) {
+                                    viewModel.toggleRecipeMode()
+                                }
                                 coroutineScope.launch {
                                     delay(100)
                                     viewModel.toggleDailyAnalysis()
@@ -854,11 +852,7 @@ private fun AnimatedBottomBar(
                                 }
                             } else {
                                 viewModel.toggleDailyAnalysis()
-                                viewModel.inputMessage = if (isAnalysisMode) {
-                                    currentText
-                                } else {
-                                    "[АНАЛИЗ] $currentText"
-                                }
+                                viewModel.inputMessage = currentText
                             }
                         }
                     }
@@ -868,13 +862,16 @@ private fun AnimatedBottomBar(
                 AnimatedRecordToggle(
                     isEnabled = viewModel.isRecordMode,
                     onClick = {
-                        // Если включаем режим записи, отключаем режим анализа
-                        if (!viewModel.isRecordMode && isAnalysisMode) {
-                            // Сначала убираем префикс анализа из сообщения
-                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
-                            viewModel.inputMessage = currentText
-                            viewModel.toggleDailyAnalysis()
-                            // Включаем режим записи сразу, чтобы placeholder сменился без задержки
+                        // Если включаем режим записи, отключаем другие режимы
+                        if (!viewModel.isRecordMode) {
+                            if (isAnalysisMode) {
+                                val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
+                                viewModel.inputMessage = currentText
+                                viewModel.toggleDailyAnalysis()
+                            }
+                            if (isRecipeMode) {
+                                viewModel.toggleRecipeMode()
+                            }
                             viewModel.toggleRecordMode()
                         } else {
                             viewModel.toggleRecordMode()
@@ -886,32 +883,46 @@ private fun AnimatedBottomBar(
                 AnimatedRecipeToggle(
                     isEnabled = isRecipeMode,
                     onClick = {
-                        if (!isRecipeMode && isAnalysisMode) {
-                            val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
-                            viewModel.inputMessage = currentText
-                            viewModel.toggleDailyAnalysis()
+                        // Если включаем режим рецептов, отключаем другие режимы
+                        if (!isRecipeMode) {
+                            if (isAnalysisMode) {
+                                val currentText = viewModel.inputMessage.removePrefix("[АНАЛИЗ] ")
+                                viewModel.inputMessage = currentText
+                                viewModel.toggleDailyAnalysis()
+                            }
+                            if (viewModel.isRecordMode) {
+                                viewModel.toggleRecordMode()
+                            }
+                            viewModel.toggleRecipeMode()
+                        } else {
+                            viewModel.toggleRecipeMode()
                         }
-                        viewModel.toggleRecipeMode()
                     }
                 )
             }
 
             // Кнопка отправки / меню СПРАВА
             Box {
+                val hasContent = if (isAnalysisMode) {
+                    viewModel.inputMessage.removePrefix("[АНАЛИЗ] ").isNotBlank()
+                } else {
+                    viewModel.inputMessage.isNotBlank() || viewModel.attachedPhotoPath != null
+                }
+                
+                println("DEBUG: hasContent=$hasContent, inputMessage='${viewModel.inputMessage}', attachedPhotoPath='${viewModel.attachedPhotoPath}', isAnalysisMode=$isAnalysisMode")
+                
                 AnimatedContent(
-                    targetState = if (isAnalysisMode) {
-                        viewModel.inputMessage.removePrefix("[АНАЛИЗ] ").isNotBlank()
-                    } else {
-                        viewModel.inputMessage.isNotBlank() || viewModel.attachedPhoto != null
-                    },
+                    targetState = hasContent,
                     transitionSpec = {
                         fadeIn() + scaleIn() with fadeOut() + scaleOut()
                     },
                     label = "send_button"
                 ) { hasContent ->
+                    println("DEBUG: AnimatedContent hasContent=$hasContent")
                     if (hasContent) {
                         AnimatedSendButton(
                             onClick = {
+                                println("DEBUG: Send button clicked!")
                                 viewModel.sendMessage()
                             }
                         )
@@ -1118,6 +1129,7 @@ private fun AnimatedSendButton(
 
     IconButton(
         onClick = {
+            println("DEBUG: AnimatedSendButton IconButton clicked!")
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             isPressed = true
             onClick()
