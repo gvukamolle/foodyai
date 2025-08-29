@@ -293,16 +293,16 @@ fun AnimatedPhrases(
         }
     }
 
-    // Инициализация первой фразы
+    // Инициализация первой фразы без дополнительной задержки (контейнер уже задержан)
     LaunchedEffect(Unit) {
         currentPhraseIndex = getNextRandomIndex()
         shownIndices = shownIndices + currentPhraseIndex
         currentPhrase = phrases.getOrElse(currentPhraseIndex) { phrases.firstOrNull() ?: "" }
     }
 
-    // Запуск анимации переключения через 3 секунды
+    // Запуск анимации переключения
     LaunchedEffect(Unit) {
-        delay(3000) // Ждем 3 секунды перед началом переключения
+        delay(2500) // старт перед первой сменой
         
         while (true) {
             if (!isAnimating) {
@@ -328,7 +328,7 @@ fun AnimatedPhrases(
                 isAnimating = false
             }
             
-            delay(3000) // Показываем каждую фразу 3 секунды
+            delay(2500) // Показываем каждую фразу 2.5 секунды
         }
     }
 

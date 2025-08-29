@@ -10,6 +10,7 @@ import com.example.calorietracker.data.repositories.FoodRepositoryImpl
 import com.example.calorietracker.data.repositories.NutritionRepositoryImpl
 import com.example.calorietracker.data.repositories.UserRepositoryImpl
 import com.example.calorietracker.network.MakeService
+import okhttp3.OkHttpClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,9 +30,10 @@ object RepositoryModule {
         makeService: MakeService,
         dataRepository: DataRepository,
         foodMapper: FoodMapper,
-        userRepositoryImpl: UserRepositoryImpl
+        userRepositoryImpl: UserRepositoryImpl,
+        okHttpClient: OkHttpClient
     ): FoodRepositoryImpl {
-        return FoodRepositoryImpl(makeService, dataRepository, foodMapper, userRepositoryImpl)
+        return FoodRepositoryImpl(makeService, dataRepository, foodMapper, userRepositoryImpl, okHttpClient)
     }
     
     @Provides

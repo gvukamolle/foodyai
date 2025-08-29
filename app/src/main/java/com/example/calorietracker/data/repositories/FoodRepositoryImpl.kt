@@ -13,11 +13,21 @@ import com.example.calorietracker.domain.exceptions.DomainException
 import com.example.calorietracker.domain.repositories.FoodRepository
 import com.example.calorietracker.domain.repositories.UserRepository
 import com.example.calorietracker.network.*
+import com.google.gson.Gson
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import java.io.File
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,26 +39,107 @@ class FoodRepositoryImpl @Inject constructor(
     private val makeService: MakeService,
     private val dataRepository: DataRepository,
     private val foodMapper: FoodMapper,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val okHttpClient: OkHttpClient
 ) : FoodRepository {
+
+    /**
+     * Быстрый аплоад изображения на временный хост и возврат прямой ссылки.
+     * 1) 0x0.st (multipart)
+     * 2) fallback: transfer.sh (PUT)
+     */
+    private fun uploadImageToTemporaryHost(imageFile: File): String {
+        // 1) 0x0.st
+        try {
+            val body = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart(
+                    "file",
+                    imageFile.name,
+                    imageFile.asRequestBody("image/jpeg".toMediaType())
+                )
+                .build()
+            val req = Request.Builder()
+                .url("https://0x0.st")
+                .post(body)
+                .header("Accept", "text/plain")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                val url = resp.body?.string()?.trim().orEmpty()
+                if (resp.isSuccessful && url.startsWith("http")) {
+                    return url
+                } else {
+                    throw IllegalStateException("0x0.st failed: code=${resp.code} body=${url.take(120)}")
+                }
+            }
+        } catch (e: Exception) {
+            println("WARN: 0x0.st upload failed: ${e.message}")
+        }
+
+        // 2) transfer.sh
+        val putReq = Request.Builder()
+            .url("https://transfer.sh/${imageFile.name}")
+            .put(imageFile.asRequestBody("application/octet-stream".toMediaType()))
+            .header("Accept", "text/plain")
+            .build()
+        okHttpClient.newCall(putReq).execute().use { resp ->
+            val url = resp.body?.string()?.trim().orEmpty()
+            if (resp.isSuccessful && url.startsWith("http")) {
+                return url
+            } else {
+                throw DomainException.AIAnalysisException("transfer.sh failed: code=${resp.code} body=${url.take(120)}")
+            }
+        }
+    }
     
     override suspend fun analyzeFoodPhoto(photoPath: String, caption: String): Result<Food> {
         return withContext(Dispatchers.IO) {
             try {
                 val userProfile = getUserProfileForAI()
-                val imageBase64 = convertImageToBase64(photoPath)
-                
-                val request = ImageAnalysisRequest(
-                    imageBase64 = imageBase64,
-                    userProfile = userProfile,
-                    caption = caption
+                val imageFile = File(photoPath)
+                if (!imageFile.exists()) {
+                    throw DomainException.AIAnalysisException("Image file not found: $photoPath")
+                }
+
+                val mediaType = "image/jpeg".toMediaTypeOrNull()
+                val photoPart = MultipartBody.Part.createFormData(
+                    name = "photo",
+                    filename = imageFile.name,
+                    body = imageFile.asRequestBody(mediaType)
                 )
-                
-                val response = makeService.analyzeFoodImage(MakeService.WEBHOOK_ID, request)
+
+                val profileJson = Gson().toJson(userProfile)
+                val userProfileBody = profileJson.toRequestBody("application/json".toMediaType())
+                val userIdBody = java.util.UUID.randomUUID().toString().toRequestBody("text/plain".toMediaType())
+                val captionBody = caption.ifBlank { "" }.toRequestBody("text/plain".toMediaType())
+                val inferredMessageType = if (caption.startsWith("[RECIPE]")) "recipe_photo" else "photo"
+                val messageTypeBody = inferredMessageType.toRequestBody("text/plain".toMediaType())
+                val firstBody = "false".toRequestBody("text/plain".toMediaType())
+                // Совместимость с роутером: value содержит JSON со служебными полями
+                val valueJson = "{" +
+                        "\"messageType\":\"${inferredMessageType}\"," +
+                        "\"isFirstMessageOfDay\":false" +
+                        "}"
+                val valueBody = valueJson.toRequestBody("application/json".toMediaType())
+
+                val chatResp = withTimeout(60000) {
+                    makeService.askAiDietitianWithPhoto(
+                        MakeService.WEBHOOK_ID,
+                        photoPart,
+                        userProfileBody,
+                        userIdBody,
+                        captionBody,
+                        messageTypeBody,
+                        firstBody,
+                        valueBody
+                    )
+                }
+                val response = FoodAnalysisResponse(status = chatResp.status, answer = chatResp.answer)
                 val food = parseFoodAnalysisResponse(response, FoodSource.AI_PHOTO_ANALYSIS)
-                
                 Result.success(food)
             } catch (e: Exception) {
+                println("DEBUG: Exception in analyzeFoodPhoto: ${e.message}")
+                e.printStackTrace()
                 Result.error(
                     DomainException.AIAnalysisException(
                         "Failed to analyze food photo: ${e.message}",
@@ -62,9 +153,7 @@ class FoodRepositoryImpl @Inject constructor(
     override suspend fun analyzeFoodDescription(description: String): Result<Food> {
         return withContext(Dispatchers.IO) {
             try {
-                println("DEBUG: FoodRepositoryImpl.analyzeFoodDescription called with: '$description'")
                 val userProfile = getUserProfileForAI()
-                
                 val request = FoodAnalysisRequest(
                     weight = 100,
                     userProfile = userProfile,
@@ -73,28 +162,12 @@ class FoodRepositoryImpl @Inject constructor(
                     messageType = "analysis",
                     includeOpinion = true
                 )
-                
-                println("DEBUG: Making API call to makeService.analyzeFood")
-                
-                // Временное решение: добавляем таймаут и мок-ответ для тестирования
-                val response = try {
-                    withTimeout(10000) { // 10 секунд таймаут
-                        makeService.analyzeFood(MakeService.WEBHOOK_ID, request)
-                    }
-                } catch (e: Exception) {
-                    println("DEBUG: API call failed or timed out: ${e.message}")
-                    // Возвращаем мок-ответ для тестирования
-                    FoodAnalysisResponse(
-                        status = "success",
-                        answer = """{"name":"${description}","calories":100,"protein":5.0,"fat":2.0,"carbs":15.0,"weight":"100г","opinion":"Это тестовый ответ, так как API не отвечает"}"""
-                    )
+
+                val response = withTimeout(30000) {
+                    makeService.analyzeFood(MakeService.WEBHOOK_ID, request)
                 }
-                
-                println("DEBUG: Got response from API: $response")
-                
+
                 val food = parseFoodAnalysisResponse(response, FoodSource.AI_TEXT_ANALYSIS)
-                println("DEBUG: Parsed food: ${food.name}")
-                
                 Result.success(food)
             } catch (e: Exception) {
                 println("DEBUG: Exception in analyzeFoodDescription: ${e.message}")
@@ -260,13 +333,44 @@ class FoodRepositoryImpl @Inject constructor(
     }
     
     /**
-     * Convert image file to Base64 string
+     * Convert image file to Base64 string with compression
      */
     private fun convertImageToBase64(imagePath: String): String {
         return try {
             val imageFile = File(imagePath)
-            val imageBytes = imageFile.readBytes()
-            Base64.encodeToString(imageBytes, Base64.DEFAULT)
+            
+            // Декодируем изображение
+            var bitmap = android.graphics.BitmapFactory.decodeFile(imagePath)
+            
+            // Ресайз если изображение слишком большое (макс 1024x1024)
+            val maxDimension = 1024
+            if (bitmap.width > maxDimension || bitmap.height > maxDimension) {
+                val scale = minOf(
+                    maxDimension.toFloat() / bitmap.width,
+                    maxDimension.toFloat() / bitmap.height
+                )
+                val newWidth = (bitmap.width * scale).toInt()
+                val newHeight = (bitmap.height * scale).toInt()
+                bitmap = android.graphics.Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+                println("DEBUG: Image resized to ${newWidth}x${newHeight}")
+            }
+            
+            val stream = java.io.ByteArrayOutputStream()
+            
+            // Сжимаем до 85% качества в JPEG
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, stream)
+            val imageBytes = stream.toByteArray()
+            
+            println("DEBUG: Image compressed from ${imageFile.length()} to ${imageBytes.size} bytes")
+            
+            // Проверяем размер base64 (он будет ~33% больше)
+            val base64Size = (imageBytes.size * 4 / 3)
+            if (base64Size > 5_000_000) { // 5MB лимит для base64
+                throw DomainException.AIAnalysisException("Image too large even after compression")
+            }
+            
+            // Важно: NO_WRAP, чтобы убрать переносы строк в base64
+            Base64.encodeToString(imageBytes, Base64.NO_WRAP)
         } catch (e: Exception) {
             throw DomainException.AIAnalysisException("Failed to convert image to Base64: ${e.message}", e)
         }
