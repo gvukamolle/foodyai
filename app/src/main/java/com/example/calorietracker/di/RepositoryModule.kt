@@ -33,7 +33,13 @@ object RepositoryModule {
         userRepositoryImpl: UserRepositoryImpl,
         okHttpClient: OkHttpClient
     ): FoodRepositoryImpl {
-        return FoodRepositoryImpl(makeService, dataRepository, foodMapper, userRepositoryImpl, okHttpClient)
+        return FoodRepositoryImpl(
+            makeService = makeService,
+            dataRepository = dataRepository,
+            foodMapper = foodMapper,
+            userRepository = userRepositoryImpl,
+            okHttpClient = okHttpClient
+        )
     }
     
     @Provides
@@ -60,8 +66,14 @@ object RepositoryModule {
     fun provideChatRepositoryImpl(
         dataRepository: DataRepository,
         chatMapper: ChatMapper,
-        makeService: MakeService
+        makeService: MakeService,
+        makeWebhookClient: com.example.calorietracker.network.MakeWebhookClient
     ): ChatRepositoryImpl {
-        return ChatRepositoryImpl(dataRepository, chatMapper, makeService)
+        return ChatRepositoryImpl(
+            dataRepository = dataRepository,
+            chatMapper = chatMapper,
+            makeService = makeService,
+            makeWebhookClient = makeWebhookClient
+        )
     }
 }

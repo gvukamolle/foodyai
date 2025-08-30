@@ -19,13 +19,18 @@ data class FoodAnalysisRequest(
 data class ImageAnalysisRequest(
     val imageBase64: String,
     val userProfile: UserProfileData,
-    val caption: String = ""
+    val caption: String = "",
+    val messageType: String = "photo",
+    val isFirstMessageOfDay: Boolean = false
 )
 
 // Запрос при отправке ссылки на изображение
 data class ImageUrlAnalysisRequest(
     val imageUrl: String,
-    val userProfile: UserProfileData
+    val userProfile: UserProfileData,
+    val caption: String = "",
+    val messageType: String = "photo",
+    val isFirstMessageOfDay: Boolean = false
 )
 
 data class FoodDataWithOpinion(
@@ -377,8 +382,7 @@ interface MakeService {
         @Part("userId") userId: RequestBody,
         @Part("caption") caption: RequestBody,
         @Part("messageType") messageType: RequestBody,
-        @Part("isFirstMessageOfDay") isFirstMessageOfDay: RequestBody,
-        @Part("value") value: RequestBody
+        @Part("isFirstMessageOfDay") isFirstMessageOfDay: RequestBody
     ): AiChatResponse
 
     // Анализ по URL на изображение

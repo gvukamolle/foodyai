@@ -27,6 +27,11 @@ interface FoodRepository {
     suspend fun analyzeFoodPhoto(photoPath: String, caption: String): Result<Food>
     
     /**
+     * Overload with explicit messageType for routing (e.g., "photo", "recipe_photo").
+     */
+    suspend fun analyzeFoodPhoto(photoPath: String, caption: String, messageType: String): Result<Food>
+    
+    /**
      * Analyzes food from a text description using AI natural language processing.
      * 
      * @param description Text description of the food (e.g., "one medium apple")

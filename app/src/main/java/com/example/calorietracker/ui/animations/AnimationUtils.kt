@@ -8,8 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.unit.dp
+// Blur removed: use alpha-only animations for consistency
 
 /* -------------------------------------------------------------------------- */
 /*                              Сообщение в чате                              */
@@ -56,22 +55,11 @@ fun AnimatedMessage(
         label = "alpha"
     )
 
-    val animatedBlur by animateDpAsState(
-        targetValue = if (show) 0.dp else 8.dp,
-        animationSpec = if (isAnimationTriggered) {
-            tween(durationMillis = 400, easing = FastOutSlowInEasing)
-        } else {
-            snap()
-        },
-        label = "blur"
-    )
-
     Box(
         modifier = modifier
             .graphicsLayer {
                 alpha = animatedAlpha
             }
-            .blur(radius = animatedBlur)
     ) {
         content()
     }
@@ -138,7 +126,6 @@ fun AnimatedMessageWithBlur(
     content: @Composable () -> Unit
 ) {
     var show by remember(id) { mutableStateOf(!playAnimation) }
-    var blur by remember(id) { mutableStateOf(if (playAnimation) 8.dp else 0.dp) }
 
     // Анимация появления
     LaunchedEffect(id, isVisible) {
@@ -146,12 +133,10 @@ fun AnimatedMessageWithBlur(
             delay(100)
             if (startDelay > 0) delay(startDelay)
             show = true
-            blur = 0.dp
             onAnimationStart()
         } else if (!isVisible) {
-            // Анимация исчезновения
-            blur = 8.dp
-            delay(300)
+            // Анимация исчезновения (альфа)
+            delay(250)
             show = false
         }
     }
@@ -165,22 +150,12 @@ fun AnimatedMessageWithBlur(
         label = "alpha"
     )
 
-    val animatedBlur by animateDpAsState(
-        targetValue = blur,
-        animationSpec = tween(
-            durationMillis = 400,
-            easing = FastOutSlowInEasing
-        ),
-        label = "blur"
-    )
-
     if (show || animatedAlpha > 0.01f) {
         Box(
             modifier = modifier
                 .graphicsLayer {
                     alpha = animatedAlpha
                 }
-                .blur(radius = animatedBlur)
         ) {
             content()
         }

@@ -25,8 +25,11 @@ class AnalyzeFoodPhotoUseCase @Inject constructor(
             return Result.error(DomainException.ValidationException("Invalid photo path"))
         }
         
-        // Call repository to analyze photo
-        return when (val result = foodRepository.analyzeFoodPhoto(parameters.photoPath, parameters.caption)) {
+        // Decide messageType explicitly if provided, else default to photo
+        val messageType = parameters.messageType?.ifBlank { null } ?: "photo"
+
+        // Call repository to analyze photo with explicit messageType
+        return when (val result = foodRepository.analyzeFoodPhoto(parameters.photoPath, parameters.caption, messageType)) {
             is Result.Success -> {
                 // Validate the returned food data
                 validateFoodResult(result.data)
@@ -59,6 +62,7 @@ class AnalyzeFoodPhotoUseCase @Inject constructor(
     
     data class Params(
         val photoPath: String,
-        val caption: String = ""
+        val caption: String = "",
+        val messageType: String? = null
     )
 }

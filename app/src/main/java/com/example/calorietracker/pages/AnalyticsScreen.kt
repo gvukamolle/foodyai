@@ -55,6 +55,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import com.example.calorietracker.utils.DailyResetUtils
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -476,7 +477,7 @@ private fun AIInsightsCard(
     var aiAnalysis by remember { mutableStateOf<AIAnalysisResponse?>(null) }
     var analysisDate by remember { mutableStateOf<LocalDate?>(null) }
     val haptic = LocalHapticFeedback.current
-    val today = LocalDate.now()
+    val today = runCatching { DailyResetUtils.getFoodLocalDate() }.getOrElse { LocalDate.now() }
     
     // Проверяем, был ли анализ выполнен сегодня
     val isAnalysisFromToday = analysisDate == today

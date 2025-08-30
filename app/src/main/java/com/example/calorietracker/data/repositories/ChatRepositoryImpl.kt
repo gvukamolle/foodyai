@@ -13,6 +13,8 @@ import com.example.calorietracker.domain.repositories.ChatRepository
 import com.example.calorietracker.network.AiChatRequest
 import com.example.calorietracker.network.AiChatResponse
 import com.example.calorietracker.network.MakeService
+import com.example.calorietracker.network.MakeWebhookClient
+import com.example.calorietracker.network.MakeWebhookResult
 import com.example.calorietracker.network.UserProfileData
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +31,8 @@ import javax.inject.Singleton
 class ChatRepositoryImpl @Inject constructor(
     private val dataRepository: DataRepository,
     private val chatMapper: ChatMapper,
-    private val makeService: MakeService
+    private val makeService: MakeService,
+    private val makeWebhookClient: MakeWebhookClient
 ) : ChatRepository {
     
     private val gson = Gson()
@@ -52,23 +55,48 @@ class ChatRepositoryImpl @Inject constructor(
                 // Generate userId
                 val userId = "user_${System.currentTimeMillis()}"
                 
-                // Send message to Make.com
-                val request = AiChatRequest(
-                    message = message.content,
-                    userProfile = userProfile,
-                    userId = userId,
-                    isFirstMessageOfDay = isFirstMessageOfDay,
-                    messageType = messageType
-                )
-                
-                val response = try {
-                    makeService.askAiDietitian(MakeService.WEBHOOK_ID, request)
-                } catch (e: Exception) {
-                    // Fallback на старый метод если Make.com не доступен
+                // If image attached → send multipart photo, else JSON chat
+                val response: AiChatResponse = if (message.imagePath != null) {
+                    val profileJson = gson.toJson(userProfile)
+                    val inferredType = if (messageType == "recipe") "recipe_photo" else "photo"
+                    val httpResp: MakeWebhookResult = try {
+                        makeWebhookClient.postMultipartPhoto(
+                            webhookId = MakeService.WEBHOOK_ID,
+                            photoFile = java.io.File(message.imagePath),
+                            userProfileJson = profileJson,
+                            userId = userId,
+                            caption = message.content,
+                            messageType = inferredType,
+                            isFirstMessageOfDay = isFirstMessageOfDay
+                        )
+                    } catch (e: Exception) {
+                        // As a last resort: fall back to legacy local stub
+                        return@withContext Result.error(
+                            DomainException.NetworkException(
+                                "Failed to send photo message: ${e.message}", e
+                            )
+                        )
+                    }
                     AiChatResponse(
-                        status = "error",
-                        answer = dataRepository.sendChatMessage(message.content)
+                        status = if (httpResp.httpCode in 200..299) "success" else "error",
+                        answer = httpResp.body
                     )
+                } else {
+                    val request = AiChatRequest(
+                        message = message.content,
+                        userProfile = userProfile,
+                        userId = userId,
+                        isFirstMessageOfDay = isFirstMessageOfDay,
+                        messageType = messageType
+                    )
+                    try {
+                        makeService.askAiDietitian(MakeService.WEBHOOK_ID, request)
+                    } catch (e: Exception) {
+                        AiChatResponse(
+                            status = "error",
+                            answer = dataRepository.sendChatMessage(message.content)
+                        )
+                    }
                 }
                 
                 // Create AI response message

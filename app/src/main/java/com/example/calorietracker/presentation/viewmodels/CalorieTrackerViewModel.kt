@@ -20,6 +20,8 @@ import com.example.calorietracker.domain.entities.Food
 import com.example.calorietracker.domain.entities.NutritionIntake
 import com.example.calorietracker.domain.entities.User
 import com.example.calorietracker.domain.entities.common.MealType
+import com.example.calorietracker.domain.entities.common.NutritionTargets
+import com.example.calorietracker.domain.entities.common.Gender
 import com.example.calorietracker.domain.usecases.*
 import com.example.calorietracker.managers.AppMode
 import com.example.calorietracker.managers.NetworkManager
@@ -31,6 +33,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -124,6 +127,7 @@ import java.time.LocalDate
     var prefillFood by mutableStateOf<Food?>(null)
     var selectedMeal by mutableStateOf(MealType.BREAKFAST)
     var isAnalyzing by mutableStateOf(false)
+    var isSavingFood by mutableStateOf(false)
     var attachedPhoto by mutableStateOf<Bitmap?>(null)
     var attachedPhotoPath by mutableStateOf<String?>(null)
     var pendingPhoto by mutableStateOf<Bitmap?>(null)
@@ -150,6 +154,7 @@ import java.time.LocalDate
     
     init {
         loadInitialData()
+        monitorHeaderDebugLogging()
     }
     
     private fun loadInitialData() {
@@ -162,36 +167,90 @@ import java.time.LocalDate
     private suspend fun loadUserProfile() {
         when (val result = getUserProfileUseCase()) {
             is Result.Success -> {
-                _userProfile.value = result.data
-                // Also keep legacy copy in shared prefs for UI
                 val u = result.data
+                val targets = u.nutritionTargets
+                val needsCalc = targets.dailyCalories == 0 ||
+                        targets.dailyProtein == 0 ||
+                        targets.dailyFat == 0 ||
+                        targets.dailyCarbs == 0
+
+                println("DEBUG_PROFILE: targets before calc = ${u.nutritionTargets}")
+
+                val updatedTargets: NutritionTargets? = if (needsCalc) {
+                    when (val calc = calculateNutritionTargetsUseCase(
+                        CalculateNutritionTargetsUseCase.Params(u)
+                    )) {
+                        is Result.Success -> {
+                            println("DEBUG_PROFILE: targets after calc = ${calc.data}")
+                            calc.data
+                        }
+                        is Result.Error -> {
+                            println("DEBUG_PROFILE: calc failed: ${calc.exception.message}; applying fallback targets")
+                            createSafeFallbackTargets(u)
+                        }
+                    }
+                } else null
+
+                val finalUser = if (updatedTargets != null) u.copy(nutritionTargets = updatedTargets) else u
+
+                _userProfile.value = finalUser
+
+                // Also keep legacy copy in shared prefs for UI (source of truth for some repos)
                 val legacy = UserProfile(
-                    name = u.name,
-                    birthday = u.birthday,
-                    height = u.height,
-                    weight = u.weight,
-                    gender = u.gender.name.lowercase(),
-                    condition = u.activityLevel.name.lowercase(),
-                    bodyFeeling = u.bodyFeeling,
-                    goal = u.goal.name.lowercase(),
-                    dailyCalories = u.nutritionTargets.dailyCalories,
-                    dailyProteins = u.nutritionTargets.dailyProtein,
-                    dailyFats = u.nutritionTargets.dailyFat,
-                    dailyCarbs = u.nutritionTargets.dailyCarbs,
-                    isSetupComplete = u.isSetupComplete
+                    name = finalUser.name,
+                    birthday = finalUser.birthday,
+                    height = finalUser.height,
+                    weight = finalUser.weight,
+                    gender = finalUser.gender.name.lowercase(),
+                    condition = finalUser.activityLevel.name.lowercase(),
+                    bodyFeeling = finalUser.bodyFeeling,
+                    goal = finalUser.goal.name.lowercase(),
+                    dailyCalories = finalUser.nutritionTargets.dailyCalories,
+                    dailyProteins = finalUser.nutritionTargets.dailyProtein,
+                    dailyFats = finalUser.nutritionTargets.dailyFat,
+                    dailyCarbs = finalUser.nutritionTargets.dailyCarbs,
+                    isSetupComplete = finalUser.isSetupComplete
                 )
                 dataRepository.saveUserProfile(legacy)
+
+                // Persist updated domain user as well to keep domain and legacy in sync
+                when (val saveResult = saveUserProfileUseCase(SaveUserProfileUseCase.Params(finalUser))) {
+                    is Result.Error -> println("DEBUG_PROFILE: failed to persist domain user: ${saveResult.exception.message}")
+                    else -> {}
+                }
             }
             is Result.Error -> {
                 updateUiState { copy(error = "Failed to load user profile: ${result.exception.message}") }
             }
         }
     }
+
+    private fun monitorHeaderDebugLogging() {
+        viewModelScope.launch {
+            combine(dailyIntakeFlow, userProfileFlow) { intake, user ->
+                val current = intake?.getTotalCalories() ?: 0
+                val target = user?.nutritionTargets?.dailyCalories
+                    ?: (dataRepository.getUserProfile()?.dailyCalories ?: 0)
+                val dateStr = com.example.calorietracker.utils.DailyResetUtils.getFoodDate()
+                "DEBUG_HEADER_FLOW: current=$current target=$target date=$dateStr"
+            }.collect { msg -> println(msg) }
+        }
+    }
     
     private suspend fun loadDailyIntake() {
-        when (val result = getDailyIntakeUseCase(GetDailyIntakeUseCase.Params())) {
+        // Use "food day" date (app's custom day boundary) to match saving logic
+        val foodDate = try {
+            LocalDate.parse(DailyResetUtils.getFoodDate())
+        } catch (_: Exception) {
+            LocalDate.now()
+        }
+        when (val result = getDailyIntakeUseCase(GetDailyIntakeUseCase.Params(date = foodDate))) {
             is Result.Success -> {
                 _dailyIntake.value = result.data
+                val currentCalories = result.data.getTotalCalories()
+                val targetCalories = _userProfile.value?.nutritionTargets?.dailyCalories
+                    ?: (dataRepository.getUserProfile()?.dailyCalories ?: 0)
+                println("DEBUG_HEADER: current=$currentCalories target=$targetCalories for date=$foodDate")
             }
             is Result.Error -> {
                 updateUiState { copy(error = "Failed to load daily intake: ${result.exception.message}") }
@@ -236,8 +295,9 @@ import java.time.LocalDate
         }
         
         // Analyze photo
+        val messageType = if (isRecipeMode) "recipe_photo" else "photo"
         val result = analyzeFoodPhotoUseCase(
-            AnalyzeFoodPhotoUseCase.Params(photoPath, caption)
+            AnalyzeFoodPhotoUseCase.Params(photoPath = photoPath, caption = caption, messageType = messageType)
         )
         
         when (result) {
@@ -352,17 +412,37 @@ import java.time.LocalDate
     
     // Confirm and save food
     fun confirmFood() {
+        if (isSavingFood) return
         val food = pendingFood ?: return
         
         viewModelScope.launch {
+            isSavingFood = true
             updateUiState { copy(isLoading = true) }
             
+            val foodDateStr = DailyResetUtils.getFoodDate()
+            val before = dataRepository.getIntakeHistory(foodDateStr)
+            val beforeCalories = before?.calories ?: 0
+            val foodDate = try { LocalDate.parse(foodDateStr) } catch (_: Exception) { LocalDate.now() }
+            println("DEBUG_SAVE: save date=$foodDateStr, food='${food.name}', foodCalories=${food.calories}, sumBefore=$beforeCalories")
             when (val result = saveFoodIntakeUseCase(
-                SaveFoodIntakeUseCase.Params(food, selectedMeal)
+                SaveFoodIntakeUseCase.Params(food, selectedMeal, date = foodDate)
             )) {
                 is Result.Success -> {
-                    // Удаляем сообщение с карточкой подтверждения
-                    _messages.removeAll { it.type == com.example.calorietracker.data.MessageType.FOOD_CONFIRMATION }
+                    val after = dataRepository.getDailyIntake(foodDateStr)
+                    val afterCalories = after.calories
+                    println("DEBUG_SAVE: sumAfter=$afterCalories for date=$foodDateStr")
+                    // Плавно скрываем карточку подтверждения
+                    val confirmIds = _messages.filter { it.type == com.example.calorietracker.data.MessageType.FOOD_CONFIRMATION }
+                        .map { it.id }
+                    confirmIds.forEach { id ->
+                        val idx = _messages.indexOfFirst { it.id == id }
+                        if (idx >= 0) _messages[idx] = _messages[idx].copy(isVisible = false)
+                    }
+                    // Удаляем после короткой анимации
+                    viewModelScope.launch {
+                        delay(320)
+                        _messages.removeAll { it.id in confirmIds }
+                    }
                     
                     // Добавляем сообщение об успешном сохранении
                     val successMessage = com.example.calorietracker.data.ChatMessage(
@@ -392,8 +472,9 @@ import java.time.LocalDate
                     }
                     
                     pendingFood = null
-                    loadDailyIntake() // Refresh daily intake
+                    loadDailyIntake() // Refresh daily intake and progress
                     updateUiState { copy(isLoading = false) }
+                    isSavingFood = false
                 }
                 is Result.Error -> {
                     updateUiState { 
@@ -402,9 +483,27 @@ import java.time.LocalDate
                             error = "Failed to save food: ${result.exception.message}"
                         )
                     }
+                    isSavingFood = false
                 }
             }
         }
+    }
+
+    private fun createSafeFallbackTargets(user: User): NutritionTargets {
+        val baseCalories = when (user.gender) {
+            Gender.FEMALE -> 1800
+            Gender.MALE -> 2200
+            else -> 2000
+        }
+        val proteinCalories = (baseCalories * 0.25).toInt()
+        val fatCalories = (baseCalories * 0.30).toInt()
+        val carbsCalories = baseCalories - proteinCalories - fatCalories
+        return NutritionTargets(
+            dailyCalories = baseCalories,
+            dailyProtein = proteinCalories / 4,
+            dailyFat = fatCalories / 9,
+            dailyCarbs = carbsCalories / 4
+        )
     }
     
     // Delete meal from history and refresh
@@ -598,9 +697,7 @@ import java.time.LocalDate
                 startAiLoadingCycle("photo", loadingMessage.id)
                 
                 // Анализируем фото и обрабатываем результат
-                val captionForPhoto = if (isRecipeMode && messageText.isNotBlank()) {
-                    "[RECIPE] ${'$'}messageText"
-                } else messageText
+                val captionForPhoto = messageText
                 when (val result = analyzePhotoWithAI(photoPath, captionForPhoto)) {
                     is Result.Success -> {
                         stopAiLoadingCycle()
@@ -718,8 +815,19 @@ import java.time.LocalDate
         aiLoadingJob = null
         showAILoadingScreen = false
         aiLoadingInputMethod = null
-        // Удаляем все активные loading-сообщения
-        _messages.removeAll { it.isProcessing }
+        // Плавно скрываем активные loading-сообщения
+        val processingIds = _messages.filter { it.isProcessing }.map { it.id }
+        processingIds.forEach { id ->
+            val idx = _messages.indexOfFirst { it.id == id }
+            if (idx >= 0) {
+                _messages[idx] = _messages[idx].copy(isVisible = false)
+            }
+        }
+        // Удаляем их после окончания анимации
+        viewModelScope.launch {
+            delay(320)
+            _messages.removeAll { it.id in processingIds }
+        }
     }
     
     private suspend fun handleRecordMode(text: String) {
@@ -938,7 +1046,8 @@ import java.time.LocalDate
 
     fun getTodayData(): com.example.calorietracker.data.DayData? {
         val intake = dataRepository.getDailyIntake()
-        val date = java.time.LocalDate.now()
+        val date = runCatching { java.time.LocalDate.parse(com.example.calorietracker.utils.DailyResetUtils.getFoodDate()) }
+            .getOrElse { java.time.LocalDate.now() }
         return com.example.calorietracker.data.DayData(
             date = date,
             calories = intake.calories.toFloat(),

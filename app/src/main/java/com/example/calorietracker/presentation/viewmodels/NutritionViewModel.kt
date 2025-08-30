@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
+import com.example.calorietracker.utils.DailyResetUtils
 
 /**
  * ViewModel for nutrition tracking and analytics
@@ -56,7 +57,12 @@ class NutritionViewModel @Inject constructor(
      * Load today's nutrition intake
      */
     fun loadTodayIntake() {
-        loadDailyIntake(LocalDate.now())
+        val foodDate = try {
+            DailyResetUtils.getFoodLocalDate()
+        } catch (_: Exception) {
+            LocalDate.now()
+        }
+        loadDailyIntake(foodDate)
     }
     
     /**

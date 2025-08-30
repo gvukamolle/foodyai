@@ -10,7 +10,6 @@ import okhttp3.logging.HttpLoggingInterceptor
 import okhttp3.Protocol
 import okhttp3.EventListener
 import okhttp3.Call
-import okhttp3.Connection
 import okhttp3.Handshake
 import okhttp3.Request
 import retrofit2.Retrofit
@@ -24,26 +23,15 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor =
-        HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.HEADERS }
+        HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
 
     @Provides
     @Singleton
     fun provideOkHttpClient(logger: HttpLoggingInterceptor): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(logger)
+            .addInterceptor(MultipartDebugInterceptor())
             .retryOnConnectionFailure(true)
-            .protocols(listOf(Protocol.HTTP_1_1))
-            .addNetworkInterceptor { chain ->
-                val original = chain.request()
-                val url = original.url
-                val builder = original.newBuilder()
-                if (url.host == "hook.us2.make.com") {
-                    builder.header("Connection", "close")
-                    builder.header("Accept-Encoding", "identity")
-                    builder.header("User-Agent", "calorietracker/1.0 (OkHttp)")
-                }
-                chain.proceed(builder.build())
-            }
             .eventListenerFactory {
                 object : EventListener() {
                     override fun dnsStart(call: Call, domainName: String) {
@@ -118,4 +106,14 @@ object NetworkModule {
     @Singleton
     fun provideMakeService(retrofit: Retrofit): MakeService =
         retrofit.create(MakeService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMakeWebhookClient(client: OkHttpClient): MakeWebhookClient =
+        MakeWebhookClient(client)
+    
+    @Provides
+    @Singleton
+    fun provideNetworkDiagnosticHelper(client: OkHttpClient): NetworkDiagnosticHelper =
+        NetworkDiagnosticHelper(client)
     }

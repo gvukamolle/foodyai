@@ -39,8 +39,8 @@ class AnalyzeFoodPhotoUseCaseTest {
             source = FoodSource.AI_PHOTO_ANALYSIS
         )
         
-        coEvery { 
-            foodRepository.analyzeFoodPhoto(photoPath, caption) 
+        coEvery {
+            foodRepository.analyzeFoodPhoto(photoPath, caption, any())
         } returns Result.success(expectedFood)
         
         // When
@@ -49,7 +49,7 @@ class AnalyzeFoodPhotoUseCaseTest {
         // Then
         assertTrue(result is Result.Success)
         assertEquals(expectedFood, (result as Result.Success).data)
-        coVerify { foodRepository.analyzeFoodPhoto(photoPath, caption) }
+        coVerify { foodRepository.analyzeFoodPhoto(photoPath, caption, any()) }
     }
     
     @Test
@@ -89,8 +89,8 @@ class AnalyzeFoodPhotoUseCaseTest {
         val caption = "Pizza"
         val repositoryError = DomainException.NetworkException("Network error")
         
-        coEvery { 
-            foodRepository.analyzeFoodPhoto(photoPath, caption) 
+        coEvery {
+            foodRepository.analyzeFoodPhoto(photoPath, caption, any())
         } returns Result.error(repositoryError)
         
         // When

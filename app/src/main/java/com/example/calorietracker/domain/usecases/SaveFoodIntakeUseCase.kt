@@ -43,13 +43,7 @@ class SaveFoodIntakeUseCase @Inject constructor(
                 foods = listOf(parameters.food)
             )
             
-            // Save to food repository (for history and favorites)
-            val saveResult = foodRepository.saveFoodIntake(parameters.food, parameters.mealType)
-            if (saveResult is Result.Error) {
-                return Result.error(saveResult.exception)
-            }
-            
-            // Add meal to daily nutrition tracking
+            // Add meal to daily nutrition tracking (single source of truth for daily history)
             val addMealResult = nutritionRepository.addMealToDay(parameters.date, meal)
             if (addMealResult is Result.Error) {
                 return Result.error(addMealResult.exception)

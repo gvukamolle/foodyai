@@ -273,8 +273,8 @@ fun AnimatedPhrases(
     var shownIndices by remember { mutableStateOf(setOf<Int>()) }
     var isAnimating by remember { mutableStateOf(false) }
     var currentPhrase by remember { mutableStateOf("") }
-    var showPhrase by remember { mutableStateOf(true) }
-    var phraseBlur by remember { mutableStateOf(0.dp) }
+    // Изначально фразу не показываем — добавим стартовую задержку
+    var showPhrase by remember { mutableStateOf(false) }
 
     // Получаем следующую случайную фразу
     fun getNextRandomIndex(): Int {
@@ -293,26 +293,24 @@ fun AnimatedPhrases(
         }
     }
 
-    // Инициализация первой фразы без дополнительной задержки (контейнер уже задержан)
+    // Инициализация первой фразы
     LaunchedEffect(Unit) {
         currentPhraseIndex = getNextRandomIndex()
         shownIndices = shownIndices + currentPhraseIndex
         currentPhrase = phrases.getOrElse(currentPhraseIndex) { phrases.firstOrNull() ?: "" }
     }
 
-    // Запуск анимации переключения
+    // Запуск анимации переключения с начальнoй задержкой 750мс
     LaunchedEffect(Unit) {
-        delay(2500) // старт перед первой сменой
+        delay(750) // стартовая задержка перед появлением первой фразы
+        showPhrase = true
+        delay(2500) // показать первую фразу заданное время
         
         while (true) {
             if (!isAnimating) {
                 isAnimating = true
-                
-                // Анимация исчезновения с размытием
-                phraseBlur = 8.dp
-                delay(200)
+                // Исчезновение фразы
                 showPhrase = false
-                
                 delay(300) // Пауза между фразами
                 
                 // Меняем фразу
@@ -321,10 +319,8 @@ fun AnimatedPhrases(
                 currentPhraseIndex = nextIndex
                 currentPhrase = phrases.getOrElse(currentPhraseIndex) { phrases.firstOrNull() ?: "" }
                 
-                // Анимация появления с размытием
+                // Появление следующей фразы
                 showPhrase = true
-                phraseBlur = 0.dp
-                
                 isAnimating = false
             }
             
@@ -342,16 +338,7 @@ fun AnimatedPhrases(
         label = "phrase_alpha"
     )
 
-    val animatedBlur by animateDpAsState(
-        targetValue = phraseBlur,
-        animationSpec = tween(
-            durationMillis = if (phraseBlur == 0.dp) 400 else 300,
-            easing = FastOutSlowInEasing
-        ),
-        label = "phrase_blur"
-    )
-
-    // Отображение фразы БЕЗ ЕБАНОГО КОНТЕЙНЕРА - как в остальных системных сообщениях
+    // Отображение фразы как системного сообщения
     Text(
         text = currentPhrase,
         modifier = modifier
@@ -359,11 +346,7 @@ fun AnimatedPhrases(
             .padding(top = 8.dp) // Отступ сверху как у остальных сообщений
             .graphicsLayer {
                 alpha = animatedAlpha
-            }
-            .blur(
-                radius = animatedBlur,
-                edgeTreatment = BlurredEdgeTreatment.Unbounded
-            ),
+            },
         style = MaterialTheme.typography.bodyMedium.copy(
             fontSize = 15.sp * 1.05f,
             lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.1f,
@@ -372,4 +355,3 @@ fun AnimatedPhrases(
         color = Color.Black
     )
 }
-

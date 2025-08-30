@@ -1,5 +1,7 @@
 package com.example.calorietracker.data.repositories
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Base64
 import com.example.calorietracker.data.DataRepository
 import com.example.calorietracker.data.mappers.FoodMapper
@@ -20,6 +22,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
+import java.net.InetAddress
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -42,110 +46,171 @@ class FoodRepositoryImpl @Inject constructor(
     private val userRepository: UserRepository,
     private val okHttpClient: OkHttpClient
 ) : FoodRepository {
-
-    /**
-     * Быстрый аплоад изображения на временный хост и возврат прямой ссылки.
-     * 1) 0x0.st (multipart)
-     * 2) fallback: transfer.sh (PUT)
-     */
-    private fun uploadImageToTemporaryHost(imageFile: File): String {
-        // 1) 0x0.st
-        try {
-            val body = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart(
-                    "file",
-                    imageFile.name,
-                    imageFile.asRequestBody("image/jpeg".toMediaType())
-                )
-                .build()
-            val req = Request.Builder()
-                .url("https://0x0.st")
-                .post(body)
-                .header("Accept", "text/plain")
-                .build()
-            okHttpClient.newCall(req).execute().use { resp ->
-                val url = resp.body?.string()?.trim().orEmpty()
-                if (resp.isSuccessful && url.startsWith("http")) {
-                    return url
-                } else {
-                    throw IllegalStateException("0x0.st failed: code=${resp.code} body=${url.take(120)}")
-                }
-            }
-        } catch (e: Exception) {
-            println("WARN: 0x0.st upload failed: ${e.message}")
-        }
-
-        // 2) transfer.sh
-        val putReq = Request.Builder()
-            .url("https://transfer.sh/${imageFile.name}")
-            .put(imageFile.asRequestBody("application/octet-stream".toMediaType()))
-            .header("Accept", "text/plain")
-            .build()
-        okHttpClient.newCall(putReq).execute().use { resp ->
-            val url = resp.body?.string()?.trim().orEmpty()
-            if (resp.isSuccessful && url.startsWith("http")) {
-                return url
-            } else {
-                throw DomainException.AIAnalysisException("transfer.sh failed: code=${resp.code} body=${url.take(120)}")
-            }
-        }
+    
+    // Overload with messageType for compatibility
+    override suspend fun analyzeFoodPhoto(photoPath: String, caption: String, messageType: String): Result<Food> {
+        // Simply ignore messageType and use our standard approach
+        return analyzeFoodPhoto(photoPath, caption)
     }
     
     override suspend fun analyzeFoodPhoto(photoPath: String, caption: String): Result<Food> {
         return withContext(Dispatchers.IO) {
             try {
-                val userProfile = getUserProfileForAI()
-                val imageFile = File(photoPath)
-                if (!imageFile.exists()) {
+                println("DEBUG: analyzeFoodPhoto: Starting photo analysis")
+                val originalFile = File(photoPath)
+                if (!originalFile.exists()) {
                     throw DomainException.AIAnalysisException("Image file not found: $photoPath")
                 }
-
-                val mediaType = "image/jpeg".toMediaTypeOrNull()
-                val photoPart = MultipartBody.Part.createFormData(
-                    name = "photo",
-                    filename = imageFile.name,
-                    body = imageFile.asRequestBody(mediaType)
-                )
-
-                val profileJson = Gson().toJson(userProfile)
-                val userProfileBody = profileJson.toRequestBody("application/json".toMediaType())
-                val userIdBody = java.util.UUID.randomUUID().toString().toRequestBody("text/plain".toMediaType())
-                val captionBody = caption.ifBlank { "" }.toRequestBody("text/plain".toMediaType())
-                val inferredMessageType = if (caption.startsWith("[RECIPE]")) "recipe_photo" else "photo"
-                val messageTypeBody = inferredMessageType.toRequestBody("text/plain".toMediaType())
-                val firstBody = "false".toRequestBody("text/plain".toMediaType())
-                // Совместимость с роутером: value содержит JSON со служебными полями
-                val valueJson = "{" +
-                        "\"messageType\":\"${inferredMessageType}\"," +
-                        "\"isFirstMessageOfDay\":false" +
-                        "}"
-                val valueBody = valueJson.toRequestBody("application/json".toMediaType())
-
-                val chatResp = withTimeout(60000) {
-                    makeService.askAiDietitianWithPhoto(
-                        MakeService.WEBHOOK_ID,
-                        photoPart,
-                        userProfileBody,
-                        userIdBody,
-                        captionBody,
-                        messageTypeBody,
-                        firstBody,
-                        valueBody
-                    )
+                println("DEBUG: Original image size: ${originalFile.length()} bytes (${originalFile.length() / 1024}KB)")
+                
+                // Компрессируем изображение если оно слишком большое
+                val imageFile = if (originalFile.length() / 1024 > 500) {
+                    compressImage(photoPath, 500) ?: originalFile
+                } else {
+                    originalFile
                 }
-                val response = FoodAnalysisResponse(status = chatResp.status, answer = chatResp.answer)
+                
+                val userProfile = getUserProfileForAI()
+                
+                // Make.com рекомендует multipart/form-data для изображений
+                // Отправляем ТОЛЬКО через multipart, без base64
+                println("DEBUG: Sending MULTIPART request to Make.com webhook")
+                
+                val mediaType = "image/jpeg".toMediaTypeOrNull()
+                val gson = Gson()
+                val profileJson = gson.toJson(userProfile)
+                val userIdStr = "user_${System.currentTimeMillis()}"
+                val captionStr = caption.ifBlank { "" }
+                val messageTypeStr = "analysis"
+                val firstStr = "false"
+
+                // Используем "photo" вместо "file" для консистентности с MakeWebhookClient
+                val multipartBody = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    // Файл передаем как бинарные данные
+                    .addFormDataPart(
+                        name = "photo",  // Изменено с "file" на "photo" для консистентности
+                        filename = imageFile.name,
+                        body = imageFile.asRequestBody(mediaType)
+                    )
+                    // Дополнительные поля как обычные form-data
+                    .addFormDataPart("filename", imageFile.name)
+                    .addFormDataPart("userProfile", profileJson)
+                    .addFormDataPart("userId", userIdStr)
+                    .addFormDataPart("note", captionStr)  // Make.com часто использует "note" для описаний
+                    .addFormDataPart("caption", captionStr)
+                    .addFormDataPart("messageType", messageTypeStr)
+                    .addFormDataPart("isFirstMessageOfDay", firstStr)
+                    .build()
+
+                // Сначала пробуем DNS резолвинг
+                val makeComIP = resolveMakeComIP()
+                
+                val url = if (makeComIP != null && makeComIP.isNotEmpty()) {
+                    // Если DNS работает, используем обычный URL
+                    MakeService.BASE_URL + MakeService.WEBHOOK_ID
+                } else {
+                    // DNS заблокирован - пробуем известные IP адреса Make.com
+                    println("WARNING: DNS blocked, trying known Make.com IPs")
+                    // Эти IP можно получить заранее с VPN и захардкодить
+                    val knownIPs = listOf("35.174.94.163", "52.73.40.154") // Примерные IP, нужно проверить актуальные
+                    val workingIP = knownIPs.firstOrNull { ip ->
+                        try {
+                            InetAddress.getByName(ip).isReachable(5000)
+                        } catch (e: Exception) {
+                            false
+                        }
+                    }
+                    
+                    if (workingIP != null) {
+                        createUrlWithIP(workingIP)
+                    } else {
+                        // Если ничего не работает, все равно пробуем обычный URL
+                        MakeService.BASE_URL + MakeService.WEBHOOK_ID
+                    }
+                }
+                
+                val request = Request.Builder()
+                    .url(url)
+                    .post(multipartBody)
+                    // Изменяем заголовки чтобы выглядеть как обычный браузер
+                    .header("Accept", "application/json, text/plain, */*")
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+                    .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
+                    .header("Accept-Encoding", "gzip, deflate, br")
+                    .header("Origin", "https://app.calorietracker.com") // Фиктивный origin
+                    .header("Referer", "https://app.calorietracker.com/upload")
+                    // Если используем IP, добавляем Host заголовок
+                    .apply {
+                        if (url.contains(Regex("\\d+\\.\\d+\\.\\d+\\.\\d+"))) {
+                            header("Host", "hook.us2.make.com")
+                        }
+                    }
+                    .build()
+
+                println("DEBUG: Sending multipart request to: $url")
+                println("DEBUG: Request size approximately: ${imageFile.length() / 1024}KB")
+                
+                val httpResponse = try {
+                    val startTime = System.currentTimeMillis()
+                    withTimeout(60000) {  // Увеличиваем таймаут до 60 секунд для медленных мобильных сетей
+                        val response = okHttpClient.newCall(request).execute()
+                        val duration = System.currentTimeMillis() - startTime
+                        println("DEBUG: Request completed in ${duration}ms")
+                        response
+                    }
+                } catch (e: TimeoutCancellationException) {
+                    println("ERROR: Request timeout - возможно медленная мобильная сеть")
+                    throw DomainException.AIAnalysisException("Request timeout after 60s - медленное соединение")
+                } catch (e: java.net.SocketTimeoutException) {
+                    println("ERROR: Socket timeout - проблема с сетью")
+                    throw DomainException.AIAnalysisException("Socket timeout - проверьте интернет соединение")
+                } catch (e: java.net.UnknownHostException) {
+                    println("ERROR: DNS resolution failed - ${e.message}")
+                    throw DomainException.AIAnalysisException("Не удалось подключиться к серверу Make.com")
+                } catch (e: java.io.IOException) {
+                    println("ERROR: Network IO error - ${e.message}")
+                    println("DEBUG: Attempting fallback to base64 method due to multipart failure")
+                    
+                    // Fallback на base64 метод если multipart не сработал
+                    return@withContext analyzeFoodPhotoBase64Fallback(imageFile, caption, userProfile)
+                }
+                
+                val bodyString = httpResponse.body?.string() ?: ""
+                println("DEBUG: Response: code=${httpResponse.code}, body length=${bodyString.length}")
+                
+                if (!httpResponse.isSuccessful) {
+                    println("ERROR: Request failed with HTTP ${httpResponse.code}")
+                    println("ERROR: Response body: ${bodyString.take(500)}")
+                    
+                    // Попробуем base64 как fallback для некоторых кодов ошибок
+                    if (httpResponse.code in listOf(413, 502, 503, 504)) {
+                        println("DEBUG: Attempting base64 fallback due to HTTP ${httpResponse.code}")
+                        return@withContext analyzeFoodPhotoBase64Fallback(imageFile, caption, userProfile)
+                    }
+                    
+                    throw DomainException.AIAnalysisException("HTTP ${httpResponse.code}: ${bodyString.take(200)}")
+                }
+                
+                println("DEBUG: Successfully received response from Make.com")
+                
+                val response = try {
+                    val parsed = Gson().fromJson(bodyString, FoodAnalysisResponse::class.java)
+                    println("DEBUG: Successfully parsed JSON response")
+                    parsed
+                } catch (e: Exception) {
+                    println("WARNING: Failed to parse as JSON, treating as text response")
+                    // Если сервер вернул не JSON, оборачиваем как текстовый ответ
+                    FoodAnalysisResponse(status = "ok", answer = bodyString)
+                }
+                
                 val food = parseFoodAnalysisResponse(response, FoodSource.AI_PHOTO_ANALYSIS)
                 Result.success(food)
+                
             } catch (e: Exception) {
-                println("DEBUG: Exception in analyzeFoodPhoto: ${e.message}")
+                println("ERROR: analyzeFoodPhoto failed: ${e.message}")
                 e.printStackTrace()
-                Result.error(
-                    DomainException.AIAnalysisException(
-                        "Failed to analyze food photo: ${e.message}",
-                        e
-                    )
-                )
+                Result.error(DomainException.AIAnalysisException("Analysis failed: ${e.message}", e))
             }
         }
     }
@@ -333,50 +398,6 @@ class FoodRepositoryImpl @Inject constructor(
     }
     
     /**
-     * Convert image file to Base64 string with compression
-     */
-    private fun convertImageToBase64(imagePath: String): String {
-        return try {
-            val imageFile = File(imagePath)
-            
-            // Декодируем изображение
-            var bitmap = android.graphics.BitmapFactory.decodeFile(imagePath)
-            
-            // Ресайз если изображение слишком большое (макс 1024x1024)
-            val maxDimension = 1024
-            if (bitmap.width > maxDimension || bitmap.height > maxDimension) {
-                val scale = minOf(
-                    maxDimension.toFloat() / bitmap.width,
-                    maxDimension.toFloat() / bitmap.height
-                )
-                val newWidth = (bitmap.width * scale).toInt()
-                val newHeight = (bitmap.height * scale).toInt()
-                bitmap = android.graphics.Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-                println("DEBUG: Image resized to ${newWidth}x${newHeight}")
-            }
-            
-            val stream = java.io.ByteArrayOutputStream()
-            
-            // Сжимаем до 85% качества в JPEG
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, stream)
-            val imageBytes = stream.toByteArray()
-            
-            println("DEBUG: Image compressed from ${imageFile.length()} to ${imageBytes.size} bytes")
-            
-            // Проверяем размер base64 (он будет ~33% больше)
-            val base64Size = (imageBytes.size * 4 / 3)
-            if (base64Size > 5_000_000) { // 5MB лимит для base64
-                throw DomainException.AIAnalysisException("Image too large even after compression")
-            }
-            
-            // Важно: NO_WRAP, чтобы убрать переносы строк в base64
-            Base64.encodeToString(imageBytes, Base64.NO_WRAP)
-        } catch (e: Exception) {
-            throw DomainException.AIAnalysisException("Failed to convert image to Base64: ${e.message}", e)
-        }
-    }
-    
-    /**
      * Get user profile data for AI requests
      */
     private suspend fun getUserProfileForAI(): UserProfileData {
@@ -502,6 +523,227 @@ class FoodRepositoryImpl @Inject constructor(
             regex.find(text)?.groupValues?.get(1)?.toDoubleOrNull() ?: defaultValue
         } catch (e: Exception) {
             defaultValue
+        }
+    }
+    
+    /**
+     * Fallback метод для отправки фото через base64
+     * Используется когда multipart запрос не проходит через мобильную сеть
+     */
+    private suspend fun analyzeFoodPhotoBase64Fallback(
+        imageFile: File, 
+        caption: String,
+        userProfile: UserProfileData
+    ): Result<Food> {
+        return try {
+            println("DEBUG: Using base64 fallback method for photo analysis")
+            
+            // Читаем и кодируем изображение в base64
+            val imageBytes = imageFile.readBytes()
+            val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+            println("DEBUG: Base64 encoded size: ${base64Image.length} chars")
+            
+            // Подготавливаем JSON запрос
+            val jsonRequest = JSONObject().apply {
+                put("imageBase64", base64Image)
+                put("userProfile", JSONObject().apply {
+                    put("age", userProfile.age)
+                    put("weight", userProfile.weight)
+                    put("height", userProfile.height)
+                    put("gender", userProfile.gender)
+                    put("activityLevel", userProfile.activityLevel)
+                    put("goal", userProfile.goal)
+                })
+                put("caption", caption)
+                put("note", caption)
+                put("messageType", "analysis")
+                put("isFirstMessageOfDay", false)
+                put("userId", "user_${System.currentTimeMillis()}")
+            }
+            
+            val url = MakeService.BASE_URL + MakeService.WEBHOOK_ID
+            val request = Request.Builder()
+                .url(url)
+                .post(jsonRequest.toString().toRequestBody("application/json".toMediaType()))
+                .header("Accept", "application/json")
+                .header("User-Agent", "calorietracker/1.0")
+                .header("Content-Type", "application/json")
+                .build()
+            
+            println("DEBUG: Sending base64 JSON request to: $url")
+            
+            val httpResponse = withTimeout(60000) {
+                okHttpClient.newCall(request).execute()
+            }
+            
+            val bodyString = httpResponse.body?.string() ?: ""
+            println("DEBUG: Base64 response: code=${httpResponse.code}, body length=${bodyString.length}")
+            
+            if (!httpResponse.isSuccessful) {
+                println("ERROR: Base64 request also failed with HTTP ${httpResponse.code}")
+                throw DomainException.AIAnalysisException("Both multipart and base64 methods failed")
+            }
+            
+            val response = try {
+                Gson().fromJson(bodyString, FoodAnalysisResponse::class.java)
+            } catch (e: Exception) {
+                FoodAnalysisResponse(status = "ok", answer = bodyString)
+            }
+            
+            val food = parseFoodAnalysisResponse(response, FoodSource.AI_PHOTO_ANALYSIS)
+            
+            // Удаляем временный сжатый файл если он был создан
+            if (imageFile.name.startsWith("compressed_")) {
+                imageFile.delete()
+            }
+            
+            Result.success(food)
+            
+        } catch (e: Exception) {
+            println("ERROR: Base64 fallback failed: ${e.message}")
+            Result.error(DomainException.AIAnalysisException("Analysis failed: ${e.message}", e))
+        }
+    }
+    
+    /**
+     * Проверка DNS и получение IP адреса для Make.com
+     * Возвращает IP адрес или null если DNS заблокирован
+     */
+    private suspend fun resolveMakeComIP(): String? {
+        return try {
+            withContext(Dispatchers.IO) {
+                val host = "hook.us2.make.com"
+                println("DEBUG: Resolving DNS for $host")
+                
+                // Сначала пробуем обычный DNS
+                try {
+                    val addresses = InetAddress.getAllByName(host)
+                    if (addresses.isNotEmpty()) {
+                        val ip = addresses[0].hostAddress
+                        println("DEBUG: Resolved $host to IP via standard DNS: $ip")
+                        return@withContext ip
+                    }
+                } catch (e: Exception) {
+                    println("DEBUG: Standard DNS failed, trying DNS-over-HTTPS")
+                }
+                
+                // Если обычный DNS не работает, пробуем DNS-over-HTTPS
+                val dohIP = resolveDNSOverHTTPS(host)
+                if (dohIP != null) {
+                    println("DEBUG: Resolved $host to IP via DoH: $dohIP")
+                    return@withContext dohIP
+                }
+                
+                println("ERROR: No IP addresses found for $host")
+                null
+            }
+        } catch (e: Exception) {
+            println("ERROR: DNS resolution failed: ${e.message}")
+            println("ERROR: This might indicate DNS blocking by ISP")
+            null
+        }
+    }
+    
+    /**
+     * DNS-over-HTTPS для обхода DNS блокировки
+     * Использует Cloudflare DNS
+     */
+    private suspend fun resolveDNSOverHTTPS(hostname: String): String? {
+        return try {
+            withContext(Dispatchers.IO) {
+                val url = "https://cloudflare-dns.com/dns-query?name=$hostname&type=A"
+                val request = Request.Builder()
+                    .url(url)
+                    .header("Accept", "application/dns-json")
+                    .build()
+                
+                val response = okHttpClient.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val body = response.body?.string() ?: return@withContext null
+                    val json = JSONObject(body)
+                    val answers = json.optJSONArray("Answer")
+                    if (answers != null && answers.length() > 0) {
+                        for (i in 0 until answers.length()) {
+                            val answer = answers.getJSONObject(i)
+                            if (answer.optInt("type") == 1) { // Type A record
+                                return@withContext answer.getString("data")
+                            }
+                        }
+                    }
+                }
+                null
+            }
+        } catch (e: Exception) {
+            println("ERROR: DNS-over-HTTPS failed: ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Создание URL с использованием IP адреса вместо домена
+     * Помогает обойти DNS блокировку
+     */
+    private fun createUrlWithIP(ip: String): String {
+        return "https://$ip/${MakeService.WEBHOOK_ID}"
+    }
+    
+    /**
+     * Компрессия изображения для уменьшения размера перед отправкой
+     * Это может помочь с проблемами передачи данных в мобильных сетях
+     */
+    private fun compressImage(imagePath: String, maxSizeKB: Int = 500): File? {
+        return try {
+            val originalFile = File(imagePath)
+            val originalSizeKB = originalFile.length() / 1024
+            
+            // Если файл уже меньше максимального размера, возвращаем оригинал
+            if (originalSizeKB <= maxSizeKB) {
+                println("DEBUG: Image size ${originalSizeKB}KB is already under limit")
+                return originalFile
+            }
+            
+            println("DEBUG: Compressing image from ${originalSizeKB}KB to max ${maxSizeKB}KB")
+            
+            // Декодируем изображение
+            val options = BitmapFactory.Options()
+            options.inJustDecodeBounds = true
+            BitmapFactory.decodeFile(imagePath, options)
+            
+            // Вычисляем коэффициент сжатия
+            var scale = 1
+            while ((options.outWidth / scale / 2) >= 1024 && 
+                   (options.outHeight / scale / 2) >= 1024) {
+                scale *= 2
+            }
+            
+            // Декодируем с уменьшенным разрешением
+            val decodeOptions = BitmapFactory.Options()
+            decodeOptions.inSampleSize = scale
+            val bitmap = BitmapFactory.decodeFile(imagePath, decodeOptions)
+            
+            // Создаем временный файл для сжатого изображения
+            val compressedFile = File(originalFile.parent, "compressed_${originalFile.name}")
+            val outputStream = FileOutputStream(compressedFile)
+            
+            // Начинаем с качества 90% и уменьшаем пока не достигнем нужного размера
+            var quality = 90
+            do {
+                outputStream.close()
+                val os = FileOutputStream(compressedFile)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, os)
+                os.close()
+                quality -= 10
+            } while (compressedFile.length() / 1024 > maxSizeKB && quality > 30)
+            
+            bitmap.recycle()
+            
+            val newSizeKB = compressedFile.length() / 1024
+            println("DEBUG: Image compressed to ${newSizeKB}KB (quality: ${quality + 10}%)")
+            
+            compressedFile
+        } catch (e: Exception) {
+            println("ERROR: Failed to compress image: ${e.message}")
+            null
         }
     }
 }

@@ -136,6 +136,17 @@ class UserProfileViewModel @Inject constructor(
                     // Update user with new targets
                     val updatedUser = user.copy(nutritionTargets = result.data)
                     _userProfile.value = updatedUser
+
+                    // Persist updated user so targets are saved in both domain and legacy
+                    when (val saveResult = saveUserProfileUseCase(
+                        SaveUserProfileUseCase.Params(updatedUser)
+                    )) {
+                        is Result.Error -> {
+                            // Keep UI responsive; just log via println for diagnostics
+                            println("DEBUG_PROFILE_VM: failed to persist updated targets: ${saveResult.exception.message}")
+                        }
+                        else -> {}
+                    }
                 }
                 is Result.Error -> {
                     updateUiState { 

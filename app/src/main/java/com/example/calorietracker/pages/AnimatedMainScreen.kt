@@ -55,6 +55,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.animation.core.FastOutSlowInEasing
 import com.example.calorietracker.ui.animations.AnimatedMessageWithBlur
+import com.example.calorietracker.ui.animations.AnimatedPhrases
 import com.example.calorietracker.components.chat.FoodConfirmationCard
 import com.example.calorietracker.components.chat.AnimatedRetryChip
 import androidx.compose.foundation.lazy.items
@@ -84,6 +85,7 @@ import androidx.compose.material.icons.filled.Restaurant
 import com.example.calorietracker.managers.AppMode
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.calorietracker.ui.animations.AnimatedMessage
 import androidx.compose.ui.draw.alpha
 
@@ -244,12 +246,19 @@ fun AnimatedMainScreen(
                     onNavigateToSubscription = onNavigateToSubscription
                 )
 
+                 // Статус-бар должен реагировать на изменения стейта: берём данные из Flow
+                 val domainIntake = viewModel.dailyIntakeFlow.collectAsState().value
+                 val currentCalories = domainIntake?.getTotalCalories() ?: 0
+                 val userFromFlow = viewModel.userProfileFlow.collectAsState().value
+                 val targetCalories = userFromFlow?.nutritionTargets?.dailyCalories
+                     ?: viewModel.userProfile.dailyCalories
+
                  ThinCaloriesBar(
-                     current = viewModel.dailyIntake.calories,
-                     target = viewModel.userProfile.dailyCalories,
+                     current = currentCalories,
+                     target = targetCalories,
                      color = viewModel.getProgressColor(
-                         viewModel.dailyIntake.calories,
-                         viewModel.userProfile.dailyCalories
+                         currentCalories,
+                         targetCalories
                      ),
                      modifier = Modifier
                          .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -271,6 +280,8 @@ fun AnimatedMainScreen(
                     modifier = Modifier.weight(1f)
                 )
             }
+
+            // overlay for loading removed: loading messages appear as full-width plain messages
 
 
             AnimatedVisibility(
@@ -331,33 +342,38 @@ fun AnimatedMainScreen(
         onFeedbackClick = onFeedbackClick
     )
     
-    // Диалог с деталями продукта
-    if (showFoodDetailScreen && selectedFood != null) {
-        FoodDetailScreen(
-            food = selectedFood!!,
-            onDismiss = {
-                showFoodDetailScreen = false
-                selectedFood = null
-            },
-            onEdit = {
-                showFoodDetailScreen = false
-                viewModel.setPrefillFromFoodItem(selectedFood)
-                viewModel.showManualInputDialog = true
-                selectedFood = null
-            },
-            onDelete = {
-                showFoodDetailScreen = false
-                // Находим индекс продукта в списке приемов пищи
-                val mealIndex = -1
-                if (mealIndex != -1) {
-                    viewModel.deleteMealFromHistory(
-                        DailyResetUtils.getFoodDate(),
-                        mealIndex
-                    )
+    // Диалог с деталями продукта с плавной анимацией появления/исчезновения
+    AnimatedVisibility(
+        visible = showFoodDetailScreen && selectedFood != null,
+        enter = fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)),
+        exit = fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing))
+    ) {
+        if (selectedFood != null) {
+            FoodDetailScreen(
+                food = selectedFood!!,
+                onDismiss = {
+                    showFoodDetailScreen = false
+                    selectedFood = null
+                },
+                onEdit = {
+                    showFoodDetailScreen = false
+                    viewModel.setPrefillFromFoodItem(selectedFood)
+                    viewModel.showManualInputDialog = true
+                    selectedFood = null
+                },
+                onDelete = {
+                    showFoodDetailScreen = false
+                    val mealIndex = -1
+                    if (mealIndex != -1) {
+                        viewModel.deleteMealFromHistory(
+                            DailyResetUtils.getFoodDate(),
+                            mealIndex
+                        )
+                    }
+                    selectedFood = null
                 }
-                selectedFood = null
-            }
-        )
+            )
+        }
     }
 }
 
@@ -557,7 +573,11 @@ private fun AnimatedChatContent(
                     id = message.id,
                     isVisible = message.isVisible,
                     playAnimation = message.animate,
-                    startDelay = if (message.animate && message.type == MessageType.AI && !message.isProcessing) 750L else 200L,
+                    startDelay = when {
+                        message.type == MessageType.USER -> 0L
+                        message.type == MessageType.AI && !message.isProcessing -> 750L
+                        else -> 200L
+                    },
                     onAnimationStart = {
                         viewModel.markMessageAnimated(message)
                     }
@@ -623,7 +643,9 @@ private fun AnimatedChatMessageCard(
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (message.content.isNotEmpty()) {
+                if (message.isProcessing && message.content.isBlank()) {
+                    AnimatedPhrases(inputMethod = message.inputMethod)
+                } else if (message.content.isNotEmpty()) {
                     MarkdownText(
                         text = message.content,
                         color = Color.Black,
@@ -652,8 +674,7 @@ private fun AnimatedChatMessageCard(
                     Card(
                         modifier = Modifier
                             .widthIn(max = maxMessageWidth)
-                            .wrapContentWidth()
-                            .animateContentSize(),
+                            .wrapContentWidth(),
                         colors = CardDefaults.cardColors(
                             containerColor = Color(0xFFF3F4F6) // Единый светло-серый цвет для всех bubble
                         ),
@@ -668,13 +689,15 @@ private fun AnimatedChatMessageCard(
                         Column(
                             modifier = Modifier.padding(12.dp)
                         ) {
-                            // Проверяем, нужно ли показывать анимированные точки
+                            // Пузырь обработки AI с системными фразами
                             if (message.isProcessing) {
                                 if (message.content.isNotEmpty()) {
                                     MarkdownText(
                                         text = message.content,
                                         color = Color.Black
                                     )
+                                } else {
+                                    AnimatedPhrases(inputMethod = message.inputMethod)
                                 }
                             } else {
                                 if (message.imagePath != null) {
@@ -700,16 +723,31 @@ private fun AnimatedChatMessageCard(
                         }
                     }
                 } else {
-                    // Отображаем кнопки без карточки
+                    // Отображаем кнопки без карточки с задержкой 0.75с только при первом показе
                     if (message.content.isEmpty() && message.isExpandable && message.foodItem != null) {
-                        if (message.foodItem.aiOpinion != null) {
-                            AnimatedAiChip(
-                                onClick = { onAiOpinionClick(message.foodItem!!) }
-                            )
-                        } else {
-                            AnimatedMoreChip(
-                                onClick = { onAiOpinionClick(message.foodItem!!) }
-                            )
+                        val hasShown = rememberSaveable(message.id) { mutableStateOf(false) }
+                        val showChip = remember(message.id) { mutableStateOf(false) }
+
+                        LaunchedEffect(message.id) {
+                            if (hasShown.value) {
+                                showChip.value = true
+                            } else {
+                                delay(750)
+                                showChip.value = true
+                                hasShown.value = true
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = showChip.value,
+                            enter = fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)),
+                            exit = fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing))
+                        ) {
+                            if (message.foodItem.aiOpinion != null) {
+                                AnimatedAiChip(onClick = { onAiOpinionClick(message.foodItem!!) })
+                            } else {
+                                AnimatedMoreChip(onClick = { onAiOpinionClick(message.foodItem!!) })
+                            }
                         }
                     }
                 }

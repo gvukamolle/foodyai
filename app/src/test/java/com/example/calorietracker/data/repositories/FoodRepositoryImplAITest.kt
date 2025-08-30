@@ -27,6 +27,8 @@ class FoodRepositoryImplAITest {
     private lateinit var foodMapper: FoodMapper
     private lateinit var userRepository: UserRepository
     private lateinit var foodRepositoryImpl: FoodRepositoryImpl
+    private lateinit var okHttpClient: okhttp3.OkHttpClient
+    private lateinit var makeWebhookClient: com.example.calorietracker.network.MakeWebhookClient
 
     private val testUser = User(
         name = "Test User",
@@ -46,42 +48,39 @@ class FoodRepositoryImplAITest {
         dataRepository = mockk()
         foodMapper = mockk()
         userRepository = mockk()
+        okHttpClient = mockk(relaxed = true)
+        makeWebhookClient = mockk()
         
         foodRepositoryImpl = FoodRepositoryImpl(
             makeService = makeService,
             dataRepository = dataRepository,
             foodMapper = foodMapper,
-            userRepository = userRepository
+            userRepository = userRepository,
+            okHttpClient = okHttpClient,
+            makeWebhookClient = makeWebhookClient
         )
     }
 
     @Test
-    fun `analyzeFoodPhoto should use MakeService not DataRepository`() = runTest {
+    fun `analyzeFoodPhoto should use Webhook client not DataRepository`() = runTest {
         // Given
         val photoPath = "/test/path/image.jpg"
         val caption = "test caption"
-        val expectedResponse = FoodAnalysisResponse(
-            status = "success",
-            answer = """{"name":"Apple","calories":52,"protein":0.3,"fat":0.2,"carbs":14,"weight":"100г"}"""
-        )
+        val body = """{"name":"Apple","calories":52,"protein":0.3,"fat":0.2,"carbs":14,"weight":"100г"}"""
 
         every { userRepository.getUserProfile() } returns Result.success(testUser)
-        coEvery { makeService.analyzeFoodImage(any(), any()) } returns expectedResponse
+        every { makeWebhookClient.postMultipartPhoto(any(), any(), any(), any(), any(), any(), any()) } returns 
+            MakeWebhookResult(200, body)
 
         // When
         val result = foodRepositoryImpl.analyzeFoodPhoto(photoPath, caption)
 
         // Then
         assertTrue("Result should be success", result is Result.Success)
-        
-        // Verify MakeService was called with correct webhook ID
-        coVerify { 
-            makeService.analyzeFoodImage(
-                MakeService.WEBHOOK_ID,
-                any<ImageAnalysisRequest>()
-            ) 
-        }
-        
+
+        // Verify webhook client used
+        verify { makeWebhookClient.postMultipartPhoto(any(), any(), any(), any(), any(), any(), any()) }
+
         // Verify DataRepository was NOT called for AI analysis
         verify(exactly = 0) { dataRepository.analyzePhotoWithAI(any(), any()) }
     }

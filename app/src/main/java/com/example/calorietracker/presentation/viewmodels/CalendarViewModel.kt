@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
+import com.example.calorietracker.utils.DailyResetUtils
 
 /**
  * ViewModel for calendar and historical data
@@ -34,7 +35,9 @@ class CalendarViewModel @Inject constructor(
     val calendarData: StateFlow<Map<LocalDate, NutritionIntake>> = _calendarData.asStateFlow()
     
     // Selected date
-    private val _selectedDate = MutableStateFlow(LocalDate.now())
+    private val _selectedDate = MutableStateFlow(
+        runCatching { DailyResetUtils.getFoodLocalDate() }.getOrElse { LocalDate.now() }
+    )
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
     
     // Selected date intake
@@ -123,7 +126,7 @@ class CalendarViewModel @Inject constructor(
      * Go to today
      */
     fun goToToday() {
-        val today = LocalDate.now()
+        val today = runCatching { DailyResetUtils.getFoodLocalDate() }.getOrElse { LocalDate.now() }
         loadMonth(YearMonth.from(today))
         selectDate(today)
     }
